@@ -5,3 +5,16 @@ See `docs/plans/2026-04-08-mini-oscen-design.md` for the design.
 
 ## Status
 Phase 1 in progress: SNN core foundations.
+
+## Known limitations (Phase 1)
+
+The two-region brain in this phase has **no lateral inhibition** between feature
+neurons. As a result, when trained on multiple input patterns, both feature neurons
+tend to collapse onto the first pattern they see (verified across 20 seeds in
+`scripts/visualize_two_region.py`). This is structural, not stochastic, and is
+deliberately left to **Phase 2**, which adds a Concept layer with winner-take-all
+competition that will produce distinct, sparse concept representations.
+
+The `weights_after.png` plot from Phase 1 still demonstrates that STDP learns
+input statistics — the matrix moves from uniform 0.5 to a clearly structured
+binary pattern — but the visual story of "two distinct concepts" requires Phase 2.

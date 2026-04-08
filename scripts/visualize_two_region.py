@@ -3,7 +3,7 @@
 Runs the TwoRegionBrain on alternating A/B patterns and saves three PNGs:
 1. weights_before.png — initial weight matrix
 2. weights_after.png — weight matrix after training
-3. weights_evolution.png — heatmap of |delta| over training epochs
+3. weights_evolution.png — line traces of each synapse weight over epochs
 """
 from __future__ import annotations
 import argparse
@@ -20,10 +20,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=300)
     parser.add_argument("--out", type=Path, default=Path("logs"))
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
     args.out.mkdir(exist_ok=True)
 
-    torch.manual_seed(42)
+    torch.manual_seed(args.seed)
     brain = TwoRegionBrain(
         num_sensory=4,
         num_feature=2,
