@@ -66,6 +66,17 @@ def _brain_config(brain: Brain) -> dict[str, Any]:
         "num_motor": brain.regions["motor"].num_neurons,
         "num_meta": brain.regions["meta"].num_neurons,
         "concept_k": brain.regions["concept"].k,
+        # Numerical / learning kwargs — sourced from a representative region/synapse.
+        # All regions share tau_mem/threshold; all STDP synapses share a_plus/a_minus.
+        "tau_mem": brain.regions["sensory"].tau_mem,
+        "threshold": brain.regions["sensory"].threshold,
+        "a_plus": brain.synapses["sensory_feature"].a_plus,
+        "a_minus": brain.synapses["sensory_feature"].a_minus,
+        # w_init / w_init_jitter only affect __init__; the saved weight tensors
+        # already capture the full state, so reload value is irrelevant. We
+        # store w_init=0.0, w_init_jitter=0.0 to skip the wasted jitter step.
+        "w_init": 0.0,
+        "w_init_jitter": 0.0,
     }
 
 
