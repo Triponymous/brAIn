@@ -4,7 +4,21 @@ A persistent neuromorphic brain with LLM bridge.
 See `docs/plans/2026-04-08-mini-oscen-design.md` for the design.
 
 ## Status
-Phase 1 in progress: SNN core foundations.
+- [x] Phase 1: SNN core foundations (LIF, STDP, 2-region brain, viz)
+- [ ] Phase 2: Full multi-region brain + persistence
+- [ ] Phase 3: Desktop adapter (webcam + mic)
+- [ ] Phase 4: FastAPI + minimal dashboard
+- [ ] Phase 5: LLM bridge (Ollama + memory tools)
+- [ ] Phase 6: Avatar adapter + polish
+
+## Quick start
+
+```bash
+uv venv
+uv pip install -e ".[dev]"
+.venv/bin/pytest -v
+.venv/bin/python scripts/visualize_two_region.py
+```
 
 ## Known limitations (Phase 1)
 
