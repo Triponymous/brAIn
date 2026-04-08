@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.python-version
+
+# uv
+.uv-cache/
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Brain artifacts
+*.sqlite
+*.parquet
+checkpoints/
+logs/
+*.png
+!docs/**/*.png
