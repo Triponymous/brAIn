@@ -101,3 +101,24 @@ class STDPSynapse:
 
         # Clip weights
         self.weights = torch.clamp(self.weights, self.w_min, self.w_max)
+
+
+class RSTDPSynapse(STDPSynapse):
+    """Reward-modulated STDP synapse.
+
+    Identical to STDPSynapse except `update()` takes a `reward` scalar
+    instead of `modulation`, and the weight delta is multiplied by `reward`.
+    Positive reward -> potentiate causal pairs. Negative reward -> depress them.
+    Zero reward -> freeze.
+
+    This is the simplest 3-factor learning rule: pre-trace x post-trace x reward.
+    """
+
+    def update(  # type: ignore[override]
+        self,
+        pre_spikes: torch.Tensor,
+        post_spikes: torch.Tensor,
+        dt: float = 1.0,
+        reward: float = 0.0,
+    ) -> None:
+        super().update(pre_spikes, post_spikes, dt=dt, modulation=reward)
