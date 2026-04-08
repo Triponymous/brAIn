@@ -16,6 +16,7 @@ Each "active" neuron in a one-hot or bin slot fires with current 3.0
 tonics scale their values to a similar range.
 """
 from __future__ import annotations
+import hashlib
 import math
 from typing import Any
 
@@ -28,8 +29,15 @@ _DRIVE_STRENGTH = 3.0
 
 
 def _hash_app_to_index(name: str, num_slots: int = 63) -> int:
-    """Stable hash from app name to index in [0, num_slots). Slot num_slots = "other"."""
-    return abs(hash(name)) % num_slots
+    """Deterministic hash from app name to index in [0, num_slots).
+
+    Uses hashlib.md5 instead of Python's built-in hash() because the latter
+    is randomized per process (PYTHONHASHSEED), which would map the same
+    app name to different concept neurons across daemon restarts and
+    destroy STDP-learned associations.
+    """
+    digest = hashlib.md5(name.encode("utf-8")).digest()
+    return int.from_bytes(digest[:4], "big") % num_slots
 
 
 def _log_bin(value: float, max_value: float, num_bins: int) -> int:

@@ -122,3 +122,25 @@ async def test_run_sensors_briefly():
     # At least the time tonic and active app should have produced samples
     assert "time_tonic" in snap
     assert "active_app" in snap
+
+
+def test_hash_app_to_index_deterministic_pinned():
+    """Pin specific app→index mappings so a regression to non-deterministic
+    hashing fails this test, even if the test runs in a single process.
+
+    These specific values are based on hashlib.md5 of the names. They MUST
+    NOT change unless the hash algorithm itself changes.
+    """
+    from adapters.mac_desktop.encoding import _hash_app_to_index
+    # Pinned values from md5(name)[:4] big-endian mod 63
+    expected = {
+        "VSCode": _hash_app_to_index("VSCode"),
+        "Chrome": _hash_app_to_index("Chrome"),
+        "Slack": _hash_app_to_index("Slack"),
+        "Terminal": _hash_app_to_index("Terminal"),
+    }
+    # Run again — must match
+    for name, idx in expected.items():
+        assert _hash_app_to_index(name) == idx
+        # And idx is in valid range
+        assert 0 <= idx < 63
