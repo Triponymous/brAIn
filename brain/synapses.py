@@ -56,24 +56,48 @@ class STDPSynapse:
         pre_spikes: torch.Tensor,
         post_spikes: torch.Tensor,
         dt: float = 1.0,
+        modulation: float = 1.0,
     ) -> None:
-        """Apply one STDP update step."""
+        """Apply one STDP update step.
+
+        Parameters
+        ----------
+        pre_spikes, post_spikes
+            0/1 float spike vectors for pre and post populations.
+        dt
+            Time step in milliseconds.
+        modulation
+            Multiplicative gain on the weight delta. 1.0 = unmodulated STDP.
+            0.0 freezes learning. >1.0 accelerates. Used by Phase 2 modulators.
+        """
         # Decay traces (event-driven approximation: decay every step)
         self.apre = self.apre * math.exp(-dt / self.tau_pre)
         self.apost = self.apost * math.exp(-dt / self.tau_post)
 
-        # Pre spikes: increment apre, depress weights via apost (post in the past)
+        # Snapshot pre-update traces. Weight changes use ONLY these snapshots,
+        # not the post-increment values. This guarantees that simultaneous
+        # pre+post spikes on clean traces produce zero weight change (no
+        # temporal information yet) and matches the canonical pair-based STDP
+        # ordering: read traces -> update weights -> increment traces.
+        apre_snapshot = self.apre.clone()
+        apost_snapshot = self.apost.clone()
+
+        # Pre spikes: depress weights using OLD apost (post in the past)
+        if pre_spikes.any():
+            depression = torch.outer(apost_snapshot, pre_spikes)
+            self.weights = self.weights - modulation * depression
+
+        # Post spikes: potentiate weights using OLD apre (pre in the past)
+        if post_spikes.any():
+            potentiation = torch.outer(post_spikes, apre_snapshot)
+            self.weights = self.weights + modulation * potentiation
+
+        # Now increment traces with the new spikes (these will be read on the
+        # NEXT update call).
         if pre_spikes.any():
             self.apre = self.apre + self.a_plus * pre_spikes
-            # weights[i, j] -= apost[i] for each pre-spike on j
-            depression = torch.outer(self.apost, pre_spikes)
-            self.weights = self.weights - depression
-
-        # Post spikes: increment apost, potentiate weights via apre (pre in the past)
         if post_spikes.any():
             self.apost = self.apost + self.a_minus * post_spikes
-            potentiation = torch.outer(post_spikes, self.apre)
-            self.weights = self.weights + potentiation
 
         # Clip weights
         self.weights = torch.clamp(self.weights, self.w_min, self.w_max)
