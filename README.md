@@ -5,11 +5,8 @@ See `docs/plans/2026-04-08-mini-oscen-design.md` for the design.
 
 ## Status
 - [x] Phase 1: SNN core foundations (LIF, STDP, 2-region brain, viz)
-- [ ] Phase 2: Full multi-region brain + persistence
-- [ ] Phase 3: Desktop adapter (webcam + mic)
-- [ ] Phase 4: FastAPI + minimal dashboard
-- [ ] Phase 5: LLM bridge (Ollama + memory tools)
-- [ ] Phase 6: Avatar adapter + polish
+- [x] Phase 2: Full multi-region brain + WTA + modulators + R-STDP + SQLite persistence
+- [ ] Phase 3+: see `docs/plans/` (roadmap pending re-brainstorm)
 
 ## Quick start
 
@@ -17,7 +14,13 @@ See `docs/plans/2026-04-08-mini-oscen-design.md` for the design.
 uv venv
 uv pip install -e ".[dev]"
 .venv/bin/pytest -v
+
+# Phase 1 viz (2-region STDP demo)
 .venv/bin/python scripts/visualize_two_region.py
+
+# Phase 2 soak test (full brain, concept emergence, save/resume)
+.venv/bin/python scripts/run_soak.py --ticks 20000
+.venv/bin/python scripts/run_soak.py --ticks 5000 --resume
 ```
 
 ## Known limitations (Phase 1)
