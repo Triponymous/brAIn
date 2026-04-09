@@ -89,12 +89,33 @@ class ActiveAppSensor(Sensor):
                 "switch_rate": round(switch_rate, 1),
             }
 
-        # Real macOS path
-        app = self._workspace.frontmostApplication()
-        front_name = str(app.localizedName()) if app else "<unknown>"
+        # Real macOS path — use CGWindowList instead of NSWorkspace.
+        # NSWorkspace.frontmostApplication() returns the daemon's own app (Terminal)
+        # when called from a background thread. CGWindowList always returns the
+        # actual frontmost window regardless of which process asks.
+        front_name = "<unknown>"
+        window_id = 0
+        if self._cg:
+            try:
+                windows = self._cg.CGWindowListCopyWindowInfo(
+                    self._cg.kCGWindowListOptionOnScreenOnly | self._cg.kCGWindowListExcludeDesktopElements,
+                    self._cg.kCGNullWindowID,
+                )
+                if windows:
+                    for w in windows:
+                        if w.get("kCGWindowLayer", -1) == 0:
+                            front_name = str(w.get("kCGWindowOwnerName", "<unknown>"))
+                            window_id = int(w.get("kCGWindowNumber", 0))
+                            break
+            except Exception:
+                pass
 
-        # Detect context switch: app change OR window/space change
-        window_id = self._get_frontmost_window_id()
+        # Fallback to NSWorkspace if CGWindowList failed
+        if front_name == "<unknown>" and self._workspace:
+            app = self._workspace.frontmostApplication()
+            front_name = str(app.localizedName()) if app else "<unknown>"
+
+        # Detect context switch: app change OR window change
         app_switched = front_name != self._prev_app and self._prev_app != ""
         window_switched = window_id != self._prev_window_id and self._prev_window_id != 0
         switched = app_switched or window_switched
