@@ -25,7 +25,7 @@ import torch
 
 SENSORY_DIM = 200
 
-_DRIVE_STRENGTH = 3.0
+_DRIVE_STRENGTH = 8.0
 
 
 def _hash_app_to_index(name: str, num_slots: int = 63) -> int:

@@ -51,27 +51,46 @@ def build_app(
     return app
 
 
-async def brain_tick_loop(brain: Any, adapter: Any, hz: float = 100.0) -> None:
-    """Run the brain tick loop indefinitely. Cancellable."""
-    period = 1.0 / hz
-    try:
-        while True:
+async def brain_tick_loop(brain: Any, adapter: Any, hz: float = 100.0, exporter: Any = None) -> None:
+    """Run the brain tick loop in a thread to avoid uvicorn event-loop starvation."""
+    import threading
+    import time
+
+    stop_event = threading.Event()
+
+    def _tick_thread():
+        period = 1.0 / hz
+        while not stop_event.is_set():
             vec = adapter.encode()
-            brain.tick(vec)
-            await asyncio.sleep(period)
+            out = brain.tick(vec)
+            # Record concept spikes for the exporter's accumulator
+            if exporter is not None and "concept" in out:
+                exporter.record_spikes(out["concept"])
+            time.sleep(period)
+
+    thread = threading.Thread(target=_tick_thread, daemon=True)
+    thread.start()
+    try:
+        # Keep the coroutine alive so it can be cancelled
+        while True:
+            await asyncio.sleep(1.0)
     except asyncio.CancelledError:
+        stop_event.set()
+        thread.join(timeout=2.0)
         return
 
 
-async def push_loop(brain: Any, pusher: WSPusher) -> None:
+async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None) -> None:
     """Periodically broadcast brain state to all WS clients."""
     period = 1.0 / pusher.rate_hz
     try:
         while True:
+            # Use spike accumulator for concept activity (membrane is always ~0 after WTA reset)
+            concept_activity = exporter._spike_counts.tolist() if exporter else brain.regions["concept"].membrane.tolist()
             state = {
                 "tick": brain.tick_count,
                 "modulators": brain.modulators.snapshot(),
-                "concept_membrane": brain.regions["concept"].membrane.tolist(),
+                "concept_membrane": concept_activity,
                 "wm_membrane": brain.regions["wm"].membrane.tolist(),
             }
             await pusher.broadcast(state)

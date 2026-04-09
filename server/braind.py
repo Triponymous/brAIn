@@ -114,10 +114,12 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     )
     app.include_router(voice_router)
 
-    # Schedule background tasks
+    # Schedule background tasks — start sensors first, wait for bus to fill
     sensor_task = asyncio.create_task(adapter.run())
-    tick_task = asyncio.create_task(brain_tick_loop(brain, adapter, hz=args.tick_hz))
-    push_task = asyncio.create_task(push_loop(brain, pusher))
+    await asyncio.sleep(2.0)  # give sensors time to populate the bus
+    print(f"Sensor bus keys: {list(adapter.bus.snapshot().keys())}")
+    tick_task = asyncio.create_task(brain_tick_loop(brain, adapter, hz=args.tick_hz, exporter=exporter))
+    push_task = asyncio.create_task(push_loop(brain, pusher, exporter=exporter))
     persist_task = asyncio.create_task(persistence_loop(brain, str(checkpoint)))
 
     # Run uvicorn in the same loop

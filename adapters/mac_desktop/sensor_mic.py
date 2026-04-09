@@ -105,6 +105,16 @@ class MicSensor(Sensor):
         return {"mel": mel.tolist(), "rms": rms}
 
     async def sample(self) -> dict[str, Any]:
+        if self.mock_mode:
+            # Simulate ambient office noise with some variation
+            import random
+            noise = np.random.randn(_FRAME_SIZE).astype(np.float32) * 0.05
+            # Occasionally add a louder event (typing sounds, voice)
+            if random.random() < 0.3:
+                freq = random.choice([200, 500, 1000, 2000, 4000])
+                t = np.arange(_FRAME_SIZE, dtype=np.float32) / _SAMPLE_RATE
+                noise += 0.2 * np.sin(2 * np.pi * freq * t).astype(np.float32)
+            return self._encode(noise)
         with self._lock:
             audio = self._latest_audio.copy()
         return self._encode(audio)

@@ -57,18 +57,18 @@ class Brain:
         concept_k: int = 3,
         tau_mem: float = 20.0,
         threshold: float = 1.0,
-        a_plus: float = 0.02,
-        a_minus: float = 0.022,
+        a_plus: float = 0.005,
+        a_minus: float = 0.006,
         w_init: float = 0.4,
         w_init_jitter: float = 0.1,
     ) -> None:
         self.regions: dict[str, object] = {
             "sensory": LIFLayer(num_sensory, tau_mem=tau_mem, threshold=threshold),
-            "feature": LIFLayer(num_feature, tau_mem=tau_mem, threshold=threshold),
-            "association": LIFLayer(num_association, tau_mem=tau_mem, threshold=threshold),
-            "concept": WTALayer(num_concept, k=concept_k, tau_mem=tau_mem, threshold=threshold),
-            "wm": WMLayer(num_wm, recurrent_gain=1.1, tau_mem=tau_mem, threshold=threshold),
-            "motor": LIFLayer(num_motor, tau_mem=tau_mem, threshold=threshold),
+            "feature": LIFLayer(num_feature, tau_mem=tau_mem, threshold=threshold * 0.3),
+            "association": LIFLayer(num_association, tau_mem=tau_mem, threshold=threshold * 0.3),
+            "concept": WTALayer(num_concept, k=concept_k, tau_mem=tau_mem, threshold=threshold * 0.3),
+            "wm": WMLayer(num_wm, recurrent_gain=0.8, tau_mem=tau_mem, threshold=threshold),
+            "motor": LIFLayer(num_motor, tau_mem=tau_mem, threshold=threshold * 0.5),
             "meta": LIFLayer(num_meta, tau_mem=tau_mem, threshold=threshold),
         }
 

@@ -54,12 +54,15 @@ export function BrainPanel({ state }: { state: BrainState | null }) {
       }
     }
 
+    // Normalize membrane values to [0, 1] for visualization
+    const maxMem = Math.max(1, ...membrane.map(Math.abs));
+
     // Draw neurons
     for (let i = 0; i < n; i++) {
       const [x, y] = positions[i];
-      const v = Math.abs(membrane[i]);
-      const r = 8 + v * 20;
-      const alpha = 0.2 + Math.min(0.8, v * 2);
+      const v = Math.abs(membrane[i]) / maxMem; // normalized 0-1
+      const r = 6 + v * 16;
+      const alpha = 0.15 + Math.min(0.85, v);
 
       // Glow for active neurons
       if (v > 0.3) {

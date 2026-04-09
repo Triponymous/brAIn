@@ -36,6 +36,10 @@ class _CountingSensor(Sensor):
         with self._lock:
             n = self._count
             self._count = 0
+        # In mock mode, simulate realistic activity
+        if self.mock_mode and n == 0:
+            import random
+            n = random.randint(3, 25)  # simulate typing / mouse movement
         return {"count": n}
 
     def stop(self) -> None:

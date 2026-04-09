@@ -18,6 +18,15 @@ class BrainStateExporter:
     def __init__(self, brain: Brain) -> None:
         self.brain = brain
         self._labels: dict[int, str] = {}
+        # Spike accumulator: counts spikes per concept over a rolling window
+        import torch
+        num_concepts = brain.regions["concept"].num_neurons
+        self._spike_counts = torch.zeros(num_concepts)
+        self._decay = 0.995  # exponential decay per tick
+
+    def record_spikes(self, concept_spikes: "torch.Tensor") -> None:
+        """Call each tick to accumulate concept spike counts."""
+        self._spike_counts = self._spike_counts * self._decay + concept_spikes.detach()
 
     def set_label(self, concept_id: int, label: str) -> None:
         self._labels[concept_id] = label
@@ -32,14 +41,13 @@ class BrainStateExporter:
         """Produce a structured snapshot of the brain state."""
         brain = self.brain
 
-        # Active concepts: concept layer membrane values as proxy for "activation"
+        # Active concepts: use spike accumulator (not membrane, which is 0 after hard reset)
         concept_layer = brain.regions["concept"]
-        membrane = concept_layer.membrane
         num_concepts = concept_layer.num_neurons
 
         active_concepts = []
         for i in range(num_concepts):
-            activation = float(membrane[i].item())
+            activation = float(self._spike_counts[i].item())
             entry: dict[str, Any] = {
                 "id": i,
                 "activation": round(activation, 4),
