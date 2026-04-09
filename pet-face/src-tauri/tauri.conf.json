@@ -10,19 +10,19 @@
     "windows": [
       {
         "title": "brAIntest Pet",
-        "width": 200,
-        "height": 200,
+        "width": 466,
+        "height": 466,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
-        "resizable": false,
-        "x": 1200,
-        "y": 700
+        "resizable": true,
+        "x": 900,
+        "y": 400
       }
     ],
     "macOSPrivateApi": true,
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' http://localhost:8000 ws://localhost:8000; media-src blob:; script-src 'self' 'unsafe-inline'"
+      "csp": "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; media-src blob:; script-src 'self' 'unsafe-inline'"
     }
   },
   "plugins": {
