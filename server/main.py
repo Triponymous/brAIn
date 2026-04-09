@@ -149,8 +149,10 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter:
                 sensor_display["idle"] = round(sensor_snap["idle"].get("seconds", 0), 1)
             if "mic" in sensor_snap:
                 raw_mic = sensor_snap["mic"].get("rms", 0)
-                _smooth_mic = max(raw_mic, _smooth_mic * _decay)
+                # Don't smooth with max() — it amplifies noise into fake signal
+                _smooth_mic = _smooth_mic * _decay + raw_mic * (1 - _decay)
                 sensor_display["mic_rms"] = round(_smooth_mic, 4)
+                sensor_display["mic_rms_raw"] = round(raw_mic, 6)  # debug: show unsmoothed
 
             base_state = {
                 "tick": brain.tick_count,

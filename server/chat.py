@@ -171,12 +171,13 @@ def build_chat_router(
                 sensor_lines.append("Leon ist aktiv am Schreibtisch!")
         if "mic" in sensor_bus:
             rms = sensor_bus["mic"].get("rms", 0)
-            if rms > 0.05:
-                sensor_lines.append("Ich hoere laute Geraeusche! Jemand redet oder es ist laut!")
-            elif rms > 0.01:
-                sensor_lines.append("Ich hoere leise Geraeusche im Hintergrund.")
-            elif rms > 0.003:
-                sensor_lines.append("Ich hoere ganz leise etwas... kaum wahrnehmbar.")
+            # MacBook Air mic levels: silence~0.0002, speech~0.001-0.003, clap~0.005+
+            if rms > 0.003:
+                sensor_lines.append("Ich hoere deutliche Geraeusche! Da passiert was!")
+            elif rms > 0.001:
+                sensor_lines.append("Ich hoere Geraeusche — jemand redet oder bewegt sich.")
+            elif rms > 0.0005:
+                sensor_lines.append("Ich hoere ganz leise etwas im Hintergrund.")
             else:
                 sensor_lines.append("Es ist still um mich herum.")
         if not sensor_lines:
