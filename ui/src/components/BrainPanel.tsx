@@ -68,10 +68,12 @@ export function BrainPanel({ state }: { state: BrainState | null }) {
     const n = node as GNode;
     const x = node.x as number;
     const y = node.y as number;
-    const r = Math.sqrt(n.val) * 2;
+    // Guard against NaN/Infinity before any canvas ops
+    if (!isFinite(x) || !isFinite(y)) return;
+    const r = Math.max(1, Math.sqrt(Math.max(0, n.val)) * 2);
 
     // Glow for active nodes
-    if (n.active && n.type !== "concept") {
+    if (n.active && n.type !== "concept" && r > 0) {
       const grad = ctx.createRadialGradient(x, y, r, x, y, r * 3);
       grad.addColorStop(0, n.color + "40");
       grad.addColorStop(1, n.color + "00");
@@ -110,7 +112,7 @@ export function BrainPanel({ state }: { state: BrainState | null }) {
   const paintLink = useCallback((link: any, ctx: CanvasRenderingContext2D) => {
     const src = link.source as any;
     const tgt = link.target as any;
-    if (!src.x || !tgt.x) return;
+    if (!isFinite(src.x) || !isFinite(src.y) || !isFinite(tgt.x) || !isFinite(tgt.y)) return;
 
     ctx.strokeStyle = link.color || "rgba(52, 211, 153, 0.1)";
     ctx.lineWidth = Math.max(0.3, link.value * 3);
