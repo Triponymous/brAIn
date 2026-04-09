@@ -61,20 +61,37 @@ class MicSensor(Sensor):
         self._has_injected = False
         self._filterbank = _mel_filterbank(_NUM_MEL_BANDS, _FRAME_SIZE, _SAMPLE_RATE)
         self._stream = None
+        self._zero_streak = 0  # track consecutive zero samples for auto-reconnect
+        self._sd = None
         if not mock_mode and sys.platform == "darwin":
             try:
                 import sounddevice as sd  # type: ignore
-                self._stream = sd.InputStream(
-                    samplerate=_SAMPLE_RATE,
-                    channels=1,
-                    dtype="float32",
-                    blocksize=_FRAME_SIZE,
-                    callback=self._sd_callback,
-                )
-                self._stream.start()
+                self._sd = sd
+                self._open_stream()
             except Exception as e:
                 print(f"[MicSensor] failed to open mic: {e}")
                 self.mock_mode = True
+
+    def _open_stream(self) -> None:
+        """Open (or re-open) the mic stream."""
+        if self._stream is not None:
+            try:
+                self._stream.stop()
+                self._stream.close()
+            except Exception:
+                pass
+        try:
+            self._stream = self._sd.InputStream(
+                samplerate=_SAMPLE_RATE,
+                channels=1,
+                dtype="float32",
+                blocksize=_FRAME_SIZE,
+                callback=self._sd_callback,
+            )
+            self._stream.start()
+            print("[MicSensor] Audio stream opened")
+        except Exception as e:
+            print(f"[MicSensor] stream open failed: {e}")
 
     def _sd_callback(self, indata, frames, time_info, status) -> None:
         with self._lock:
@@ -125,6 +142,19 @@ class MicSensor(Sensor):
             return self._encode(noise)
         with self._lock:
             audio = self._latest_audio.copy()
+
+        # Auto-reconnect: if we get 50 consecutive zero samples (~1 second),
+        # the stream might be dead. Re-open it.
+        rms = float(np.sqrt(np.mean(audio**2)))
+        if rms < 0.00001:
+            self._zero_streak += 1
+            if self._zero_streak >= 50 and self._sd is not None:
+                print("[MicSensor] Stream dead (50 zeros) — reconnecting...")
+                self._zero_streak = 0
+                self._open_stream()
+        else:
+            self._zero_streak = 0
+
         return self._encode(audio)
 
     def stop(self) -> None:
