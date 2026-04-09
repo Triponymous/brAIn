@@ -87,14 +87,27 @@ export function BrainViz3D({ state }: { state: BrainState | null }) {
         if (fg) fg.refresh();
       }
     } else if (zoomLevel === "meso" && focusRegion) {
-      if (isZoomChange) {
-        const fresh = buildMesoGraph(state as any, focusRegion);
+      // Meso: rebuild on zoom change AND periodically (every 2s) to pick up
+      // new spike data. The first build after zoom often has empty region_spikes
+      // because the subscription message hasn't been processed yet.
+      const fresh = buildMesoGraph(state as any, focusRegion);
+      if (isZoomChange || graphRef.current.nodes.length === 0) {
         graphRef.current = fresh;
         nodeIndexRef.current = new Map(fresh.nodes.map((n) => [n.id, n]));
         if (fg) fg.graphData(fresh);
         lastZoomRef.current = zoomKey;
+      } else {
+        // Update existing node properties in-place
+        for (const fn of fresh.nodes) {
+          const existing = nodeIndexRef.current.get(fn.id);
+          if (existing) {
+            existing.val = fn.val;
+            existing.color = fn.color;
+            existing.activity = fn.activity;
+          }
+        }
+        if (fg) fg.refresh();
       }
-      // Meso in-place updates could go here when we have real-time neuron spikes
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, zoomLevel, focusRegion]);
