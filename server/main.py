@@ -80,16 +80,36 @@ async def brain_tick_loop(brain: Any, adapter: Any, hz: float = 100.0, exporter:
         return
 
 
-async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None) -> None:
+async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter: Any = None) -> None:
     """Periodically broadcast brain state to all WS clients."""
     period = 1.0 / pusher.rate_hz
     try:
         while True:
+            # Sensor snapshot for dashboard display
+            sensor_snap = adapter.bus.snapshot() if adapter else {}
+            sensor_display = {}
+            if "active_app" in sensor_snap:
+                sensor_display["app"] = sensor_snap["active_app"].get("name", "?")
+            if "keystroke_rate" in sensor_snap:
+                sensor_display["keys"] = sensor_snap["keystroke_rate"].get("count", 0)
+            if "mouse_rate" in sensor_snap:
+                sensor_display["mouse"] = sensor_snap["mouse_rate"].get("count", 0)
+            if "idle" in sensor_snap:
+                sensor_display["idle"] = round(sensor_snap["idle"].get("seconds", 0), 1)
+            if "mic" in sensor_snap:
+                sensor_display["mic_rms"] = round(sensor_snap["mic"].get("rms", 0), 4)
+
             state = {
                 "tick": brain.tick_count,
                 "modulators": brain.modulators.snapshot(),
                 "concept_membrane": brain.concept_spike_accum.tolist(),
                 "wm_membrane": brain.regions["wm"].membrane.tolist(),
+                "sensors": sensor_display,
+                "spike_counts": {
+                    "sensory": int(brain._last_sensory_spikes) if hasattr(brain, '_last_sensory_spikes') else 0,
+                    "feature": int(brain._last_feature_spikes) if hasattr(brain, '_last_feature_spikes') else 0,
+                    "concept": int(brain._last_concept_spikes) if hasattr(brain, '_last_concept_spikes') else 0,
+                },
             }
             await pusher.broadcast(state)
             await asyncio.sleep(period)

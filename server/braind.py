@@ -119,7 +119,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     await asyncio.sleep(2.0)  # give sensors time to populate the bus
     print(f"Sensor bus keys: {list(adapter.bus.snapshot().keys())}")
     tick_task = asyncio.create_task(brain_tick_loop(brain, adapter, hz=args.tick_hz, exporter=exporter))
-    push_task = asyncio.create_task(push_loop(brain, pusher, exporter=exporter))
+    push_task = asyncio.create_task(push_loop(brain, pusher, exporter=exporter, adapter=adapter))
     persist_task = asyncio.create_task(persistence_loop(brain, str(checkpoint)))
 
     # Run uvicorn in the same loop

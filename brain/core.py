@@ -48,13 +48,13 @@ class Brain:
     def __init__(
         self,
         num_sensory: int = 200,
-        num_feature: int = 100,
-        num_association: int = 250,
-        num_concept: int = 50,
-        num_wm: int = 50,
+        num_feature: int = 200,
+        num_association: int = 500,
+        num_concept: int = 200,
+        num_wm: int = 100,
         num_motor: int = 50,
         num_meta: int = 10,
-        concept_k: int = 3,
+        concept_k: int = 5,
         tau_mem: float = 20.0,
         threshold: float = 1.0,
         a_plus: float = 0.005,
@@ -166,7 +166,12 @@ class Brain:
         da = self.modulators.level("DA")
         cm.update(concept_spikes, motor_spikes, dt=dt, reward=da)
 
-        # 11. Tick count
+        # 11. Track spike counts for dashboard
+        self._last_sensory_spikes = sensory_spikes.sum().item()
+        self._last_feature_spikes = feature_spikes.sum().item()
+        self._last_concept_spikes = concept_spikes.sum().item()
+
+        # 12. Tick count
         self.tick_count += 1
 
         return {
