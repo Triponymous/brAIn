@@ -61,63 +61,21 @@ class MicSensor(Sensor):
         self._has_injected = False
         self._filterbank = _mel_filterbank(_NUM_MEL_BANDS, _FRAME_SIZE, _SAMPLE_RATE)
         self._stream = None
-        self._zero_streak = 0
-        self._recorder_process = None
-        self._sd = None
         if not mock_mode and sys.platform == "darwin":
             try:
-                import sounddevice as sd
-                self._sd = sd
-                self._open_stream()
+                import sounddevice as sd  # type: ignore
+                self._stream = sd.InputStream(
+                    samplerate=_SAMPLE_RATE,
+                    channels=1,
+                    dtype="float32",
+                    blocksize=_FRAME_SIZE,
+                    callback=self._sd_callback,
+                )
+                self._stream.start()
+                print("[MicSensor] Audio stream opened")
             except Exception as e:
                 print(f"[MicSensor] failed to open mic: {e}")
                 self.mock_mode = True
-
-    def _open_stream(self) -> None:
-        """Open the mic stream. If InputStream fails to deliver data,
-        the auto-reconnect in sample() will retry."""
-        if self._stream is not None:
-            try:
-                self._stream.stop()
-                self._stream.close()
-            except Exception:
-                pass
-            self._stream = None
-
-        try:
-            self._stream = self._sd.InputStream(
-                samplerate=_SAMPLE_RATE,
-                channels=1,
-                dtype="float32",
-                blocksize=_FRAME_SIZE,
-                callback=self._sd_callback,
-            )
-            self._stream.start()
-            print("[MicSensor] Audio stream opened")
-        except Exception as e:
-            print(f"[MicSensor] stream open failed: {e}")
-            # Fallback: use blocking sd.rec() in a background thread
-            self._start_polling_fallback()
-
-    def _start_polling_fallback(self) -> None:
-        """Fallback: poll mic via sd.rec() in a thread. Slower but works
-        when InputStream callback doesn't deliver data."""
-        print("[MicSensor] Starting polling fallback (sd.rec)")
-        def _poll_loop():
-            while True:
-                try:
-                    rec = self._sd.rec(
-                        _FRAME_SIZE, samplerate=_SAMPLE_RATE,
-                        channels=1, dtype="float32",
-                    )
-                    self._sd.wait()
-                    with self._lock:
-                        self._latest_audio = rec[:, 0].copy()
-                except Exception:
-                    import time
-                    time.sleep(0.1)
-        t = threading.Thread(target=_poll_loop, daemon=True)
-        t.start()
 
     def _sd_callback(self, indata, frames, time_info, status) -> None:
         with self._lock:
@@ -168,25 +126,6 @@ class MicSensor(Sensor):
             return self._encode(noise)
         with self._lock:
             audio = self._latest_audio.copy()
-
-        # Auto-reconnect: if we get 100 consecutive zero samples (~2 seconds),
-        # the InputStream is dead. Switch to polling fallback.
-        rms = float(np.sqrt(np.mean(audio**2)))
-        if rms < 0.0005:  # real speech is >0.001, anything below 0.0005 = dead stream
-            self._zero_streak += 1
-            if self._zero_streak == 100 and self._sd is not None:
-                print("[MicSensor] InputStream dead (100 zeros) — switching to polling fallback")
-                if self._stream is not None:
-                    try:
-                        self._stream.stop()
-                        self._stream.close()
-                    except Exception:
-                        pass
-                    self._stream = None
-                self._start_polling_fallback()
-        else:
-            self._zero_streak = 0
-
         return self._encode(audio)
 
     def stop(self) -> None:
