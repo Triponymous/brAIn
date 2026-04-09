@@ -77,10 +77,16 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     chat_router = build_chat_router(brain, exporter, tool_registry, llm_router)
     grants_router = build_grants_router(grant_store, refresh_fn=tool_registry.refresh_grants)
 
+    # Config API
+    from server.config import load_config, build_config_router
+    load_config()
+    config_router = build_config_router()
+
     # Build FastAPI app
     app = build_app(brain=brain, adapter=adapter, pusher=pusher)
     app.include_router(chat_router)
     app.include_router(grants_router)
+    app.include_router(config_router)
 
     # Voice setup
     from bridge.tts import TTSEngine

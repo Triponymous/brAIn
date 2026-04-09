@@ -1,0 +1,35 @@
+{
+  "llm": {
+    "local_model": "qwen2.5:7b-instruct",
+    "cloud_model": "claude-haiku-4-5-20250404",
+    "cloud_enabled": false,
+    "ollama_url": "http://localhost:11434"
+  },
+  "brain": {
+    "num_sensory": 200,
+    "num_feature": 200,
+    "num_association": 500,
+    "num_concept": 200,
+    "num_wm": 100,
+    "num_motor": 50,
+    "concept_k": 5,
+    "tick_hz": 100
+  },
+  "sensors": {
+    "mock_mode": false,
+    "mic_enabled": true,
+    "keyboard_enabled": true,
+    "mouse_enabled": true
+  },
+  "daemon": {
+    "port": 8765,
+    "push_hz": 30,
+    "save_interval_sec": 60,
+    "checkpoint_path": "checkpoints/braind.sqlite"
+  },
+  "voice": {
+    "tts_model": "models/de_DE-thorsten-medium.onnx",
+    "stt_model": "small",
+    "language": "de"
+  }
+}

@@ -1,4 +1,4 @@
-"""Hybrid LLM Router — local Ollama by default, Claude for complex queries.
+"""Hybrid LLM Router — reads model config from config.json at runtime.
 
 Routing heuristics:
 - Cloud if: message > 200 chars, reasoning keywords, NE > 0.7, /cloud prefix
@@ -18,7 +18,9 @@ _REASONING_KEYWORDS = re.compile(
 )
 
 
-def _should_use_cloud(message: str, modulators: dict[str, float]) -> bool:
+def _should_use_cloud(message: str, modulators: dict[str, float], cloud_enabled: bool) -> bool:
+    if not cloud_enabled:
+        return False
     if message.startswith("/cloud"):
         return True
     if len(message) > 200:
@@ -31,13 +33,17 @@ def _should_use_cloud(message: str, modulators: dict[str, float]) -> bool:
 
 
 class HybridLLMRouter:
-    def __init__(
-        self,
-        ollama_model: str = "qwen2.5:7b-instruct",  # TODO: upgrade to 32b when pulled
-        cloud_model: str = "claude-haiku-4-5-20250404",
-    ) -> None:
-        self.ollama_model = ollama_model
-        self.cloud_model = cloud_model
+    def __init__(self) -> None:
+        # No hardcoded defaults — reads from config on every call
+        pass
+
+    def _get_config(self) -> dict[str, Any]:
+        from server.config import get
+        return {
+            "local_model": get("llm", "local_model", "qwen2.5:7b-instruct"),
+            "cloud_model": get("llm", "cloud_model", "claude-haiku-4-5-20250404"),
+            "cloud_enabled": get("llm", "cloud_enabled", False),
+        }
 
     async def chat(
         self,
@@ -46,37 +52,39 @@ class HybridLLMRouter:
         brain_state: dict[str, Any],
         tools: list[dict[str, Any]],
     ) -> dict[str, Any]:
-        """Route the message to local or cloud LLM."""
+        cfg = self._get_config()
         modulators = brain_state.get("modulators", {})
-        use_cloud = _should_use_cloud(user_message, modulators)
+        use_cloud = _should_use_cloud(user_message, modulators, cfg["cloud_enabled"])
 
         if use_cloud:
             result = await self._call_claude(
+                model=cfg["cloud_model"],
                 system_prompt=system_prompt,
                 user_message=user_message.removeprefix("/cloud").strip(),
                 tools=tools,
             )
-            result["backend"] = "cloud"
+            result["backend"] = f"cloud ({cfg['cloud_model']})"
             return result
         else:
             text = await self._call_ollama(
+                model=cfg["local_model"],
                 system_prompt=system_prompt,
                 user_message=user_message,
             )
-            return {"text": text, "tool_calls": [], "backend": "local"}
+            return {"text": text, "tool_calls": [], "backend": f"local ({cfg['local_model']})"}
 
-    async def _call_ollama(self, system_prompt: str, user_message: str) -> str:
+    async def _call_ollama(self, model: str, system_prompt: str, user_message: str) -> str:
         return await ollama_chat(
-            model=self.ollama_model,
+            model=model,
             system_prompt=system_prompt,
             user_message=user_message,
         )
 
     async def _call_claude(
-        self, system_prompt: str, user_message: str, tools: list[dict]
+        self, model: str, system_prompt: str, user_message: str, tools: list[dict]
     ) -> dict[str, Any]:
         return await claude_chat(
-            model=self.cloud_model,
+            model=model,
             system_prompt=system_prompt,
             user_message=user_message,
             tools=tools or None,
