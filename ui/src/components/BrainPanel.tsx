@@ -59,9 +59,38 @@ export function BrainPanel({ state }: { state: BrainState | null }) {
     return () => ro.disconnect();
   }, []);
 
+  // Stable graph ref — only rebuild structure when node count changes, update properties in-place
+  const graphRef = useRef<{ nodes: GNode[]; links: GLink[] }>({ nodes: [], links: [] });
+  const lastBuildRef = useRef(0);
+
   const graphData = useMemo(() => {
     if (!state) return { nodes: [], links: [] };
-    return buildGraph(state as ExtendedState, dims.w, dims.h);
+    const now = Date.now();
+    const newGraph = buildGraph(state as ExtendedState, dims.w, dims.h);
+
+    // Only rebuild the full graph every 2 seconds to prevent flicker
+    const prev = graphRef.current;
+    if (prev.nodes.length !== newGraph.nodes.length || now - lastBuildRef.current > 2000) {
+      graphRef.current = newGraph;
+      lastBuildRef.current = now;
+      return newGraph;
+    }
+
+    // Otherwise just update properties in-place (no flicker)
+    for (const newNode of newGraph.nodes) {
+      const existing = prev.nodes.find(n => n.id === newNode.id);
+      if (existing) {
+        existing.val = newNode.val;
+        existing.active = newNode.active;
+        existing.color = newNode.color;
+        existing.label = newNode.label;
+      }
+    }
+    for (let i = 0; i < newGraph.links.length && i < prev.links.length; i++) {
+      prev.links[i].value = newGraph.links[i].value;
+      prev.links[i].color = newGraph.links[i].color;
+    }
+    return prev; // same reference = no re-render of ForceGraph
   }, [state, dims]);
 
   if (!state) {
@@ -84,9 +113,10 @@ export function BrainPanel({ state }: { state: BrainState | null }) {
           linkDirectionalParticles={(link: any) => link.value > 0.1 ? 2 : 0}
           linkDirectionalParticleWidth={2}
           linkDirectionalParticleColor={() => "#34d399"}
-          cooldownTicks={100}
-          d3AlphaDecay={0.02}
-          d3VelocityDecay={0.3}
+          cooldownTicks={200}
+          d3AlphaDecay={0.05}
+          d3VelocityDecay={0.4}
+          warmupTicks={50}
           backgroundColor="#08090d"
           onNodeClick={(node: any) => {
             if (node.type === "concept") {
