@@ -273,21 +273,24 @@ class Brain:
             self.modulators.inject("ACh", 0.00005)
             self.modulators.inject("5HT", -0.00002)
 
-        # ── Novelty: something changed from prediction ──
-        # A clap or sudden voice produces novelty ~0.01-0.05.
-        # We need NE to visibly spike (reach ~0.1) within 1-2 seconds.
-        # At 100Hz, that's 100-200 ticks. NE needs ~0.1/500 = 0.0002/tick for 500 ticks,
-        # but we want faster spikes, so inject more for short bursts.
-        if novelty > self._novelty_smooth * 1.5 and novelty > 0.005:
-            # Mild novelty — curiosity
-            self.modulators.inject("DA", min(0.003, novelty * 0.3))
-            self.modulators.inject("ACh", min(0.001, novelty * 0.1))
+        # ── Novelty: something ACTUALLY changed (not just noise) ──
+        # Only inject on REAL novelty events. The threshold must be high enough
+        # that normal sensor jitter doesn't trigger it every tick.
+        # Target: DA/NE spike to ~0.1 briefly on real events, settle at ~0.02 calm.
+        #
+        # Equilibrium math: inject/tick × tau = steady state
+        # For a brief spike: inject 0.0005/tick for 50 ticks (0.5s) → DA += 0.025
+        # For strong spike: inject 0.002/tick for 20 ticks (0.2s) → NE += 0.04
+        if novelty > self._novelty_smooth * 3.0 and novelty > 0.02:
+            # Real novelty event (not just sensor jitter)
+            self.modulators.inject("DA", min(0.0005, novelty * 0.02))
+            self.modulators.inject("ACh", min(0.0002, novelty * 0.01))
 
-        if novelty > self._novelty_smooth * 3.0 and novelty > 0.01:
-            # Strong novelty — surprise! (clap, sudden voice, app switch)
-            self.modulators.inject("DA", min(0.008, novelty * 0.5))
-            self.modulators.inject("NE", min(0.008, novelty * 0.5))
-            self.modulators.inject("ACh", min(0.003, novelty * 0.2))
+        if novelty > self._novelty_smooth * 5.0 and novelty > 0.05:
+            # Strong surprise (clap, sudden loud voice, app switch)
+            self.modulators.inject("DA", min(0.002, novelty * 0.05))
+            self.modulators.inject("NE", min(0.002, novelty * 0.05))
+            self.modulators.inject("ACh", min(0.001, novelty * 0.02))
             self.modulators.inject("ACh", min(0.03, novelty * 0.5))
 
         # ═══ SYNAPTIC HOMEOSTASIS — prevents weight drift ═══
