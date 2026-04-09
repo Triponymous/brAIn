@@ -1,6 +1,6 @@
 {
   "llm": {
-    "local_model": "gemma4:e4b",
+    "local_model": "qwen3:8b",
     "cloud_model": "claude-haiku-4-5-20250404",
     "cloud_enabled": false,
     "ollama_url": "http://localhost:11434"

@@ -117,39 +117,26 @@ export function BrainViz3D({ state }: { state: BrainState | null }) {
     (node: any) => {
       if (!node) return;
 
-      if (zoomLevel === "macro" && node.type === "region" && node.regionId) {
-        // Macro → Meso
-        setFocusRegion(node.regionId);
-        setZoomLevel("meso");
+      if (node.type === "region" && node.regionId) {
+        // Click region → fly camera to it
         const fg = fgRef.current;
         if (fg) {
-          const controls = fg.controls();
-          if (controls && "autoRotate" in controls) controls.autoRotate = false;
-          // Position camera centered on the region, after a short delay
-          // so the graph data has time to load
-          const rx = node.fx ?? 0;
-          const ry = node.fy ?? 0;
-          const rz = node.fz ?? 0;
-          setTimeout(() => {
-            fg.cameraPosition(
-              { x: rx, y: ry, z: rz + 150 },
-              { x: rx, y: ry, z: rz },
-              800,
-            );
-          }, 100);
+          fg.cameraPosition(
+            { x: (node.fx ?? 0), y: (node.fy ?? 0), z: (node.fz ?? 0) + 120 },
+            { x: node.fx ?? 0, y: node.fy ?? 0, z: node.fz ?? 0 },
+            800,
+          );
         }
-      } else if (zoomLevel === "meso" && node.type === "neuron") {
-        // Label concept neurons on click
-        if (node.regionId === "concept") {
-          const idx = parseInt(node.id.split("_").pop() ?? "0");
-          const label = prompt(`Label fuer Neuron #${idx}:`);
-          if (label) {
-            fetch("/api/label", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ concept_id: idx, label }),
-            });
-          }
+      } else if (node.type === "neuron" && node.regionId === "concept") {
+        // Click concept neuron → label it
+        const idx = parseInt(node.id.replace("c_", ""));
+        const label = prompt(`Label fuer Concept #${idx}:`);
+        if (label) {
+          fetch("/api/label", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ concept_id: idx, label }),
+          });
         }
       }
     },

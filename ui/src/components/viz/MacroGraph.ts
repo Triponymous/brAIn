@@ -11,6 +11,7 @@ export type MacroState = {
   };
   spike_counts?: Record<string, number>;
   modulators?: Record<string, number>;
+  concept_membrane?: number[];
 };
 
 const MAX_SPIKES: Record<string, number> = {
@@ -80,6 +81,52 @@ export function buildMacroGraph(state: MacroState): VizGraph {
       particles: v > 0.05 ? Math.ceil(v * 4) : 0,
       particleSpeed: 0.003 + v * 0.01,
     });
+  }
+
+  // ── Active Concept Neurons (shown around the Concept region) ──
+  const cm = state.concept_membrane ?? [];
+  if (cm.length > 0) {
+    const maxMem = Math.max(0.1, ...cm.map(Math.abs));
+    const conceptRegion = REGION_DEFS.find((r) => r.id === "concept")!;
+    const cx = conceptRegion.target[0];
+    const cy = conceptRegion.target[1];
+    const cz = conceptRegion.target[2];
+
+    // Show top 20 most active concepts as small nodes
+    const ranked = cm
+      .map((v, i) => ({ i, activity: Math.abs(v) / maxMem }))
+      .sort((a, b) => b.activity - a.activity)
+      .slice(0, 20)
+      .filter((c) => c.activity > 0.05);
+
+    for (let rank = 0; rank < ranked.length; rank++) {
+      const { i, activity } = ranked[rank];
+      const angle = (rank / Math.max(1, ranked.length)) * Math.PI * 2;
+      const radius = 30 + Math.floor(rank / 8) * 15;
+
+      nodes.push({
+        id: `c_${i}`,
+        type: "neuron",
+        regionId: "concept",
+        label: `C${i} (${(activity * 100).toFixed(0)}%)`,
+        color: activity > 0.7 ? "#ffffff" : activity > 0.3 ? "#fbbf24" : "#fbbf2460",
+        val: 1.5 + activity * 4,
+        activity,
+        fx: cx + Math.cos(angle) * radius,
+        fy: cy + Math.sin(angle) * radius * 0.7,
+        fz: cz + (rank % 3 - 1) * 8,
+      });
+
+      // Connect to concept region
+      links.push({
+        source: `c_${i}`,
+        target: "r_concept",
+        value: activity * 0.3,
+        color: `rgba(251,191,36,${(activity * 0.3).toFixed(2)})`,
+        particles: activity > 0.5 ? 1 : 0,
+        particleSpeed: 0.005,
+      });
+    }
   }
 
   return { nodes, links };
