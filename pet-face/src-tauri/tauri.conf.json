@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nickelghost/tauri-v2-schema/main/schema.json",
+  "productName": "brAIntest Pet",
+  "identifier": "com.braintest.pet",
+  "build": {
+    "frontendDist": "../src"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "brAIntest Pet",
+        "width": 200,
+        "height": 200,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "resizable": false,
+        "x": 1200,
+        "y": 700
+      }
+    ],
+    "macOSPrivateApi": true
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": ["icons/icon.png"]
+  }
+}
