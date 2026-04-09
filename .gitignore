@@ -25,3 +25,6 @@ checkpoints/
 logs/
 *.png
 !docs/**/*.png
+
+# Voice models (large binary files)
+models/

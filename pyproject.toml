@@ -18,6 +18,9 @@ dependencies = [
     "pyobjc-framework-Quartz>=10.0; sys_platform == 'darwin'",
     # Phase 3b — LLM bridge
     "anthropic>=0.40",
+    # Phase 3c — Voice
+    "piper-tts>=1.2",
+    "pywhispercpp>=1.2",
 ]
 
 [project.optional-dependencies]
