@@ -16,6 +16,8 @@ dependencies = [
     "sounddevice>=0.5",
     "pyobjc-framework-Cocoa>=10.0; sys_platform == 'darwin'",
     "pyobjc-framework-Quartz>=10.0; sys_platform == 'darwin'",
+    # Phase 3b — LLM bridge
+    "anthropic>=0.40",
 ]
 
 [project.optional-dependencies]
