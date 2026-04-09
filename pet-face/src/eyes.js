@@ -21,7 +21,8 @@ if (window.__TAURI__) {
     voiceState = 'listening';
 
     try {
-      const resp = await fetch('http://localhost:8000/api/voice-chat', {
+      const port = window.__BRAIND_PORT || 8765;
+      const resp = await fetch(`http://localhost:${port}/api/voice-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ duration: 5 }),
@@ -45,12 +46,19 @@ if (window.__TAURI__) {
 
 // --- WebSocket connection ---
 let brainState = null;
+let sleepMode = false;
 let wsReconnectTimer = null;
 
 function connectWS() {
-  const ws = new WebSocket('ws://localhost:8000/ws');
+  // Read port from config or default to 8765 (must match braind --port)
+  const port = window.__BRAIND_PORT || 8765;
+  const ws = new WebSocket(`ws://localhost:${port}/ws`);
   ws.onmessage = (ev) => {
-    try { brainState = JSON.parse(ev.data); } catch {}
+    try {
+      const data = JSON.parse(ev.data);
+      brainState = data;
+      sleepMode = !!data.sleep_mode;
+    } catch {}
   };
   ws.onclose = () => {
     wsReconnectTimer = setTimeout(connectWS, 2000);
@@ -89,10 +97,13 @@ function getTargetState(mods) {
   const ach = mods.ACh || 0;
   const sht = mods['5HT'] || 0;
 
-  if (ne > 0.5) return STATES.alarmed;
-  if (da > 0.3 && ach > 0.3) return STATES.curious;
-  if (da < 0.05 && ne < 0.05 && ach < 0.05 && sht < 0.05) return STATES.asleep;
-  if (da < 0.1 && ne < 0.1) return STATES.sleepy;
+  // Thresholds tuned to actual modulator ranges (Phase 5 recalibration):
+  // Calm baseline: DA~0.001-0.05, NE~0.001-0.03, ACh~0.001-0.05, 5HT~0.001-0.03
+  // Novel event:   DA up to 0.15, NE up to 0.10, ACh up to 0.08
+  if (ne > 0.06) return STATES.alarmed;                 // stress/surprise
+  if (da > 0.03 && ach > 0.02) return STATES.curious;   // novel + attentive
+  if (sleepMode || (da < 0.003 && ne < 0.003 && ach < 0.003 && sht < 0.003)) return STATES.asleep;
+  if (da < 0.005 && ne < 0.003) return STATES.sleepy;
   return STATES.idle;
 }
 
