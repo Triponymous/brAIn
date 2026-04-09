@@ -9,7 +9,7 @@ export function SensorPanel({ state }: { state: BrainState | null }) {
   if (!state) return <div className="text-gray-500 text-xs">Connecting...</div>;
 
   const s = state as ExtendedState;
-  const mods = s.modulators;
+  const mods = s.modulators ?? {};
   const sensors = s.sensors ?? {};
   const spikes = s.spike_counts ?? {};
 
