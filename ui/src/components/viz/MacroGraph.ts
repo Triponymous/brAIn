@@ -118,7 +118,7 @@ export function buildMacroGraph(state: MacroState): VizGraph {
         activity,
         fx: cx + Math.cos(angle) * radius,
         fy: cy + Math.sin(angle) * radius * 0.7,
-        fz: cz + (rank % 3 - 1) * 8,
+        fz: cz + (i % 3 - 1) * 8,
       });
 
       // Connect FROM region TO concept (spikes flow outward, not back)
@@ -149,20 +149,27 @@ export function updateMacroGraph(
   if (graph.nodes.length === 0) return true;
 
   const fresh = buildMacroGraph(state);
-  if (fresh.nodes.length !== graph.nodes.length) return true;
 
-  // In-place property update — O(n) with Map lookup
+  // Only count non-concept nodes for topology comparison.
+  // Concept nodes change frequently (top-15 shifts) and should NOT
+  // trigger a full graph rebuild — that causes the white screen.
+  const coreNodesOld = graph.nodes.filter((n) => n.type !== "neuron").length;
+  const coreNodesNew = fresh.nodes.filter((n) => n.type !== "neuron").length;
+  if (coreNodesNew !== coreNodesOld) return true;
+
+  // In-place update for ALL existing nodes
   for (const fn of fresh.nodes) {
     const existing = nodeIndex.get(fn.id);
-    if (!existing) return true;
-    existing.val = fn.val;
-    existing.activity = fn.activity;
-    existing.color = fn.color;
+    if (existing) {
+      existing.val = fn.val;
+      existing.activity = fn.activity;
+      existing.color = fn.color;
+    }
+    // New concept nodes that don't exist yet → skip (will be added on next rebuild)
   }
 
-  // Update link properties
+  // Update link properties (only for existing links)
   const minLen = Math.min(fresh.links.length, graph.links.length);
-  if (fresh.links.length !== graph.links.length) return true;
   for (let i = 0; i < minLen; i++) {
     const fl = fresh.links[i];
     const el = graph.links[i];

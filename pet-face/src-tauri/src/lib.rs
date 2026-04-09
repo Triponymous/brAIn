@@ -5,13 +5,17 @@ fn set_ignore_cursor(window: tauri::Window, ignore: bool) {
     let _ = window.set_ignore_cursor_events(ignore);
 }
 
+#[tauri::command]
+fn start_drag(window: tauri::Window) {
+    let _ = window.start_dragging();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![set_ignore_cursor])
+        .invoke_handler(tauri::generate_handler![set_ignore_cursor, start_drag])
         .setup(|app| {
-            // Register global shortcut Option+Space
             use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
             let shortcut = Shortcut::new(Some(Modifiers::ALT), Code::Space);

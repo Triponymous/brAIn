@@ -485,3 +485,30 @@ function animate(now) {
 }
 
 requestAnimationFrame(animate);
+
+// ─── Click-through + Alt-drag to reposition ───
+// Default: click-through (mouse events pass through to desktop).
+// Hold Alt/Option: click-through off → drag to reposition.
+// Release Alt: click-through back on.
+(function() {
+  if (!window.__TAURI_INTERNALS__) return;
+  const invoke = window.__TAURI_INTERNALS__.invoke;
+
+  // Alt down → make window interactive
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Alt') invoke('set_ignore_cursor', { ignore: false });
+  });
+
+  // Alt up → back to click-through
+  window.addEventListener('keyup', (e) => {
+    if (e.key === 'Alt') invoke('set_ignore_cursor', { ignore: true });
+  });
+
+  // Mouse down while Alt held → start window drag
+  document.addEventListener('mousedown', (e) => {
+    if (e.altKey) invoke('start_drag');
+  });
+
+  // Lost focus → ensure click-through is re-enabled
+  window.addEventListener('blur', () => invoke('set_ignore_cursor', { ignore: true }));
+})();
