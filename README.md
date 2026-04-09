@@ -7,7 +7,7 @@ See `docs/plans/2026-04-08-mini-oscen-design.md` for the design.
 - [x] Phase 1: SNN core foundations (LIF, STDP, 2-region brain, viz)
 - [x] Phase 2: Full multi-region brain + WTA + modulators + R-STDP + SQLite persistence
 - [x] Phase 3a: Mac sensor adapter + daemon (FastAPI + WebSocket)
-- [ ] Phase 3b: LLM bridge + dashboard
+- [x] Phase 3b: LLM bridge + dashboard (hybrid Ollama/Claude, memory tools, React canvas viz)
 - [ ] Phase 3c: Pet face (Tauri) + voice (TTS/STT)
 - [ ] Phase 4+: see `docs/plans/2026-04-09-mini-oscen-phase3-design.md`
 
@@ -34,6 +34,13 @@ uv pip install -e ".[dev]"
 # Watch the brain state stream
 wscat -c ws://localhost:8000/ws        # if you have wscat
 curl http://localhost:8000/healthz     # quick health check
+
+# Dashboard (open alongside running daemon)
+cd ui && npm run dev
+# Then open http://localhost:5173
+
+# Chat with the pet (via REST — or use the dashboard chat panel)
+curl -X POST http://localhost:8000/api/chat -H 'Content-Type: application/json' -d '{"message": "was siehst du?"}'
 ```
 
 ## Known limitations (Phase 1)
