@@ -172,7 +172,7 @@ class MicSensor(Sensor):
         # Auto-reconnect: if we get 100 consecutive zero samples (~2 seconds),
         # the InputStream is dead. Switch to polling fallback.
         rms = float(np.sqrt(np.mean(audio**2)))
-        if rms < 0.00001:
+        if rms < 0.0005:  # real speech is >0.001, anything below 0.0005 = dead stream
             self._zero_streak += 1
             if self._zero_streak == 100 and self._sd is not None:
                 print("[MicSensor] InputStream dead (100 zeros) — switching to polling fallback")
