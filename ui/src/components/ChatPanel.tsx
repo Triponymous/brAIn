@@ -17,6 +17,32 @@ export function ChatPanel() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const voiceChat = async () => {
+    if (loading) return;
+    setLoading(true);
+    setMessages((prev) => [...prev, { role: "user", text: "\ud83c\udfa4 (listening for 5s...)" }]);
+
+    try {
+      const resp = await fetch("/api/voice-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ duration: 5 }),
+      });
+      const blob = await resp.blob();
+      if (blob.size > 0) {
+        const audio = new Audio(URL.createObjectURL(blob));
+        audio.play();
+        setMessages((prev) => [...prev, { role: "assistant", text: "\ud83d\udd0a (speaking...)" }]);
+      } else {
+        setMessages((prev) => [...prev, { role: "assistant", text: "(no response)" }]);
+      }
+    } catch (err) {
+      setMessages((prev) => [...prev, { role: "assistant", text: `Voice error: ${err}` }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const send = async () => {
     const msg = input.trim();
     if (!msg || loading) return;
@@ -99,6 +125,14 @@ export function ChatPanel() {
             disabled={loading || !input.trim()}
           >
             Send
+          </button>
+          <button
+            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded text-sm disabled:opacity-50"
+            onClick={voiceChat}
+            disabled={loading}
+            title="Push to talk (5s recording)"
+          >
+            🎤
           </button>
         </div>
       </div>

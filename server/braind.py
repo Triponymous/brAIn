@@ -75,6 +75,38 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     app = build_app(brain=brain, adapter=adapter, pusher=pusher)
     app.include_router(chat_router)
 
+    # Voice setup
+    from bridge.tts import TTSEngine
+    from bridge.stt import STTEngine
+    from server.voice import build_voice_router
+
+    tts_engine = TTSEngine(voice_model=Path("models/de_DE-thorsten-medium.onnx"))
+    stt_engine = STTEngine(model_name="small")
+
+    async def _chat_fn(message: str) -> dict:
+        """Adapter: routes a voice message through the same chat pipeline."""
+        import json
+        snap = exporter.snapshot()
+        labels = exporter.all_labels()
+        from server.chat import _SYSTEM_PROMPT_TEMPLATE
+        system_prompt = _SYSTEM_PROMPT_TEMPLATE.format(
+            brain_state=json.dumps(snap, indent=2, default=str),
+            labels=json.dumps(labels, default=str) if labels else "None yet.",
+        )
+        return await llm_router.chat(
+            user_message=message,
+            system_prompt=system_prompt,
+            brain_state=snap,
+            tools=memory_tools.tool_definitions(),
+        )
+
+    voice_router = build_voice_router(
+        tts_engine=tts_engine,
+        stt_engine=stt_engine,
+        chat_fn=_chat_fn,
+    )
+    app.include_router(voice_router)
+
     # Schedule background tasks
     sensor_task = asyncio.create_task(adapter.run())
     tick_task = asyncio.create_task(brain_tick_loop(brain, adapter, hz=args.tick_hz))
