@@ -12,6 +12,37 @@
  *   asleep:   eyes closed, gentle breathing
  */
 
+// --- Push-to-talk via global hotkey (Option+Space) ---
+let voiceState = 'idle'; // idle | listening | speaking
+
+if (window.__TAURI__) {
+  window.__TAURI__.event.listen('push-to-talk', async () => {
+    if (voiceState !== 'idle') return;
+    voiceState = 'listening';
+
+    try {
+      const resp = await fetch('http://localhost:8000/api/voice-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ duration: 5 }),
+      });
+
+      const blob = await resp.blob();
+      if (blob.size > 0) {
+        voiceState = 'speaking';
+        const audio = new Audio(URL.createObjectURL(blob));
+        audio.onended = () => { voiceState = 'idle'; };
+        audio.play();
+      } else {
+        voiceState = 'idle';
+      }
+    } catch (err) {
+      console.error('Voice chat failed:', err);
+      voiceState = 'idle';
+    }
+  });
+}
+
 // --- WebSocket connection ---
 let brainState = null;
 let wsReconnectTimer = null;
@@ -48,6 +79,10 @@ window.addEventListener('resize', resize);
 const STATES = { idle: 0, curious: 1, alarmed: 2, sleepy: 3, asleep: 4 };
 
 function getTargetState(mods) {
+  // Voice states override modulator-driven states
+  if (voiceState === 'listening') return STATES.curious; // wide eyes, attentive
+  if (voiceState === 'speaking') return STATES.idle;     // calm while speaking
+
   if (!mods) return STATES.idle;
   const da = mods.DA || 0;
   const ne = mods.NE || 0;

@@ -6,6 +6,7 @@
     "frontendDist": "../src"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "brAIntest Pet",
@@ -19,7 +20,15 @@
         "y": 700
       }
     ],
-    "macOSPrivateApi": true
+    "macOSPrivateApi": true,
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' http://localhost:8000 ws://localhost:8000; media-src blob:; script-src 'self' 'unsafe-inline'"
+    }
+  },
+  "plugins": {
+    "global-shortcut": {
+      "enabled": true
+    }
   },
   "bundle": {
     "active": true,

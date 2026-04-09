@@ -1,0 +1,11 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for brAIntest Pet",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-is-registered",
+    "global-shortcut:default"
+  ]
+}
