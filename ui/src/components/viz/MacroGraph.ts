@@ -93,14 +93,18 @@ export function buildMacroGraph(state: MacroState): VizGraph {
     const cz = conceptRegion.target[2];
 
     // Show top 20 most active concepts as small nodes
+    // Use RANK-based activity (0-1) so they visually differentiate,
+    // not relative-to-max which compresses everything near 100%
     const ranked = cm
-      .map((v, i) => ({ i, activity: Math.abs(v) / maxMem }))
-      .sort((a, b) => b.activity - a.activity)
+      .map((v, i) => ({ i, raw: Math.abs(v) }))
+      .sort((a, b) => b.raw - a.raw)
       .slice(0, 20)
-      .filter((c) => c.activity > 0.05);
+      .filter((c) => c.raw > 0.05);
 
     for (let rank = 0; rank < ranked.length; rank++) {
-      const { i, activity } = ranked[rank];
+      const { i, raw } = ranked[rank];
+      // Activity based on rank: #1 = 1.0, #20 = 0.1
+      const activity = 1.0 - (rank / Math.max(1, ranked.length)) * 0.9;
       const angle = (rank / Math.max(1, ranked.length)) * Math.PI * 2;
       const radius = 30 + Math.floor(rank / 8) * 15;
 
@@ -108,8 +112,8 @@ export function buildMacroGraph(state: MacroState): VizGraph {
         id: `c_${i}`,
         type: "neuron",
         regionId: "concept",
-        label: `C${i} (${(activity * 100).toFixed(0)}%)`,
-        color: activity > 0.7 ? "#ffffff" : activity > 0.3 ? "#fbbf24" : "#fbbf2460",
+        label: `C${i} (#${rank + 1}, ${raw.toFixed(1)})`,
+        color: rank < 3 ? "#ffffff" : rank < 8 ? "#fbbf24" : "#fbbf2460",
         val: 1.5 + activity * 4,
         activity,
         fx: cx + Math.cos(angle) * radius,
