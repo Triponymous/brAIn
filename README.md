@@ -8,8 +8,9 @@ See `docs/plans/2026-04-08-mini-oscen-design.md` for the design.
 - [x] Phase 2: Full multi-region brain + WTA + modulators + R-STDP + SQLite persistence
 - [x] Phase 3a: Mac sensor adapter + daemon (FastAPI + WebSocket)
 - [x] Phase 3b: LLM bridge + dashboard (hybrid Ollama/Claude, memory tools, React canvas viz)
-- [ ] Phase 3c: Pet face (Tauri) + voice (TTS/STT)
-- [ ] Phase 4+: see `docs/plans/2026-04-09-mini-oscen-phase3-design.md`
+- [x] Phase 3c: Pet face (Tauri animated eyes) + voice (Piper TTS + Whisper STT + ⌥+Space hotkey)
+- [ ] Phase 4: Capability wishlist + grant system (emergent tool acquisition)
+- [ ] Phase 5+: see `docs/plans/2026-04-09-mini-oscen-phase3-design.md`
 
 ## Quick start
 
@@ -41,6 +42,12 @@ cd ui && npm run dev
 
 # Chat with the pet (via REST — or use the dashboard chat panel)
 curl -X POST http://localhost:8000/api/chat -H 'Content-Type: application/json' -d '{"message": "was siehst du?"}'
+
+# TTS test (speak through Mac speakers)
+curl -X POST http://localhost:8000/api/tts -H 'Content-Type: application/json' -d '{"text":"Hallo, ich bin dein Pet."}' -o /tmp/hello.wav && afplay /tmp/hello.wav
+
+# Pet face (Tauri app with animated eyes — ⌥+Space for push-to-talk)
+cd pet-face && npx tauri dev
 ```
 
 ## Known limitations (Phase 1)
