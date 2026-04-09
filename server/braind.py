@@ -45,6 +45,68 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _check_permissions() -> None:
+    """Check macOS privacy permissions and print clear warnings."""
+    import sys
+    if sys.platform != "darwin":
+        return
+
+    print("\n╔══════════════════════════════════════════╗")
+    print("║       brAIn Permission Diagnostics       ║")
+    print("╚══════════════════════════════════════════╝")
+
+    # 1. Input Monitoring (keyboard, mouse, idle)
+    try:
+        import Quartz
+        import time
+
+        before = Quartz.CGEventSourceCounterForEventType(
+            Quartz.kCGEventSourceStateHIDSystemState, 10)  # keydown
+        time.sleep(0.1)
+        after = Quartz.CGEventSourceCounterForEventType(
+            Quartz.kCGEventSourceStateHIDSystemState, 10)
+
+        idle = Quartz.CGEventSourceSecondsSinceLastEventType(
+            Quartz.kCGEventSourceStateHIDSystemState, int(0xFFFFFFFF))
+
+        # If idle > 300s AND counters didn't change, permission is missing
+        # (user was presumably just typing to start this daemon)
+        if idle > 120:
+            print("⚠️  INPUT MONITORING: NOT GRANTED")
+            print("   → Keyboard, mouse, and idle sensors will NOT work!")
+            print("   → Fix: System Settings → Privacy & Security → Input Monitoring")
+            print("   → Add Terminal.app (or your terminal) and RESTART this daemon")
+            print()
+        else:
+            print("✅ Input Monitoring: OK")
+    except ImportError:
+        print("⚠️  Quartz framework not available")
+
+    # 2. Microphone
+    try:
+        import sounddevice as sd
+        rec = sd.rec(int(0.1 * 16000), samplerate=16000, channels=1, dtype='float32')
+        sd.wait()
+        rms = float((rec ** 2).mean() ** 0.5)
+        if rms < 0.0001:
+            print("⚠️  MICROPHONE: May not be granted (RMS=0)")
+            print("   → Fix: System Settings → Privacy & Security → Microphone")
+        else:
+            print(f"✅ Microphone: OK (RMS={rms:.6f})")
+    except Exception as e:
+        print(f"⚠️  Microphone: Error ({e})")
+
+    # 3. Active app (no permission needed)
+    try:
+        from AppKit import NSWorkspace
+        app = NSWorkspace.sharedWorkspace().frontmostApplication()
+        print(f"✅ Active App: OK (currently: {app.localizedName()})")
+    except Exception:
+        print("⚠️  Active App: NSWorkspace unavailable")
+
+    print()
+
+
 async def _run_daemon(args: argparse.Namespace) -> None:
     # Load or create brain
     checkpoint = Path(args.checkpoint)
@@ -56,8 +118,14 @@ async def _run_daemon(args: argparse.Namespace) -> None:
         print("Creating fresh brain")
         brain = Brain()
 
-    # Create adapter
+    # ═══ PERMISSION CHECK ═══
+    # Without Input Monitoring, keyboard/mouse/idle sensors are blind.
+    if not args.mock_sensors:
+        _check_permissions()
+
+    # Create adapter — store on brain for chat endpoint access
     adapter = MacDesktopAdapter(mock_mode=args.mock_sensors)
+    brain._adapter = adapter  # chat endpoint reads live sensor bus from this
     pusher = WSPusher(rate_hz=args.push_hz)
 
     # Bridge setup
@@ -69,6 +137,9 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     from capabilities.grants import GrantStore
     from capabilities.registry import ToolRegistry
     from server.grants import build_grants_router
+
+    from bridge.episode_log import EpisodeLogger
+    episode_logger = EpisodeLogger(checkpoint.parent / "episodes.db")
 
     exporter = BrainStateExporter(brain)
     grant_store = GrantStore(checkpoint.parent / "grants.sqlite")
@@ -97,21 +168,15 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     stt_engine = STTEngine(model_name="small")
 
     async def _chat_fn(message: str) -> dict:
-        """Adapter: routes a voice message through the same chat pipeline."""
-        import json
-        snap = exporter.snapshot()
-        labels = exporter.all_labels()
-        from server.chat import _SYSTEM_PROMPT_TEMPLATE
-        system_prompt = _SYSTEM_PROMPT_TEMPLATE.format(
-            brain_state=json.dumps(snap, indent=2, default=str),
-            labels=json.dumps(labels, default=str) if labels else "None yet.",
-        )
-        return await llm_router.chat(
-            user_message=message,
-            system_prompt=system_prompt,
-            brain_state=snap,
-            tools=tool_registry.tool_definitions(),
-        )
+        """Adapter: routes a voice message through the same /api/chat pipeline."""
+        import httpx
+        # Reuse the full chat endpoint so sensor data is included
+        async with httpx.AsyncClient(timeout=300) as client:
+            resp = await client.post(
+                f"http://127.0.0.1:{args.port}/api/chat",
+                json={"message": message},
+            )
+            return resp.json()
 
     voice_router = build_voice_router(
         tts_engine=tts_engine,
@@ -124,7 +189,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     sensor_task = asyncio.create_task(adapter.run())
     await asyncio.sleep(2.0)  # give sensors time to populate the bus
     print(f"Sensor bus keys: {list(adapter.bus.snapshot().keys())}")
-    tick_task = asyncio.create_task(brain_tick_loop(brain, adapter, hz=args.tick_hz, exporter=exporter))
+    tick_task = asyncio.create_task(brain_tick_loop(brain, adapter, hz=args.tick_hz, exporter=exporter, episode_logger=episode_logger))
     push_task = asyncio.create_task(push_loop(brain, pusher, exporter=exporter, adapter=adapter))
     persist_task = asyncio.create_task(persistence_loop(brain, str(checkpoint)))
 

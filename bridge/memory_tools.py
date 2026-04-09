@@ -5,18 +5,22 @@ schema in Anthropic/OpenAI tool-use format so the LLM knows what's available.
 execute(name, args) dispatches a tool call by name.
 """
 from __future__ import annotations
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import torch
 
 from brain.core import Brain
 from bridge.exporter import BrainStateExporter
 
+if TYPE_CHECKING:
+    from bridge.episode_log import EpisodeLogger
+
 
 class MemoryTools:
-    def __init__(self, brain: Brain, exporter: BrainStateExporter) -> None:
+    def __init__(self, brain: Brain, exporter: BrainStateExporter, episode_logger: "EpisodeLogger | None" = None) -> None:
         self.brain = brain
         self.exporter = exporter
+        self.episode_logger = episode_logger
 
     def current_state(self) -> dict[str, Any]:
         """Full brain state snapshot."""
@@ -64,6 +68,12 @@ class MemoryTools:
                 result.append(entry)
         return result
 
+    def episode_search(self, time_range: float = 24.0) -> dict[str, Any]:
+        """Search historical brain episodes from the last N hours."""
+        if self.episode_logger is None:
+            return {"error": "Episode logger not available"}
+        return self.episode_logger.daily_summary(since_hours=time_range)
+
     def execute(self, name: str, args: dict[str, Any]) -> Any:
         """Dispatch a tool call by name."""
         dispatch = {
@@ -71,6 +81,7 @@ class MemoryTools:
             "query_concepts": lambda: self.query_concepts(**args),
             "label_concept": lambda: self.label_concept(**args),
             "recall_associations": lambda: self.recall_associations(**args),
+            "episode_search": lambda: self.episode_search(**args),
         }
         fn = dispatch.get(name)
         if fn is None:
@@ -117,6 +128,20 @@ class MemoryTools:
                         "concept_id": {"type": "integer"},
                     },
                     "required": ["concept_id"],
+                },
+            },
+            {
+                "name": "episode_search",
+                "description": "Search historical brain activity. Returns a summary of what happened over a time range: top concepts, average modulators, most-used apps, and total ticks.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "time_range": {
+                            "type": "number",
+                            "default": 24.0,
+                            "description": "Number of hours to look back (e.g. 1.0 for last hour, 24.0 for last day, 168.0 for last week).",
+                        },
+                    },
                 },
             },
         ]
