@@ -15,7 +15,7 @@ async def ollama_chat(
     model: str,
     system_prompt: str,
     user_message: str,
-    timeout: float = 30.0,
+    timeout: float = 300.0,  # 5 min — large models need time to load on first call
 ) -> str:
     """Send a chat request to Ollama and return the assistant's response text."""
     payload = {
