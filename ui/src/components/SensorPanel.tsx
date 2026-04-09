@@ -1,8 +1,12 @@
 import type { BrainState } from "../lib/ws";
 
 type ExtendedState = BrainState & {
-  sensors?: { app?: string; keys?: number; mouse?: number; idle?: number; mic_rms?: number };
-  spike_counts?: { sensory?: number; feature?: number; concept?: number };
+  sensors?: {
+    app?: string; keys?: number; mouse?: number; idle?: number; mic_rms?: number;
+    background_apps?: string[]; app_count?: number; app_switched?: boolean;
+    switch_rate?: number;
+  };
+  spike_counts?: { sensory?: number; feature?: number; association?: number; concept?: number };
 };
 
 export function SensorPanel({ state }: { state: BrainState | null }) {
@@ -24,6 +28,57 @@ export function SensorPanel({ state }: { state: BrainState | null }) {
           {sensors.app || "—"}
         </div>
       </div>
+
+      {/* Activity Level */}
+      {(() => {
+        const keys = sensors.keys ?? 0;
+        const mouse = sensors.mouse ?? 0;
+        const total = keys + mouse;
+        let actLabel: string;
+        let actColor: string;
+        if (total === 0) { actLabel = "Ruhend"; actColor = "bg-gray-600 text-gray-300"; }
+        else if (total < 10) { actLabel = "Leicht aktiv"; actColor = "bg-blue-900 text-blue-300"; }
+        else if (total < 40) { actLabel = "Aktiv"; actColor = "bg-emerald-900 text-emerald-300"; }
+        else { actLabel = "Intensiv"; actColor = "bg-orange-900 text-orange-300"; }
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 text-[10px]">Aktivitaet</span>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${actColor}`}>{actLabel}</span>
+          </div>
+        );
+      })()}
+
+      {/* Switch Rate */}
+      {sensors.app != null && (() => {
+        const rate = sensors.switch_rate ?? 0;
+        let label: string;
+        let color: string;
+        if (rate < 1) { label = "Fokussiert"; color = "bg-green-900 text-green-300"; }
+        else if (rate <= 3) { label = "Normal"; color = "bg-yellow-900 text-yellow-300"; }
+        else if (rate <= 8) { label = "Busy"; color = "bg-orange-900 text-orange-300"; }
+        else { label = "Hektisch"; color = "bg-red-900 text-red-300"; }
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 text-[10px]">Wechselrate</span>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${color}`}>{label}</span>
+            <span className="text-gray-600 text-[10px]">{rate}/min</span>
+          </div>
+        );
+      })()}
+
+      {/* Background Apps */}
+      {sensors.background_apps && sensors.background_apps.length > 0 && (
+        <div className="bg-gray-900 rounded p-2">
+          <div className="text-gray-500 text-[10px] mb-1">Im Hintergrund ({sensors.app_count ?? sensors.background_apps.length})</div>
+          <div className="flex flex-wrap gap-1">
+            {sensors.background_apps.map((name) => (
+              <span key={name} className="bg-gray-700 text-gray-300 text-[10px] px-1.5 py-0.5 rounded">
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Input Activity */}
       <div className="bg-gray-900 rounded p-2 space-y-1">
@@ -49,7 +104,7 @@ export function SensorPanel({ state }: { state: BrainState | null }) {
       {/* Spike Pipeline */}
       <div className="bg-gray-900 rounded p-2 space-y-1">
         <div className="text-gray-500 text-[10px]">Spike Pipeline</div>
-        {(["sensory", "feature", "concept"] as const).map((name) => {
+        {(["sensory", "feature", "association", "concept"] as const).map((name) => {
           const count = spikes[name] ?? 0;
           const max = name === "concept" ? 200 : 200;
           return (

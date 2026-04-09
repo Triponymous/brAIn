@@ -3,6 +3,16 @@ export type BrainState = {
   modulators: Record<string, number>;
   concept_membrane: number[];
   wm_membrane: number[];
+  // Extended fields (present depending on subscription)
+  sensors?: {
+    app?: string; keys?: number; mouse?: number;
+    idle?: number; mic_rms?: number;
+    background_apps?: string[]; app_count?: number; app_switched?: boolean;
+    switch_rate?: number;
+  };
+  spike_counts?: Record<string, number>;
+  region_spikes?: Record<string, number[]>;
+  synapse_activity?: Record<string, { mean_weight: number; active_connections: number[][] }>;
 };
 
 type Listener = (state: BrainState) => void;
@@ -34,4 +44,11 @@ export function subscribe(fn: Listener): () => void {
 
 export function getLatest(): BrainState | null {
   return latestState;
+}
+
+/** Send a message to the WebSocket server (e.g. subscription changes). */
+export function sendWS(msg: Record<string, unknown>): void {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg));
+  }
 }

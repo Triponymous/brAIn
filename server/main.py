@@ -127,6 +127,7 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter:
                 sensor_display["background_apps"] = app_data.get("background_apps", [])
                 sensor_display["app_count"] = app_data.get("app_count", 1)
                 sensor_display["app_switched"] = app_data.get("switched", False)
+                sensor_display["switch_rate"] = app_data.get("switch_rate", 0.0)
             if "keystroke_rate" in sensor_snap:
                 sensor_display["keys"] = sensor_snap["keystroke_rate"].get("count", 0)
             if "mouse_rate" in sensor_snap:
@@ -138,6 +139,7 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter:
 
             base_state = {
                 "tick": brain.tick_count,
+                "sleep_mode": brain.sleep_mode,
                 "modulators": brain.modulators.snapshot(),
                 "concept_membrane": brain.concept_spike_accum.tolist(),
                 "wm_membrane": brain.regions["wm"].membrane.tolist(),
