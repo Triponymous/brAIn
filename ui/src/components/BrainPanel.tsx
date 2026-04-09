@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback, useMemo, lazy, Suspense } from "react";
+import { useRef, useEffect, useState, useMemo, lazy, Suspense } from "react";
 import type { BrainState } from "../lib/ws";
 
 // Lazy import — react-force-graph-2d uses `window` at import time
@@ -64,75 +64,6 @@ export function BrainPanel({ state }: { state: BrainState | null }) {
     return buildGraph(state as ExtendedState, dims.w, dims.h);
   }, [state, dims]);
 
-  const paintNode = useCallback((node: any, ctx: CanvasRenderingContext2D) => {
-    const n = node as GNode;
-    const x = node.x as number;
-    const y = node.y as number;
-    // Guard against NaN/Infinity before any canvas ops
-    if (!isFinite(x) || !isFinite(y)) return;
-    const r = Math.max(1, Math.sqrt(Math.max(0, n.val)) * 2);
-
-    // Glow for active nodes
-    if (n.active && n.type !== "concept" && r > 0) {
-      const grad = ctx.createRadialGradient(x, y, r, x, y, r * 3);
-      grad.addColorStop(0, n.color + "40");
-      grad.addColorStop(1, n.color + "00");
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(x, y, r * 3, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Node body
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = n.active ? n.color : n.color + "30";
-    ctx.fill();
-
-    if (n.type !== "concept") {
-      ctx.strokeStyle = n.color + "80";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
-
-    // Label
-    if (n.type !== "concept" || n.active) {
-      ctx.fillStyle = n.active ? "#e5e7eb" : "#4b556380";
-      ctx.font = n.type === "region" ? "bold 9px sans-serif" : n.type === "sensor" ? "8px sans-serif" : "7px monospace";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      if (n.type === "region") {
-        ctx.fillText(n.label, x, y);
-      } else {
-        ctx.fillText(n.label, x, y + r + 8);
-      }
-    }
-  }, []);
-
-  const paintLink = useCallback((link: any, ctx: CanvasRenderingContext2D) => {
-    const src = link.source as any;
-    const tgt = link.target as any;
-    if (!isFinite(src.x) || !isFinite(src.y) || !isFinite(tgt.x) || !isFinite(tgt.y)) return;
-
-    ctx.strokeStyle = link.color || "rgba(52, 211, 153, 0.1)";
-    ctx.lineWidth = Math.max(0.3, link.value * 3);
-    ctx.beginPath();
-    ctx.moveTo(src.x, src.y);
-    ctx.lineTo(tgt.x, tgt.y);
-    ctx.stroke();
-
-    // Animated particle along active links
-    if (link.value > 0.1) {
-      const t = (Date.now() / 800) % 1;
-      const px = src.x + (tgt.x - src.x) * t;
-      const py = src.y + (tgt.y - src.y) * t;
-      ctx.beginPath();
-      ctx.arc(px, py, 1.5, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(52, 211, 153, 0.6)";
-      ctx.fill();
-    }
-  }, []);
-
   if (!state) {
     return <div className="h-full flex items-center justify-center text-gray-500">Waiting for brain state...</div>;
   }
@@ -144,12 +75,17 @@ export function BrainPanel({ state }: { state: BrainState | null }) {
           width={dims.w}
           height={dims.h}
           graphData={graphData}
-          nodeCanvasObject={paintNode}
-          linkCanvasObject={paintLink}
           nodeRelSize={4}
-          linkDirectionalParticles={0}
-          cooldownTicks={50}
-          d3AlphaDecay={0.05}
+          nodeLabel={(node: any) => `${node.label} ${node.active ? '●' : '○'}`}
+          nodeColor={(node: any) => node.active ? node.color : node.color + '30'}
+          nodeVal={(node: any) => node.val}
+          linkColor={(link: any) => link.color}
+          linkWidth={(link: any) => Math.max(0.5, link.value * 3)}
+          linkDirectionalParticles={(link: any) => link.value > 0.1 ? 2 : 0}
+          linkDirectionalParticleWidth={2}
+          linkDirectionalParticleColor={() => "#34d399"}
+          cooldownTicks={100}
+          d3AlphaDecay={0.02}
           d3VelocityDecay={0.3}
           backgroundColor="#08090d"
           onNodeClick={(node: any) => {
