@@ -274,14 +274,20 @@ class Brain:
             self.modulators.inject("5HT", -0.00002)
 
         # ── Novelty: something changed from prediction ──
-        if novelty > self._novelty_smooth * 2.0 and novelty > 0.02:
-            self.modulators.inject("DA", min(0.005, novelty * 0.1))
-            self.modulators.inject("ACh", min(0.002, novelty * 0.05))
+        # A clap or sudden voice produces novelty ~0.01-0.05.
+        # We need NE to visibly spike (reach ~0.1) within 1-2 seconds.
+        # At 100Hz, that's 100-200 ticks. NE needs ~0.1/500 = 0.0002/tick for 500 ticks,
+        # but we want faster spikes, so inject more for short bursts.
+        if novelty > self._novelty_smooth * 1.5 and novelty > 0.005:
+            # Mild novelty — curiosity
+            self.modulators.inject("DA", min(0.003, novelty * 0.3))
+            self.modulators.inject("ACh", min(0.001, novelty * 0.1))
 
-        if novelty > self._novelty_smooth * 4.0 and novelty > 0.05:
-            # Strong novelty — genuine surprise
-            self.modulators.inject("DA", min(0.01, novelty * 0.2))
-            self.modulators.inject("NE", min(0.01, novelty * 0.2))
+        if novelty > self._novelty_smooth * 3.0 and novelty > 0.01:
+            # Strong novelty — surprise! (clap, sudden voice, app switch)
+            self.modulators.inject("DA", min(0.008, novelty * 0.5))
+            self.modulators.inject("NE", min(0.008, novelty * 0.5))
+            self.modulators.inject("ACh", min(0.003, novelty * 0.2))
             self.modulators.inject("ACh", min(0.03, novelty * 0.5))
 
         # ═══ SYNAPTIC HOMEOSTASIS — prevents weight drift ═══

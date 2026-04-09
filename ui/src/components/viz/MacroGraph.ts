@@ -92,43 +92,44 @@ export function buildMacroGraph(state: MacroState): VizGraph {
     const cy = conceptRegion.target[1];
     const cz = conceptRegion.target[2];
 
-    // Show top 20 most active concepts as small nodes
-    // Use RANK-based activity (0-1) so they visually differentiate,
-    // not relative-to-max which compresses everything near 100%
-    const ranked = cm
+    // Show top 15 concepts as stable nodes.
+    // Use FIXED positions per concept ID (not rank) so they don't jump around.
+    // Color based on absolute activity level, not relative rank.
+    const sorted = cm
       .map((v, i) => ({ i, raw: Math.abs(v) }))
       .sort((a, b) => b.raw - a.raw)
-      .slice(0, 20)
-      .filter((c) => c.raw > 0.05);
+      .slice(0, 15)
+      .filter((c) => c.raw > 0.1);
 
-    for (let rank = 0; rank < ranked.length; rank++) {
-      const { i, raw } = ranked[rank];
-      // Activity based on rank: #1 = 1.0, #20 = 0.1
-      const activity = 1.0 - (rank / Math.max(1, ranked.length)) * 0.9;
-      const angle = (rank / Math.max(1, ranked.length)) * Math.PI * 2;
-      const radius = 30 + Math.floor(rank / 8) * 15;
+    for (let idx = 0; idx < sorted.length; idx++) {
+      const { i, raw } = sorted[idx];
+      const activity = Math.min(1, raw / 10); // absolute scale: 10 = max brightness
+      // Position based on CONCEPT ID (stable!) not rank (which flickers)
+      const angle = ((i * 137.5) % 360) * (Math.PI / 180); // golden angle spread
+      const radius = 35 + (i % 5) * 8;
 
       nodes.push({
         id: `c_${i}`,
         type: "neuron",
         regionId: "concept",
-        label: `C${i} (#${rank + 1}, ${raw.toFixed(1)})`,
-        color: rank < 3 ? "#ffffff" : rank < 8 ? "#fbbf24" : "#fbbf2460",
-        val: 1.5 + activity * 4,
+        label: `C${i} (${raw.toFixed(1)})`,
+        color: activity > 0.8 ? "#fbbf24" : activity > 0.4 ? "#fbbf24a0" : "#fbbf2450",
+        val: 2 + activity * 3,
         activity,
         fx: cx + Math.cos(angle) * radius,
         fy: cy + Math.sin(angle) * radius * 0.7,
         fz: cz + (rank % 3 - 1) * 8,
       });
 
-      // Connect to concept region
+      // Connect FROM region TO concept (spikes flow outward, not back)
+      // No particles — concepts are the END of the pipeline, not a source
       links.push({
-        source: `c_${i}`,
-        target: "r_concept",
+        source: "r_concept",
+        target: `c_${i}`,
         value: activity * 0.3,
-        color: `rgba(251,191,36,${(activity * 0.3).toFixed(2)})`,
-        particles: activity > 0.5 ? 1 : 0,
-        particleSpeed: 0.005,
+        color: `rgba(251,191,36,${(activity * 0.2).toFixed(2)})`,
+        particles: 0,
+        particleSpeed: 0,
       });
     }
   }

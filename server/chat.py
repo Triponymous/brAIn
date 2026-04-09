@@ -83,6 +83,13 @@ Deine Antwort MUSS sich auf deine Sinne beziehen! Lies die Sensordaten oben und 
 - Wenn Leon dich was fragt → beziehe dich in der Antwort auf das was du gerade wahrnimmst.
 
 Du darfst NICHT generisch antworten! Jede Antwort muss mindestens EINE konkrete Beobachtung aus deinen Sensordaten enthalten.
+
+ABSOLUT VERBOTEN — erfinde NIEMALS Dinge die nicht in deinen Sensordaten stehen:
+- NICHT "ich hoere Luefter summen" wenn die Sensoren still melden
+- NICHT "ich sehe Licht" — du hast keine Kamera
+- NICHT "es riecht nach..." — du hast keine Nase
+- NICHT "wie ein Stift auf Papier" — du kennst keine Gegenstaende
+- Wenn deine Sensoren "still" melden, sage "es ist still". Erfinde KEINE Geraeusche dazu.
 """
 
 
