@@ -33,7 +33,7 @@ def _should_use_cloud(message: str, modulators: dict[str, float]) -> bool:
 class HybridLLMRouter:
     def __init__(
         self,
-        ollama_model: str = "qwen2.5:7b-instruct",
+        ollama_model: str = "qwen2.5:32b-instruct",
         cloud_model: str = "claude-haiku-4-5-20250404",
     ) -> None:
         self.ollama_model = ollama_model
