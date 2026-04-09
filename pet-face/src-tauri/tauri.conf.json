@@ -25,9 +25,6 @@
       "csp": "default-src 'self'; connect-src 'self' http://localhost:* ws://localhost:*; media-src blob:; script-src 'self' 'unsafe-inline'"
     }
   },
-  "plugins": {
-    "global-shortcut": {}
-  },
   "bundle": {
     "active": true,
     "targets": "all",

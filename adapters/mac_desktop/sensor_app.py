@@ -1,11 +1,13 @@
-"""ActiveAppSensor — reads frontmost app + background apps + switch rate.
+"""ActiveAppSensor — reads frontmost app + background apps + window/space changes.
 
 Tracks:
 - Foreground app name
 - Background app names (all regular-policy apps)
-- App switch detection (did the foreground change?)
-- Switch RATE: how many switches in the last 30 seconds (rolling window)
-  → High switch rate = multitasking/stress. Low = focused deep work.
+- Window/context switch detection:
+  - App switch (different frontmost app)
+  - Window switch (same app but different window — detected via window title/ID)
+  - Space switch (macOS Spaces/Desktops — detected via frontmost window change)
+- Switch RATE: how many context switches in the last 30 seconds
 """
 from __future__ import annotations
 import sys
@@ -27,26 +29,50 @@ class ActiveAppSensor(Sensor):
         self._mock_idx = 0
         self._workspace = None
         self._prev_app: str = ""
-        # Rolling switch timestamps for switch-rate calculation
+        self._prev_window_id: int = 0  # track window changes within same app
         self._switch_times: list[float] = []
-        self._switch_window = 30.0  # seconds
+        self._switch_window = 30.0
+        self._cg = None
         if not mock_mode and sys.platform == "darwin":
             try:
-                from AppKit import NSWorkspace, NSApplicationActivationPolicyRegular  # type: ignore
+                from AppKit import NSWorkspace, NSApplicationActivationPolicyRegular
                 self._workspace = NSWorkspace.sharedWorkspace()
                 self._regular_policy = NSApplicationActivationPolicyRegular
             except ImportError:
                 self.mock_mode = True
+            try:
+                import Quartz
+                self._cg = Quartz
+            except ImportError:
+                pass
+
+    def _get_frontmost_window_id(self) -> int:
+        """Get the window ID of the frontmost normal window.
+        Filters to layer=0 (normal windows, not menubar/statusbar/overlays).
+        This detects Space switches even when the app name doesn't change."""
+        if self._cg is None:
+            return 0
+        try:
+            windows = self._cg.CGWindowListCopyWindowInfo(
+                self._cg.kCGWindowListOptionOnScreenOnly | self._cg.kCGWindowListExcludeDesktopElements,
+                self._cg.kCGNullWindowID,
+            )
+            if windows:
+                for w in windows:
+                    # Layer 0 = normal windows (not menubar, statusbar, overlays)
+                    if w.get("kCGWindowLayer", -1) == 0:
+                        return int(w.get("kCGWindowNumber", 0))
+        except Exception:
+            pass
+        return 0
 
     def _update_switch_rate(self, switched: bool) -> float:
-        """Track switch timestamps, return switches per 30s window."""
         now = time.monotonic()
         if switched:
             self._switch_times.append(now)
-        # Prune old entries
         cutoff = now - self._switch_window
         self._switch_times = [t for t in self._switch_times if t > cutoff]
-        return len(self._switch_times) / (self._switch_window / 60.0)  # switches per minute
+        return len(self._switch_times) / (self._switch_window / 60.0)
 
     async def sample(self) -> dict[str, Any]:
         if self.mock_mode:
@@ -67,12 +93,17 @@ class ActiveAppSensor(Sensor):
         app = self._workspace.frontmostApplication()
         front_name = str(app.localizedName()) if app else "<unknown>"
 
-        # Detect app switch
-        switched = front_name != self._prev_app and self._prev_app != ""
+        # Detect context switch: app change OR window/space change
+        window_id = self._get_frontmost_window_id()
+        app_switched = front_name != self._prev_app and self._prev_app != ""
+        window_switched = window_id != self._prev_window_id and self._prev_window_id != 0
+        switched = app_switched or window_switched
+
         self._prev_app = front_name
+        self._prev_window_id = window_id
         switch_rate = self._update_switch_rate(switched)
 
-        # Get ALL running regular apps (not daemons, not menu bar items)
+        # Get ALL running regular apps
         running = self._workspace.runningApplications()
         background_apps = []
         for a in running:
@@ -89,5 +120,5 @@ class ActiveAppSensor(Sensor):
             "background_apps": background_apps[:10],
             "app_count": len(background_apps) + 1,
             "switched": switched,
-            "switch_rate": round(switch_rate, 1),  # switches per minute
+            "switch_rate": round(switch_rate, 1),
         }

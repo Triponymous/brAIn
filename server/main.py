@@ -116,6 +116,15 @@ async def brain_tick_loop(brain: Any, adapter: Any, hz: float = 100.0, exporter:
 async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter: Any = None) -> None:
     """Periodically broadcast brain state to all WS clients."""
     period = 1.0 / pusher.rate_hz
+
+    # Smoothed sensor values for dashboard display.
+    # Raw sensors sample at 5Hz but we push at 30Hz. Without smoothing,
+    # the dashboard flickers between 0 and real values.
+    _smooth_keys = 0.0
+    _smooth_mouse = 0.0
+    _smooth_mic = 0.0
+    _decay = 0.85  # exponential smoothing: keeps ~1s of history
+
     try:
         while True:
             # Sensor snapshot for dashboard display
@@ -129,13 +138,19 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter:
                 sensor_display["app_switched"] = app_data.get("switched", False)
                 sensor_display["switch_rate"] = app_data.get("switch_rate", 0.0)
             if "keystroke_rate" in sensor_snap:
-                sensor_display["keys"] = sensor_snap["keystroke_rate"].get("count", 0)
+                raw_keys = sensor_snap["keystroke_rate"].get("count", 0)
+                _smooth_keys = max(raw_keys, _smooth_keys * _decay)
+                sensor_display["keys"] = round(_smooth_keys)
             if "mouse_rate" in sensor_snap:
-                sensor_display["mouse"] = sensor_snap["mouse_rate"].get("count", 0)
+                raw_mouse = sensor_snap["mouse_rate"].get("count", 0)
+                _smooth_mouse = max(raw_mouse, _smooth_mouse * _decay)
+                sensor_display["mouse"] = round(_smooth_mouse)
             if "idle" in sensor_snap:
                 sensor_display["idle"] = round(sensor_snap["idle"].get("seconds", 0), 1)
             if "mic" in sensor_snap:
-                sensor_display["mic_rms"] = round(sensor_snap["mic"].get("rms", 0), 4)
+                raw_mic = sensor_snap["mic"].get("rms", 0)
+                _smooth_mic = max(raw_mic, _smooth_mic * _decay)
+                sensor_display["mic_rms"] = round(_smooth_mic, 4)
 
             base_state = {
                 "tick": brain.tick_count,
