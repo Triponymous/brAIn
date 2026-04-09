@@ -54,19 +54,29 @@ class Brain:
         num_wm: int = 100,
         num_motor: int = 50,
         num_meta: int = 10,
-        concept_k: int = 5,
+        concept_k: int | None = None,  # defaults to max(1, num_concept // 40)
         tau_mem: float = 20.0,
         threshold: float = 1.0,
         a_plus: float = 0.005,
-        a_minus: float = 0.005,
-        w_init: float = 0.4,
-        w_init_jitter: float = 0.1,
+        a_minus: float = 0.0052,  # slightly asymmetric → mild selectivity, not destructive
+        w_init: float = 0.3,
+        w_init_std: float = 0.15,  # Gaussian init, not uniform jitter
     ) -> None:
+        # Feature & Association are WTA layers too — forces sparse coding at every
+        # level. Without this, all-to-all weights cause EVERY feature neuron to fire
+        # on every tick (input >> threshold), destroying selectivity.
+        # k values: ~10% of layer size = biologically realistic sparsity.
+        # Default concept_k: ~2.5% of layer (5 out of 200)
+        if concept_k is None:
+            concept_k = max(1, num_concept // 40)
+        feature_k = max(1, num_feature // 10)   # 20 out of 200
+        association_k = max(1, num_association // 10)  # 50 out of 500
+
         self.regions: dict[str, object] = {
             "sensory": LIFLayer(num_sensory, tau_mem=tau_mem, threshold=threshold),
-            "feature": LIFLayer(num_feature, tau_mem=tau_mem, threshold=threshold * 0.3),
-            "association": LIFLayer(num_association, tau_mem=tau_mem, threshold=threshold * 0.3),
-            "concept": WTALayer(num_concept, k=concept_k, tau_mem=tau_mem, threshold=threshold * 0.3),
+            "feature": WTALayer(num_feature, k=feature_k, tau_mem=tau_mem, threshold=threshold * 0.5),
+            "association": WTALayer(num_association, k=association_k, tau_mem=tau_mem, threshold=threshold * 0.5),
+            "concept": WTALayer(num_concept, k=concept_k, tau_mem=tau_mem, threshold=threshold * 0.5),
             "wm": WMLayer(num_wm, recurrent_gain=0.8, tau_mem=tau_mem, threshold=threshold),
             "motor": LIFLayer(num_motor, tau_mem=tau_mem, threshold=threshold * 0.5),
             "meta": LIFLayer(num_meta, tau_mem=tau_mem, threshold=threshold),
@@ -75,19 +85,30 @@ class Brain:
         def _make_stdp(pre: int, post: int) -> STDPSynapse:
             syn = STDPSynapse(
                 num_pre=pre, num_post=post,
-                w_init=w_init, a_plus=a_plus, a_minus=a_minus,
+                w_init=0.0,  # will be overwritten below
+                a_plus=a_plus, a_minus=a_minus,
             )
-            jitter = (torch.rand_like(syn.weights) - 0.5) * 2 * w_init_jitter
-            syn.weights = torch.clamp(syn.weights + jitter, syn.w_min, syn.w_max)
+            # Gaussian random init: each neuron starts with different preferences
+            # This breaks symmetry so WTA winners depend on input, not noise
+            syn.weights = torch.clamp(
+                torch.randn(post, pre) * w_init_std + w_init,
+                syn.w_min, syn.w_max,
+            )
+            # Set synaptic scaling target to actual initial mean
+            syn._target_w_sum = syn.weights.sum(dim=1, keepdim=True).mean().reshape(1)
             return syn
 
         def _make_rstdp(pre: int, post: int) -> RSTDPSynapse:
             syn = RSTDPSynapse(
                 num_pre=pre, num_post=post,
-                w_init=w_init, a_plus=a_plus, a_minus=a_minus,
+                w_init=0.0,
+                a_plus=a_plus, a_minus=a_minus,
             )
-            jitter = (torch.rand_like(syn.weights) - 0.5) * 2 * w_init_jitter
-            syn.weights = torch.clamp(syn.weights + jitter, syn.w_min, syn.w_max)
+            syn.weights = torch.clamp(
+                torch.randn(post, pre) * w_init_std + w_init,
+                syn.w_min, syn.w_max,
+            )
+            syn._target_w_sum = syn.weights.sum(dim=1, keepdim=True).mean().reshape(1)
             return syn
 
         self.synapses: dict[str, object] = {
@@ -102,7 +123,21 @@ class Brain:
         self.tick_count = 0
         # Rolling spike counts for visualization (exponential decay)
         self.concept_spike_accum = torch.zeros(num_concept)
-        self._spike_decay = 0.99  # per-tick decay
+        self._spike_decay = 0.95
+        # Sleep consolidation state
+        self.sleep_mode = False
+        self._sleep_noise_scale = 0.3  # amplitude of noise during sleep
+        self._sleep_decay_exponent = 0.98  # power-law: w *= w^0.98
+
+    def enter_sleep(self) -> None:
+        """Enter sleep consolidation mode. Real input is replaced with noise,
+        power-law weight decay prunes weak synapses while consolidating strong ones.
+        Call exit_sleep() or set sleep_mode=False to resume normal operation."""
+        self.sleep_mode = True
+
+    def exit_sleep(self) -> None:
+        """Exit sleep mode and resume normal sensory processing."""
+        self.sleep_mode = False
 
     def tick(
         self,
@@ -110,6 +145,26 @@ class Brain:
         reward: float = 0.0,
         dt: float = 1.0,
     ) -> dict[str, torch.Tensor]:
+        # ═══ SLEEP MODE: replace input with noise, apply consolidation ═══
+        if self.sleep_mode:
+            # Replace real input with low-amplitude Gaussian noise
+            # This triggers spontaneous reactivation of learned assemblies
+            input_current = torch.randn_like(input_current) * self._sleep_noise_scale
+
+            # Power-law weight decay every 100 ticks during sleep:
+            # Strong weights stay strong, weak weights get weaker.
+            # w *= w^0.02 → for w=0.8: 0.8*0.8^0.02 = 0.796 (barely changes)
+            #              → for w=0.1: 0.1*0.1^0.02 = 0.095 (shrinks faster)
+            if self.tick_count % 100 == 0:
+                for syn in self.synapses.values():
+                    w = syn.weights
+                    # Power-law: multiply by w^exponent. Avoid log(0).
+                    decay = torch.pow(w.clamp(min=1e-6), 1.0 - self._sleep_decay_exponent)
+                    syn.weights = (w * decay).clamp(syn.w_min, syn.w_max)
+
+            # Suppress modulators during sleep (calm brain)
+            reward = 0.0
+
         # 1. Reward → DA injection
         if reward != 0.0:
             self.modulators.inject("DA", reward)
@@ -142,13 +197,18 @@ class Brain:
         # Accumulate concept spikes for visualization
         self.concept_spike_accum = self.concept_spike_accum * self._spike_decay + concept_spikes.detach()
 
-        # ═══ NOVELTY DETECTION — makes the brain FEEL alive ═══
-        # Compare current sensory pattern to a running average (prediction)
-        # High prediction error = novelty = DA + NE spike
+        # ═══ NOVELTY & AROUSAL DETECTION ═══
+        # Two independent signals:
+        # 1. Novelty: how different is current input from prediction?
+        # 2. Arousal: how MUCH activity is there, regardless of novelty?
+        # Stress = high arousal + high variability (not just novelty)
+        # Flow = high arousal + LOW variability (steady focused work)
         if not hasattr(self, '_sensory_avg'):
             self._sensory_avg = torch.zeros_like(input_current)
             self._prev_concept_spikes = torch.zeros(concept.num_neurons)
             self._novelty_smooth = 0.0
+            self._arousal_smooth = 0.0
+            self._activity_smooth = 0.0
 
         # Update running average of sensory input (slow exponential)
         self._sensory_avg = self._sensory_avg * 0.995 + input_current * 0.005
@@ -162,28 +222,79 @@ class Brain:
 
         # Smooth novelty signal
         novelty = prediction_error * 0.5 + concept_change * 0.1
-        self._novelty_smooth = self._novelty_smooth * 0.99 + novelty * 0.01
+        self._novelty_smooth = self._novelty_smooth * 0.995 + novelty * 0.005
 
-        # Inject modulators based on novelty
+        # Arousal: total sensory drive magnitude (how much input, period)
+        sensory_sum = float(sensory_spikes.sum().item())
+        self._activity_smooth = self._activity_smooth * 0.99 + sensory_sum * 0.01
+
+        # Arousal variability: how erratic is the input? (read from encoded features)
+        # Neurons 76 (key variability) and 96 (mouse variability) encode this
+        key_variability = float(input_current[76].item()) if input_current.shape[0] > 76 else 0
+        mouse_variability = float(input_current[96].item()) if input_current.shape[0] > 96 else 0
+        input_variability = (key_variability + mouse_variability) / 2.0
+        self._arousal_smooth = self._arousal_smooth * 0.99 + input_variability * 0.01
+
+        # ═══ MODULATOR INJECTION ═══
+        # Biologically motivated mapping:
+        #   DA  (Dopamine)      = reward + curiosity + novelty
+        #   NE  (Noradrenaline) = alertness + stress + arousal
+        #   ACh (Acetylcholine) = attention + focus + learning gate
+        #   5HT (Serotonin)     = contentment + calm + satiation
+
+        # ── Baseline: user is present ──
+        if sensory_sum > 3:
+            self.modulators.inject("ACh", 0.0002)  # mild attention
+            # Calm, familiar activity → serotonin (contentment)
+            if novelty < self._novelty_smooth * 1.5 and input_variability < 2.0:
+                self.modulators.inject("5HT", 0.0001)
+
+        # ── FLOW STATE: high activity + low variability ──
+        # User is typing steadily, mouse movements are smooth
+        # → Strong ACh (deep focus), mild DA (satisfaction), high 5HT
+        if self._activity_smooth > 5 and self._arousal_smooth < 1.5:
+            self.modulators.inject("ACh", 0.0005)  # deep attention
+            self.modulators.inject("5HT", 0.0002)  # contentment
+            self.modulators.inject("DA", 0.0001)   # mild reward for focus
+
+        # ── STRESS: high activity + high variability ──
+        # Erratic typing, fast app switching, bursts
+        # → NE rises (alert/anxious), 5HT drops, ACh spikes
+        if self._activity_smooth > 5 and self._arousal_smooth > 3.0:
+            self.modulators.inject("NE", 0.0008)   # sustained alertness/stress
+            self.modulators.inject("ACh", 0.0003)  # heightened attention
+            # Suppress serotonin during stress (inject negative)
+            self.modulators.inject("5HT", -0.0001)
+
+        # ── Novelty: something changed from prediction ──
         if novelty > self._novelty_smooth * 1.5 and novelty > 0.01:
-            # Something NEW is happening
-            self.modulators.inject("DA", min(0.3, novelty * 2))    # dopamine = reward/novelty
-            self.modulators.inject("NE", min(0.4, novelty * 3))    # noradrenaline = arousal
-            self.modulators.inject("ACh", min(0.2, novelty * 1))   # acetylcholine = attention
+            self.modulators.inject("DA", min(0.02, novelty * 0.5))
+            self.modulators.inject("ACh", min(0.01, novelty * 0.3))
 
-        # Sustained familiar activity = serotonin (contentment)
-        if novelty < self._novelty_smooth * 0.5 and sensory_spikes.sum() > 5:
-            self.modulators.inject("5HT", 0.01)
+        if novelty > self._novelty_smooth * 3.0 and novelty > 0.03:
+            # Strong novelty — genuine surprise
+            self.modulators.inject("DA", min(0.05, novelty * 1.0))
+            self.modulators.inject("NE", min(0.08, novelty * 1.5))
+            self.modulators.inject("ACh", min(0.03, novelty * 0.5))
 
         # ═══ SYNAPTIC HOMEOSTASIS — prevents weight drift ═══
-        # Every 500 ticks, normalize synapse weights so they don't all collapse or explode
-        if self.tick_count % 500 == 0 and self.tick_count > 0:
+        # OLD: every 500 ticks (5s) with 20% scaling → killed all STDP learning
+        # NEW: every 30,000 ticks (~5 min) with 2% scaling → gentle guardrails
+        #
+        # Real brains use homeostatic plasticity on timescales of hours/days.
+        # Our version just prevents total weight collapse or explosion.
+        if self.tick_count % 30000 == 0 and self.tick_count > 0:
             for syn_name, syn in self.synapses.items():
                 w = syn.weights
                 row_sums = w.sum(dim=1, keepdim=True)
-                target_sum = w.shape[1] * 0.3  # target: average weight of 0.3
-                scale = target_sum / (row_sums + 1e-8)
-                scale = scale.clamp(0.8, 1.2)  # gentle scaling, max 20% change
+                row_mean = row_sums / w.shape[1]
+                # Only intervene if a row is extremely unbalanced
+                # (mean < 0.05 = nearly dead, mean > 0.8 = nearly saturated)
+                needs_up = (row_mean < 0.05).float()
+                needs_down = (row_mean > 0.8).float()
+                scale = torch.ones_like(row_sums)
+                scale = scale + needs_up * 0.02    # nudge dead rows up by 2%
+                scale = scale - needs_down * 0.02  # nudge saturated rows down by 2%
                 syn.weights = (w * scale).clamp(syn.w_min, syn.w_max)
 
         # 7. WM
@@ -210,10 +321,18 @@ class Brain:
         da = self.modulators.level("DA")
         cm.update(concept_spikes, motor_spikes, dt=dt, reward=da)
 
-        # 11. Track spike counts for dashboard
+        # 11. Track spike counts + vectors for dashboard (Meso visualization)
         self._last_sensory_spikes = sensory_spikes.sum().item()
         self._last_feature_spikes = feature_spikes.sum().item()
+        self._last_association_spikes = association_spikes.sum().item()
         self._last_concept_spikes = concept_spikes.sum().item()
+        # Per-region spike vectors (for Meso-level visualization)
+        self._last_sensory_spike_vec = sensory_spikes.detach()
+        self._last_feature_spike_vec = feature_spikes.detach()
+        self._last_association_spike_vec = association_spikes.detach()
+        self._last_concept_spike_vec = concept_spikes.detach()
+        self._last_wm_spike_vec = wm_spikes.detach()
+        self._last_motor_spike_vec = motor_spikes.detach()
 
         # 12. Tick count
         self.tick_count += 1

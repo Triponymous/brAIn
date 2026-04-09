@@ -46,6 +46,10 @@ class STDPSynapse:
         # Per-neuron traces
         self.apre = torch.zeros(num_pre)
         self.apost = torch.zeros(num_post)
+        # Synaptic scaling: target row sum = num_pre * mean(w_init)
+        self._synaptic_scaling = True
+        self._target_w_sum = torch.tensor(num_pre * w_init, dtype=torch.float32).reshape(1)
+        self._scaling_tick_counter = 0
 
     def forward(self, pre_spikes: torch.Tensor) -> torch.Tensor:
         """Compute post-synaptic input current from pre-synaptic spikes."""
@@ -101,6 +105,21 @@ class STDPSynapse:
 
         # Clip weights
         self.weights = torch.clamp(self.weights, self.w_min, self.w_max)
+
+        # ── Synaptic Scaling (slow homeostatic normalization) ──
+        # Real synaptic scaling operates on timescales of hours, not per-spike.
+        # We apply a GENTLE nudge toward target every tick: 0.1% correction.
+        # This prevents runaway over hours without killing STDP learning.
+        if self._synaptic_scaling and self._scaling_tick_counter % 100 == 0:
+            w_sums = self.weights.sum(dim=1, keepdim=True)
+            ratio = self._target_w_sum / w_sums.clamp(min=1e-8)
+            # Soft nudge: move 1% toward target (not snap to target)
+            nudge = 1.0 + (ratio - 1.0) * 0.01
+            # Only apply when drift exceeds 50% (generous tolerance)
+            needs_it = (ratio > 1.5) | (ratio < 0.67)
+            scale = torch.where(needs_it, nudge, torch.ones_like(nudge))
+            self.weights = (self.weights * scale).clamp(self.w_min, self.w_max)
+        self._scaling_tick_counter += 1
 
 
 class RSTDPSynapse(STDPSynapse):
