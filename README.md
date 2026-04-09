@@ -9,8 +9,9 @@ See `docs/plans/2026-04-08-mini-oscen-design.md` for the design.
 - [x] Phase 3a: Mac sensor adapter + daemon (FastAPI + WebSocket)
 - [x] Phase 3b: LLM bridge + dashboard (hybrid Ollama/Claude, memory tools, React canvas viz)
 - [x] Phase 3c: Pet face (Tauri animated eyes) + voice (Piper TTS + Whisper STT + ⌥+Space hotkey)
-- [ ] Phase 4: Capability wishlist + grant system (emergent tool acquisition)
-- [ ] Phase 5+: see `docs/plans/2026-04-09-mini-oscen-phase3-design.md`
+- [x] Phase 4: Capability wishlist + grant system (web search, shell, files — emergent)
+- [ ] Phase 5: Standing orders + more tools
+- [ ] Phase 6+: ESP32 hardware, wake-word, distribution
 
 ## Quick start
 
