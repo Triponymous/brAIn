@@ -6,7 +6,10 @@ See `docs/plans/2026-04-08-mini-oscen-design.md` for the design.
 ## Status
 - [x] Phase 1: SNN core foundations (LIF, STDP, 2-region brain, viz)
 - [x] Phase 2: Full multi-region brain + WTA + modulators + R-STDP + SQLite persistence
-- [ ] Phase 3+: see `docs/plans/` (roadmap pending re-brainstorm)
+- [x] Phase 3a: Mac sensor adapter + daemon (FastAPI + WebSocket)
+- [ ] Phase 3b: LLM bridge + dashboard
+- [ ] Phase 3c: Pet face (Tauri) + voice (TTS/STT)
+- [ ] Phase 4+: see `docs/plans/2026-04-09-mini-oscen-phase3-design.md`
 
 ## Quick start
 
@@ -21,6 +24,16 @@ uv pip install -e ".[dev]"
 # Phase 2 soak test (full brain, concept emergence, save/resume)
 .venv/bin/python scripts/run_soak.py --ticks 20000
 .venv/bin/python scripts/run_soak.py --ticks 5000 --resume
+
+# Phase 3a daemon (real Mac sensors — needs Accessibility + Mic permissions)
+.venv/bin/python -m server.braind start
+
+# Phase 3a daemon (mock sensors, no permissions needed)
+.venv/bin/python -m server.braind start --mock-sensors
+
+# Watch the brain state stream
+wscat -c ws://localhost:8000/ws        # if you have wscat
+curl http://localhost:8000/healthz     # quick health check
 ```
 
 ## Known limitations (Phase 1)
