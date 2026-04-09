@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.brAIntest.braind</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/leonmatthies/brAIntest/.venv/bin/python</string>
+    <string>-m</string>
+    <string>server.braind</string>
+    <string>start</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/leonmatthies/brAIntest</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/leonmatthies/brAIntest/logs/braind.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/leonmatthies/brAIntest/logs/braind.err.log</string>
+
+  <key>ProcessType</key>
+  <string>Interactive</string>
+</dict>
+</plist>
