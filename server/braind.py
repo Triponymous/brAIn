@@ -60,8 +60,20 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     adapter = MacDesktopAdapter(mock_mode=args.mock_sensors)
     pusher = WSPusher(rate_hz=args.push_hz)
 
+    # Bridge setup
+    from bridge.exporter import BrainStateExporter
+    from bridge.memory_tools import MemoryTools
+    from bridge.llm_router import HybridLLMRouter
+    from server.chat import build_chat_router
+
+    exporter = BrainStateExporter(brain)
+    memory_tools = MemoryTools(brain, exporter)
+    llm_router = HybridLLMRouter()
+    chat_router = build_chat_router(brain, exporter, memory_tools, llm_router)
+
     # Build FastAPI app
     app = build_app(brain=brain, adapter=adapter, pusher=pusher)
+    app.include_router(chat_router)
 
     # Schedule background tasks
     sensor_task = asyncio.create_task(adapter.run())

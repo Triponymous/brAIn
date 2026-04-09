@@ -71,7 +71,8 @@ async def push_loop(brain: Any, pusher: WSPusher) -> None:
             state = {
                 "tick": brain.tick_count,
                 "modulators": brain.modulators.snapshot(),
-                # Phase 3b will add: active_concepts, sensors, etc.
+                "concept_membrane": brain.regions["concept"].membrane.tolist(),
+                "wm_membrane": brain.regions["wm"].membrane.tolist(),
             }
             await pusher.broadcast(state)
             await asyncio.sleep(period)
