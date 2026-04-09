@@ -242,39 +242,46 @@ class Brain:
         #   ACh (Acetylcholine) = attention + focus + learning gate
         #   5HT (Serotonin)     = contentment + calm + satiation
 
+        # ═══ MODULATOR INJECTION ═══
+        # CRITICAL: These run at 100Hz! Injection per tick must be TINY.
+        # Target equilibrium: 0.02-0.08 calm, 0.1-0.3 active, rarely >0.4
+        # Formula: equilibrium ≈ injection_per_tick × tau
+        # ACh tau=300: want eq=0.03 → injection = 0.03/300 = 0.0001/tick
+        # DA  tau=200: want eq=0.02 → injection = 0.02/200 = 0.0001/tick
+        # NE  tau=500: want eq=0.02 → injection = 0.02/500 = 0.00004/tick
+        # 5HT tau=1000: want eq=0.03 → injection = 0.03/1000 = 0.00003/tick
+
+        # Only inject when there's REAL user activity (not just time tonic)
+        real_activity = sensory_sum - 8  # subtract ~8 time tonic neurons
+        user_present = real_activity > 2
+
         # ── Baseline: user is present ──
-        if sensory_sum > 3:
-            self.modulators.inject("ACh", 0.0002)  # mild attention
-            # Calm, familiar activity → serotonin (contentment)
-            if novelty < self._novelty_smooth * 1.5 and input_variability < 2.0:
-                self.modulators.inject("5HT", 0.0001)
+        if user_present:
+            self.modulators.inject("ACh", 0.00005)  # mild attention
+            if novelty < self._novelty_smooth * 1.5:
+                self.modulators.inject("5HT", 0.00003)  # contentment
 
         # ── FLOW STATE: high activity + low variability ──
-        # User is typing steadily, mouse movements are smooth
-        # → Strong ACh (deep focus), mild DA (satisfaction), high 5HT
-        if self._activity_smooth > 5 and self._arousal_smooth < 1.5:
-            self.modulators.inject("ACh", 0.0005)  # deep attention
-            self.modulators.inject("5HT", 0.0002)  # contentment
-            self.modulators.inject("DA", 0.0001)   # mild reward for focus
+        if self._activity_smooth > 10 and self._arousal_smooth < 1.5:
+            self.modulators.inject("ACh", 0.0001)
+            self.modulators.inject("5HT", 0.00005)
+            self.modulators.inject("DA", 0.00003)
 
         # ── STRESS: high activity + high variability ──
-        # Erratic typing, fast app switching, bursts
-        # → NE rises (alert/anxious), 5HT drops, ACh spikes
-        if self._activity_smooth > 5 and self._arousal_smooth > 3.0:
-            self.modulators.inject("NE", 0.0008)   # sustained alertness/stress
-            self.modulators.inject("ACh", 0.0003)  # heightened attention
-            # Suppress serotonin during stress (inject negative)
-            self.modulators.inject("5HT", -0.0001)
+        if self._activity_smooth > 10 and self._arousal_smooth > 3.0:
+            self.modulators.inject("NE", 0.0001)
+            self.modulators.inject("ACh", 0.00005)
+            self.modulators.inject("5HT", -0.00002)
 
         # ── Novelty: something changed from prediction ──
-        if novelty > self._novelty_smooth * 1.5 and novelty > 0.01:
-            self.modulators.inject("DA", min(0.02, novelty * 0.5))
-            self.modulators.inject("ACh", min(0.01, novelty * 0.3))
+        if novelty > self._novelty_smooth * 2.0 and novelty > 0.02:
+            self.modulators.inject("DA", min(0.005, novelty * 0.1))
+            self.modulators.inject("ACh", min(0.002, novelty * 0.05))
 
-        if novelty > self._novelty_smooth * 3.0 and novelty > 0.03:
+        if novelty > self._novelty_smooth * 4.0 and novelty > 0.05:
             # Strong novelty — genuine surprise
-            self.modulators.inject("DA", min(0.05, novelty * 1.0))
-            self.modulators.inject("NE", min(0.08, novelty * 1.5))
+            self.modulators.inject("DA", min(0.01, novelty * 0.2))
+            self.modulators.inject("NE", min(0.01, novelty * 0.2))
             self.modulators.inject("ACh", min(0.03, novelty * 0.5))
 
         # ═══ SYNAPTIC HOMEOSTASIS — prevents weight drift ═══
