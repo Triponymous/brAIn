@@ -122,13 +122,18 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     push_task = asyncio.create_task(push_loop(brain, pusher, exporter=exporter, adapter=adapter))
     persist_task = asyncio.create_task(persistence_loop(brain, str(checkpoint)))
 
+    # Proactive notifications — pet speaks up when something interesting happens
+    from bridge.proactive import ProactiveEngine
+    proactive = ProactiveEngine(brain, exporter, pusher)
+    proactive_task = asyncio.create_task(proactive.run(check_interval=10.0))
+
     # Run uvicorn in the same loop
     config = uvicorn.Config(app, host="127.0.0.1", port=args.port, log_level="info")
     server = uvicorn.Server(config)
     try:
         await server.serve()
     finally:
-        for t in (sensor_task, tick_task, push_task, persist_task):
+        for t in (sensor_task, tick_task, push_task, persist_task, proactive_task):
             t.cancel()
         adapter.stop()
         # Final save

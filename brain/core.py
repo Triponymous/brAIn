@@ -142,6 +142,50 @@ class Brain:
         # Accumulate concept spikes for visualization
         self.concept_spike_accum = self.concept_spike_accum * self._spike_decay + concept_spikes.detach()
 
+        # ═══ NOVELTY DETECTION — makes the brain FEEL alive ═══
+        # Compare current sensory pattern to a running average (prediction)
+        # High prediction error = novelty = DA + NE spike
+        if not hasattr(self, '_sensory_avg'):
+            self._sensory_avg = torch.zeros_like(input_current)
+            self._prev_concept_spikes = torch.zeros(concept.num_neurons)
+            self._novelty_smooth = 0.0
+
+        # Update running average of sensory input (slow exponential)
+        self._sensory_avg = self._sensory_avg * 0.995 + input_current * 0.005
+
+        # Prediction error = how different is current input from average
+        prediction_error = float((input_current - self._sensory_avg).abs().mean().item())
+
+        # Concept change = how different are current concepts from recent
+        concept_change = float((concept_spikes - self._prev_concept_spikes).abs().sum().item())
+        self._prev_concept_spikes = concept_spikes.detach().clone()
+
+        # Smooth novelty signal
+        novelty = prediction_error * 0.5 + concept_change * 0.1
+        self._novelty_smooth = self._novelty_smooth * 0.99 + novelty * 0.01
+
+        # Inject modulators based on novelty
+        if novelty > self._novelty_smooth * 1.5 and novelty > 0.01:
+            # Something NEW is happening
+            self.modulators.inject("DA", min(0.3, novelty * 2))    # dopamine = reward/novelty
+            self.modulators.inject("NE", min(0.4, novelty * 3))    # noradrenaline = arousal
+            self.modulators.inject("ACh", min(0.2, novelty * 1))   # acetylcholine = attention
+
+        # Sustained familiar activity = serotonin (contentment)
+        if novelty < self._novelty_smooth * 0.5 and sensory_spikes.sum() > 5:
+            self.modulators.inject("5HT", 0.01)
+
+        # ═══ SYNAPTIC HOMEOSTASIS — prevents weight drift ═══
+        # Every 500 ticks, normalize synapse weights so they don't all collapse or explode
+        if self.tick_count % 500 == 0 and self.tick_count > 0:
+            for syn_name, syn in self.synapses.items():
+                w = syn.weights
+                row_sums = w.sum(dim=1, keepdim=True)
+                target_sum = w.shape[1] * 0.3  # target: average weight of 0.3
+                scale = target_sum / (row_sums + 1e-8)
+                scale = scale.clamp(0.8, 1.2)  # gentle scaling, max 20% change
+                syn.weights = (w * scale).clamp(syn.w_min, syn.w_max)
+
         # 7. WM
         wm = self.regions["wm"]
         cw = self.synapses["concept_wm"]
@@ -156,11 +200,11 @@ class Brain:
 
         # 9. STDP updates (gated by ACh = attention)
         ach = self.modulators.level("ACh")
-        modulation = 1.0 + ach  # ACh boosts learning rate
+        modulation = 1.0 + ach  # ACh boosts learning rate when attention is high
         sf.update(sensory_spikes, feature_spikes, dt=dt, modulation=modulation)
         fa.update(feature_spikes, association_spikes, dt=dt, modulation=modulation)
         ac.update(association_spikes, concept_spikes, dt=dt, modulation=modulation)
-        cw.update(concept_spikes, wm_spikes, dt=dt, modulation=0.5)  # slower
+        cw.update(concept_spikes, wm_spikes, dt=dt, modulation=0.5)
 
         # 10. R-STDP update for motor (gated by DA = reward proxy)
         da = self.modulators.level("DA")
