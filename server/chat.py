@@ -117,34 +117,55 @@ def build_chat_router(
             # Fallback: use whatever the push loop last saw
             sensor_bus = getattr(chat, '_last_sensor_bus', {})
 
-        # Build human-readable sensor display
+        # Build sensor display in PET LANGUAGE (not technical!)
+        # The pet thinks in feelings and observations, not RMS values.
         sensor_lines = []
         if "active_app" in sensor_bus:
-            sensor_lines.append(f"Aktive App: {sensor_bus['active_app'].get('name', '?')}")
+            app_name = sensor_bus['active_app'].get('name', '?')
+            bg_apps = sensor_bus['active_app'].get('background_apps', [])
+            sensor_lines.append(f"Ich sehe ein Fenster: '{app_name}'")
+            if bg_apps:
+                sensor_lines.append(f"Im Hintergrund laufen: {', '.join(bg_apps[:5])}")
         if "keystroke_rate" in sensor_bus:
             keys = sensor_bus["keystroke_rate"].get("count", 0)
-            sensor_lines.append(f"Tastatur: {keys} Tasten/Sample {'(aktiv)' if keys > 5 else '(ruhig)'}")
+            if keys > 20:
+                sensor_lines.append("Ich hoere schnelles Tippen! Viele Tasten!")
+            elif keys > 5:
+                sensor_lines.append("Ich hoere Tippen auf der Tastatur.")
+            elif keys > 0:
+                sensor_lines.append("Ich hoere vereinzelte Tastendruecke.")
+            else:
+                sensor_lines.append("Die Tastatur ist still.")
         if "mouse_rate" in sensor_bus:
             mouse = sensor_bus["mouse_rate"].get("count", 0)
-            sensor_lines.append(f"Maus: {mouse} Events/Sample {'(aktiv)' if mouse > 5 else '(ruhig)'}")
+            if mouse > 30:
+                sensor_lines.append("Die Maus bewegt sich sehr viel! Jemand klickt und scrollt.")
+            elif mouse > 5:
+                sensor_lines.append("Die Maus bewegt sich etwas.")
+            else:
+                sensor_lines.append("Die Maus ist ruhig.")
         if "idle" in sensor_bus:
             idle = sensor_bus["idle"].get("seconds", 0)
             if idle > 300:
-                sensor_lines.append(f"Idle: {idle:.0f}s (Nutzer ist weg)")
+                sensor_lines.append(f"Leon ist seit {int(idle/60)} Minuten weg. Ich bin allein.")
             elif idle > 30:
-                sensor_lines.append(f"Idle: {idle:.0f}s (Pause)")
+                sensor_lines.append("Leon macht gerade eine Pause.")
+            elif idle > 5:
+                sensor_lines.append("Leon ist da, aber gerade ruhig.")
             else:
-                sensor_lines.append(f"Idle: {idle:.0f}s (Nutzer ist aktiv)")
+                sensor_lines.append("Leon ist aktiv am Schreibtisch!")
         if "mic" in sensor_bus:
             rms = sensor_bus["mic"].get("rms", 0)
             if rms > 0.05:
-                sensor_lines.append(f"Mikrofon: RMS={rms:.4f} (laut — Gespräch oder Geräusche)")
+                sensor_lines.append("Ich hoere laute Geraeusche! Jemand redet oder es ist laut!")
             elif rms > 0.01:
-                sensor_lines.append(f"Mikrofon: RMS={rms:.4f} (Hintergrundgeräusche)")
+                sensor_lines.append("Ich hoere leise Geraeusche im Hintergrund.")
+            elif rms > 0.003:
+                sensor_lines.append("Ich hoere ganz leise etwas... kaum wahrnehmbar.")
             else:
-                sensor_lines.append(f"Mikrofon: RMS={rms:.4f} (still)")
+                sensor_lines.append("Es ist still um mich herum.")
         if not sensor_lines:
-            sensor_lines.append("(keine Sensordaten verfügbar)")
+            sensor_lines.append("Ich kann gerade nichts wahrnehmen... meine Sinne schlafen.")
 
         # Build concept summary
         concept_lines = []
