@@ -43,6 +43,11 @@ CREATE TABLE IF NOT EXISTS synapse_state (
     apre BLOB NOT NULL,
     apost BLOB NOT NULL
 );
+CREATE TABLE IF NOT EXISTS wta_state (
+    name TEXT PRIMARY KEY,
+    thresholds BLOB NOT NULL,
+    firing_rate BLOB NOT NULL
+);
 """
 
 
@@ -72,11 +77,10 @@ def _brain_config(brain: Brain) -> dict[str, Any]:
         "threshold": brain.regions["sensory"].threshold,
         "a_plus": brain.synapses["sensory_feature"].a_plus,
         "a_minus": brain.synapses["sensory_feature"].a_minus,
-        # w_init / w_init_jitter only affect __init__; the saved weight tensors
-        # already capture the full state, so reload value is irrelevant. We
-        # store w_init=0.0, w_init_jitter=0.0 to skip the wasted jitter step.
+        # w_init / w_init_std only affect __init__; the saved weight tensors
+        # already capture the full state, so reload value is irrelevant.
         "w_init": 0.0,
-        "w_init_jitter": 0.0,
+        "w_init_std": 0.0,
     }
 
 
@@ -123,6 +127,17 @@ def save_brain(brain: Brain, path: Path) -> None:
                     _tensor_to_blob(syn.apost),
                 ),
             )
+        # WTA adaptive thresholds (intrinsic plasticity state)
+        for name, region in brain.regions.items():
+            if hasattr(region, "thresholds"):  # WTALayer
+                conn.execute(
+                    "INSERT INTO wta_state(name, thresholds, firing_rate) VALUES (?, ?, ?)",
+                    (
+                        name,
+                        _tensor_to_blob(region.thresholds),
+                        _tensor_to_blob(region._firing_rate),
+                    ),
+                )
         conn.commit()
     finally:
         conn.close()
@@ -162,6 +177,18 @@ def load_brain(path: Path) -> Brain:
             syn.weights = _blob_to_tensor(weights_blob)
             syn.apre = _blob_to_tensor(apre_blob)
             syn.apost = _blob_to_tensor(apost_blob)
+
+        # WTA adaptive thresholds (may not exist in older checkpoints)
+        try:
+            for name, thresholds_blob, firing_rate_blob in conn.execute(
+                "SELECT name, thresholds, firing_rate FROM wta_state"
+            ):
+                region = brain.regions.get(name)
+                if region and hasattr(region, "thresholds"):
+                    region.thresholds = _blob_to_tensor(thresholds_blob)
+                    region._firing_rate = _blob_to_tensor(firing_rate_blob)
+        except sqlite3.OperationalError:
+            pass  # Old checkpoint without wta_state table — use defaults
 
         return brain
     finally:

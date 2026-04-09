@@ -9,30 +9,38 @@ from bridge.llm_router import HybridLLMRouter, _should_use_cloud
 
 
 def test_should_use_cloud_short_message():
-    assert _should_use_cloud("hey was siehst du?", {}) is False
+    assert _should_use_cloud("hey was siehst du?", {}, cloud_enabled=True) is False
 
 
 def test_should_use_cloud_long_message():
     long = "Kannst du mir erklären warum " + "Concept #12 " * 50 + "immer aktiv ist?"
-    assert _should_use_cloud(long, {}) is True
+    assert _should_use_cloud(long, {}, cloud_enabled=True) is True
 
 
 def test_should_use_cloud_reasoning_keyword():
-    assert _should_use_cloud("analysiere mein Tagesrhythmus", {}) is True
+    assert _should_use_cloud("analysiere mein Tagesrhythmus", {}, cloud_enabled=True) is True
 
 
 def test_should_use_cloud_high_ne():
-    assert _should_use_cloud("was war das?", {"NE": 0.8}) is True
+    assert _should_use_cloud("was war das?", {"NE": 0.8}, cloud_enabled=True) is True
 
 
 def test_should_use_cloud_explicit_flag():
-    assert _should_use_cloud("/cloud was ist los", {}) is True
+    assert _should_use_cloud("/cloud was ist los", {}, cloud_enabled=True) is True
+
+
+def test_should_use_cloud_disabled():
+    # When cloud is disabled, even explicit /cloud flag should return False
+    assert _should_use_cloud("/cloud was ist los", {}, cloud_enabled=False) is False
 
 
 def test_router_construction():
     router = HybridLLMRouter()
-    assert router.ollama_model == "qwen2.5:7b-instruct"
-    assert router.cloud_model == "claude-haiku-4-5-20250404"
+    config = router._get_config()
+    # Just verify it returns valid config keys, actual model depends on config file
+    assert "local_model" in config
+    assert "cloud_model" in config
+    assert "cloud_enabled" in config
 
 
 @pytest.mark.asyncio
@@ -47,18 +55,24 @@ async def test_router_calls_local_for_simple_query():
         )
     mock.assert_called_once()
     assert result["text"] == "Ich sehe VSCode."
-    assert result["backend"] == "local"
+    assert result["backend"].startswith("local")
 
 
 @pytest.mark.asyncio
 async def test_router_calls_cloud_for_complex_query():
     router = HybridLLMRouter()
-    with patch.object(router, '_call_claude', new_callable=AsyncMock, return_value={"text": "Analyse...", "tool_calls": []}) as mock:
-        result = await router.chat(
-            user_message="analysiere warum Concept #12 und #47 immer zusammen feuern",
-            system_prompt="Du bist ein Pet.",
-            brain_state={"modulators": {"NE": 0.1}},
-            tools=[],
-        )
-    mock.assert_called_once()
-    assert result["backend"] == "cloud"
+    # Must enable cloud in config for the router to use it
+    with patch.object(router, '_get_config', return_value={
+        "local_model": "qwen3:14b",
+        "cloud_model": "claude-haiku-4-5-20250404",
+        "cloud_enabled": True,
+    }):
+        with patch.object(router, '_call_claude', new_callable=AsyncMock, return_value={"text": "Analyse...", "tool_calls": []}) as mock:
+            result = await router.chat(
+                user_message="analysiere warum Concept #12 und #47 immer zusammen feuern",
+                system_prompt="Du bist ein Pet.",
+                brain_state={"modulators": {"NE": 0.1}},
+                tools=[],
+            )
+        mock.assert_called_once()
+        assert result["backend"].startswith("cloud")

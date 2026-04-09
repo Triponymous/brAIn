@@ -1,7 +1,7 @@
 """Tests for KeystrokeRateSensor and MouseRateSensor.
 
-These sensors count input events per sampling window. NEVER read content.
-In mock mode, the sensor's internal counter can be incremented manually.
+These sensors count input events per sampling window + track typing rhythm.
+In mock mode, events are injected via _inject_event().
 """
 import asyncio
 import pytest
@@ -25,10 +25,11 @@ def test_keystroke_mock_mode_default_zero():
     s = KeystrokeRateSensor(mock_mode=True)
     sample = asyncio.run(s.sample())
     assert sample["count"] == 0
+    assert "variability" in sample
+    assert "burst" in sample
 
 
 def test_keystroke_mock_increment_via_inject():
-    """In mock mode, calling _inject_event() bumps the counter."""
     s = KeystrokeRateSensor(mock_mode=True)
     for _ in range(7):
         s._inject_event()
@@ -37,16 +38,13 @@ def test_keystroke_mock_increment_via_inject():
 
 
 def test_keystroke_sample_resets_window():
-    """After a sample(), the next sample should report only NEW events."""
     s = KeystrokeRateSensor(mock_mode=True)
     for _ in range(3):
         s._inject_event()
     s1 = asyncio.run(s.sample())
     assert s1["count"] == 3
-    # No new events
     s2 = asyncio.run(s.sample())
     assert s2["count"] == 0
-    # Two more events
     for _ in range(2):
         s._inject_event()
     s3 = asyncio.run(s.sample())
@@ -59,3 +57,38 @@ def test_mouse_mock_increment_via_inject():
         s._inject_event()
     sample = asyncio.run(s.sample())
     assert sample["count"] == 15
+
+
+def test_keystroke_rhythm_variability():
+    """Erratic injection pattern should produce higher variability."""
+    s = KeystrokeRateSensor(mock_mode=True)
+    # Steady pattern: 5, 5, 5, 5
+    for _ in range(4):
+        s._mock_count = 5
+        asyncio.run(s.sample())
+    steady_sample = asyncio.run(s.sample())  # count=0 but window has history
+
+    s2 = KeystrokeRateSensor(mock_mode=True)
+    # Erratic pattern: 0, 20, 1, 15
+    for count in [0, 20, 1, 15]:
+        s2._mock_count = count
+        asyncio.run(s2.sample())
+    erratic_sample = asyncio.run(s2.sample())
+
+    # Erratic should have higher variability than steady
+    # (both are now at count=0, but the window remembers)
+    assert erratic_sample["variability"] >= steady_sample["variability"]
+
+
+def test_keystroke_burst_detection():
+    """A sudden spike after silence should trigger burst."""
+    s = KeystrokeRateSensor(mock_mode=True)
+    # Several quiet samples
+    for _ in range(5):
+        asyncio.run(s.sample())  # count=0
+    # Then a burst
+    for _ in range(20):
+        s._inject_event()
+    sample = asyncio.run(s.sample())
+    assert sample["count"] == 20
+    assert sample["burst"] == 1.0

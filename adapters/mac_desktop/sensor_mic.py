@@ -58,6 +58,7 @@ class MicSensor(Sensor):
         super().__init__(mock_mode=mock_mode)
         self._lock = threading.Lock()
         self._latest_audio: np.ndarray = np.zeros(_FRAME_SIZE, dtype=np.float32)
+        self._has_injected = False
         self._filterbank = _mel_filterbank(_NUM_MEL_BANDS, _FRAME_SIZE, _SAMPLE_RATE)
         self._stream = None
         if not mock_mode and sys.platform == "darwin":
@@ -83,6 +84,7 @@ class MicSensor(Sensor):
         """Test hook: feed a buffer as if it came from the mic."""
         with self._lock:
             self._latest_audio = audio.astype(np.float32)
+            self._has_injected = True
 
     def _encode(self, audio: np.ndarray) -> dict[str, Any]:
         # Trim/pad to FRAME_SIZE
@@ -106,7 +108,13 @@ class MicSensor(Sensor):
 
     async def sample(self) -> dict[str, Any]:
         if self.mock_mode:
-            # Simulate ambient office noise with some variation
+            # If audio was injected (test hook), use it directly
+            if self._has_injected:
+                with self._lock:
+                    audio = self._latest_audio.copy()
+                    self._has_injected = False
+                return self._encode(audio)
+            # Otherwise simulate ambient office noise with some variation
             import random
             noise = np.random.randn(_FRAME_SIZE).astype(np.float32) * 0.05
             # Occasionally add a louder event (typing sounds, voice)

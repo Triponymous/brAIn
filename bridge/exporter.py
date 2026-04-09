@@ -21,6 +21,11 @@ class BrainStateExporter:
         self._spike_counts = torch.zeros(num_concepts)
         self._decay = 0.995
 
+        # ── Per-concept metadata ──
+        # Track when each concept first appeared and total lifetime spikes
+        self._concept_first_seen: dict[int, int] = {}  # concept_id → tick_count
+        self._concept_lifetime_spikes: dict[int, int] = defaultdict(int)
+
         # ── Auto-correlation tracker ──
         # For each concept, track how often each sensor state co-occurs with a spike
         # Structure: concept_id → { "app:VSCode": count, "keys:high": count, ... }
@@ -38,6 +43,11 @@ class BrainStateExporter:
         # For each concept that spiked, increment its correlation with current tags
         spike_indices = (concept_spikes > 0).nonzero(as_tuple=True)[0].tolist()
         for idx in spike_indices:
+            # Track first appearance and lifetime count
+            if idx not in self._concept_first_seen:
+                self._concept_first_seen[idx] = self.brain.tick_count
+            self._concept_lifetime_spikes[idx] += 1
+
             self._concept_total_spikes[idx] += 1
             for tag in tags:
                 self._concept_correlations[idx][tag] += 1
@@ -104,6 +114,8 @@ class BrainStateExporter:
             entry: dict[str, Any] = {
                 "id": i,
                 "activation": round(activation, 4),
+                "first_seen": self._concept_first_seen.get(i),
+                "times_seen": self._concept_lifetime_spikes.get(i, 0),
             }
             label = self._labels.get(i)
             if label is not None:

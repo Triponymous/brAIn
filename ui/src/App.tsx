@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { connectWS, subscribe, BrainState } from "./lib/ws";
 import { SensorPanel } from "./components/SensorPanel";
-import { BrainPanel3D } from "./components/BrainPanel3D";
+import { BrainViz3D } from "./components/BrainViz3D";
 import { ChatPanel } from "./components/ChatPanel";
 import { WishBanner } from "./components/WishBanner";
 
@@ -38,7 +38,7 @@ export default function App() {
           <SensorPanel state={state} />
         </div>
         <div className="flex-1 overflow-hidden p-3">
-          <BrainPanel3D state={state} />
+          <BrainViz3D state={state} />
         </div>
         <div className="w-80 border-l border-gray-800 flex flex-col">
           <ChatPanel />

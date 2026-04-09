@@ -24,10 +24,25 @@ async def test_mock_mode_returns_synthetic_apps():
     samples = []
     for _ in range(5):
         samples.append(await s.sample())
-    # Each sample is a dict with a name
     for sample in samples:
         assert "name" in sample
         assert isinstance(sample["name"], str)
-    # Mock mode rotates through a few apps so we see variety
+        # New fields present
+        assert "switched" in sample
+        assert "switch_rate" in sample
+        assert isinstance(sample["switch_rate"], float)
     names = {s["name"] for s in samples}
     assert len(names) >= 1
+
+
+@pytest.mark.asyncio
+async def test_switch_rate_increases_on_switch():
+    """Rapid app switches should increase switch_rate."""
+    s = ActiveAppSensor(mock_mode=True)
+    # Mock rotates through 5 apps, so each call is a switch
+    samples = []
+    for _ in range(10):
+        samples.append(await s.sample())
+    # After 10 switches in rapid succession, switch_rate should be > 0
+    last = samples[-1]
+    assert last["switch_rate"] > 0
