@@ -51,10 +51,15 @@ export function ChatPanel() {
     setLoading(true);
 
     try {
+      // Send conversation history so the pet remembers what was said
+      const history = messages.slice(-10).map((m) => ({
+        role: m.role === "user" ? "user" : "assistant",
+        content: m.text,
+      }));
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg }),
+        body: JSON.stringify({ message: msg, history }),
       });
       const data = await resp.json();
       setMessages((prev) => [

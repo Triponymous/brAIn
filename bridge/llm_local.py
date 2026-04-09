@@ -15,18 +15,30 @@ async def ollama_chat(
     model: str,
     system_prompt: str,
     user_message: str,
-    timeout: float = 300.0,  # 5 min — large models need time to load on first call
+    timeout: float = 300.0,
+    history: list[dict] | None = None,
 ) -> str:
     """Send a chat request to Ollama and return the assistant's response text."""
+    # Build messages: system + conversation history + current message
+    messages = [{"role": "system", "content": system_prompt}]
+
+    # Add conversation history (last 10 messages for context)
+    if history:
+        for h in history[-10:]:
+            role = h.get("role", "user")
+            content = h.get("content", "")
+            if role in ("user", "assistant") and content:
+                messages.append({"role": role, "content": content})
+
+    # Add current message
+    messages.append({"role": "user", "content": user_message})
+
     payload = {
         "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message},
-        ],
+        "messages": messages,
         "stream": False,
         "options": {
-            "num_predict": 200,  # pet responses are short (2-3 sentences max)
+            "num_predict": 200,
         },
     }
 

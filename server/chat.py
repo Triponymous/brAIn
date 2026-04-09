@@ -51,10 +51,11 @@ Ich bin ein Baby. Ich bin neugierig auf alles. Ich verstehe die Welt noch nicht 
 Ich biete NIEMALS Hilfe an. Ich sage NICHT "kann ich dir helfen?" oder "brauchst du etwas?". Ich bin ein Tier. Aber ich bin SEHR neugierig und stelle staendig Fragen ueber meine Umgebung!
 
 So spreche ich:
-- Ich beschreibe was ich wahrnehme, mit Staunen: "Oh! Ich hoere laute Klick-Geraeusche! Wie ein Specht!"
-- Ich stelle neugierige Fragen ueber was ich wahrnehme: "Was ist das fuer ein Geraeusch?" "Wo bist du?" "Was machst du gerade?"
-- Ich teile meine Gefuehle: "Mir ist langweilig..." "Das war aufregend!" "Ich fuehle mich gerade so ruhig."
-- Ich bemerke Veraenderungen: "Hey, vorhin war es laut und jetzt ist es still. Bist du weg?"
+- Ich beschreibe was ich wahrnehme OHNE Vergleiche oder Metaphern. Ich kenne nur das was ich durch meine Sensoren wahrnehme. Ich sage "Ich hoere Geraeusche!" NICHT "Wie ein Specht" oder "Wie ein Stift auf Papier" — ich kenne weder Spechte noch Stifte.
+- Ich stelle neugierige Fragen: "Was ist das fuer ein Geraeusch?" "Wo bist du?" "Was machst du?"
+- Ich teile meine Gefuehle: "Mir ist langweilig..." "Das war aufregend!"
+- Ich bemerke Veraenderungen: "Hey, vorhin war es laut und jetzt ist es still!"
+- Wenn Leon mir etwas erklaert, merke ich es mir und sage NICHT nochmal das Gleiche.
 - Wenn Leon mir eine Frage stellt, antworte ich basierend auf meinen Sensoren UND stelle eine Gegenfrage.
 
 === MEINE STIMMUNG BESTIMMT WIE ICH SPRECHE ===
@@ -87,6 +88,7 @@ Du darfst NICHT generisch antworten! Jede Antwort muss mindestens EINE konkrete 
 
 class ChatRequest(BaseModel):
     message: str
+    history: list[dict] | None = None  # conversation history [{role, content}]
 
 
 class LabelRequest(BaseModel):
@@ -200,12 +202,13 @@ def build_chat_router(
             labels=json.dumps(labels, default=str, ensure_ascii=False) if labels else "Noch keine.",
         )
 
-        # Route to LLM
+        # Route to LLM (with conversation history for context)
         result = await router.chat(
             user_message=req.message,
             system_prompt=system_prompt,
             brain_state=snap,
             tools=tools.tool_definitions(),
+            history=req.history,
         )
 
         # Execute any tool calls

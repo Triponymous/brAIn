@@ -51,6 +51,7 @@ class HybridLLMRouter:
         system_prompt: str,
         brain_state: dict[str, Any],
         tools: list[dict[str, Any]],
+        history: list[dict] | None = None,
     ) -> dict[str, Any]:
         cfg = self._get_config()
         modulators = brain_state.get("modulators", {})
@@ -70,14 +71,16 @@ class HybridLLMRouter:
                 model=cfg["local_model"],
                 system_prompt=system_prompt,
                 user_message=user_message,
+                history=history,
             )
             return {"text": text, "tool_calls": [], "backend": f"local ({cfg['local_model']})"}
 
-    async def _call_ollama(self, model: str, system_prompt: str, user_message: str) -> str:
+    async def _call_ollama(self, model: str, system_prompt: str, user_message: str, history: list[dict] | None = None) -> str:
         return await ollama_chat(
             model=model,
             system_prompt=system_prompt,
             user_message=user_message,
+            history=history,
         )
 
     async def _call_claude(
