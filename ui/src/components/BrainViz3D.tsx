@@ -123,14 +123,20 @@ export function BrainViz3D({ state }: { state: BrainState | null }) {
         setZoomLevel("meso");
         const fg = fgRef.current;
         if (fg) {
-          // Stop auto-orbit when zooming in
           const controls = fg.controls();
           if (controls && "autoRotate" in controls) controls.autoRotate = false;
-          fg.cameraPosition(
-            { x: (node.fx ?? 0) - 30, y: (node.fy ?? 0) + 20, z: (node.fz ?? 0) + 100 },
-            { x: node.fx ?? 0, y: node.fy ?? 0, z: node.fz ?? 0 },
-            800,
-          );
+          // Position camera centered on the region, after a short delay
+          // so the graph data has time to load
+          const rx = node.fx ?? 0;
+          const ry = node.fy ?? 0;
+          const rz = node.fz ?? 0;
+          setTimeout(() => {
+            fg.cameraPosition(
+              { x: rx, y: ry, z: rz + 150 },
+              { x: rx, y: ry, z: rz },
+              800,
+            );
+          }, 100);
         }
       } else if (zoomLevel === "meso" && node.type === "neuron") {
         // Label concept neurons on click
