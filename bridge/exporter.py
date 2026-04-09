@@ -41,13 +41,14 @@ class BrainStateExporter:
         """Produce a structured snapshot of the brain state."""
         brain = self.brain
 
-        # Active concepts: use spike accumulator (not membrane, which is 0 after hard reset)
+        # Active concepts: use Brain's spike accumulator (membrane resets to 0 after WTA spike)
         concept_layer = brain.regions["concept"]
         num_concepts = concept_layer.num_neurons
+        spike_accum = brain.concept_spike_accum
 
         active_concepts = []
         for i in range(num_concepts):
-            activation = float(self._spike_counts[i].item())
+            activation = float(spike_accum[i].item())
             entry: dict[str, Any] = {
                 "id": i,
                 "activation": round(activation, 4),

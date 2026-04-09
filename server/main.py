@@ -85,12 +85,10 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None) -> None:
     period = 1.0 / pusher.rate_hz
     try:
         while True:
-            # Use spike accumulator for concept activity (membrane is always ~0 after WTA reset)
-            concept_activity = exporter._spike_counts.tolist() if exporter else brain.regions["concept"].membrane.tolist()
             state = {
                 "tick": brain.tick_count,
                 "modulators": brain.modulators.snapshot(),
-                "concept_membrane": concept_activity,
+                "concept_membrane": brain.concept_spike_accum.tolist(),
                 "wm_membrane": brain.regions["wm"].membrane.tolist(),
             }
             await pusher.broadcast(state)

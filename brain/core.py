@@ -58,7 +58,7 @@ class Brain:
         tau_mem: float = 20.0,
         threshold: float = 1.0,
         a_plus: float = 0.005,
-        a_minus: float = 0.006,
+        a_minus: float = 0.005,
         w_init: float = 0.4,
         w_init_jitter: float = 0.1,
     ) -> None:
@@ -100,6 +100,9 @@ class Brain:
 
         self.modulators = Modulators()
         self.tick_count = 0
+        # Rolling spike counts for visualization (exponential decay)
+        self.concept_spike_accum = torch.zeros(num_concept)
+        self._spike_decay = 0.99  # per-tick decay
 
     def tick(
         self,
@@ -135,6 +138,9 @@ class Brain:
         ac = self.synapses["association_concept"]
         concept_input = ac.forward(association_spikes)
         concept_spikes = concept.step(concept_input, dt=dt)
+
+        # Accumulate concept spikes for visualization
+        self.concept_spike_accum = self.concept_spike_accum * self._spike_decay + concept_spikes.detach()
 
         # 7. WM
         wm = self.regions["wm"]
