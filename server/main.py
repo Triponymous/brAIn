@@ -63,9 +63,10 @@ async def brain_tick_loop(brain: Any, adapter: Any, hz: float = 100.0, exporter:
         while not stop_event.is_set():
             vec = adapter.encode()
             out = brain.tick(vec)
-            # Record concept spikes for the exporter's accumulator
+            # Record concept spikes WITH sensor context for auto-correlation
             if exporter is not None and "concept" in out:
-                exporter.record_spikes(out["concept"])
+                sensor_snap = adapter.bus.snapshot() if adapter else {}
+                exporter.record_spikes_with_context(out["concept"], sensor_snap)
             time.sleep(period)
 
     thread = threading.Thread(target=_tick_thread, daemon=True)

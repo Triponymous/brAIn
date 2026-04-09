@@ -89,4 +89,15 @@ def build_chat_router(
         exporter.set_label(req.concept_id, req.label)
         return {"status": "ok", "concept_id": str(req.concept_id), "label": req.label}
 
+    @api.get("/api/concept/{concept_id}")
+    async def concept_profile(concept_id: int) -> dict[str, Any]:
+        """Get the auto-correlation profile for a concept — what sensors trigger it."""
+        profile = exporter.get_concept_profile(concept_id)
+        label = exporter.get_label(concept_id)
+        return {
+            "concept_id": concept_id,
+            "label": label,
+            **profile,
+        }
+
     return api
