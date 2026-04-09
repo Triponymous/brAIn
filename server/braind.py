@@ -195,7 +195,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
 
     # Proactive notifications — pet speaks up when something interesting happens
     from bridge.proactive import ProactiveEngine
-    proactive = ProactiveEngine(brain, exporter, pusher)
+    proactive = ProactiveEngine(brain, exporter, pusher, router=llm_router)
     proactive_task = asyncio.create_task(proactive.run(check_interval=10.0))
 
     # Run uvicorn in the same loop
