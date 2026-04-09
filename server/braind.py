@@ -62,18 +62,25 @@ async def _run_daemon(args: argparse.Namespace) -> None:
 
     # Bridge setup
     from bridge.exporter import BrainStateExporter
-    from bridge.memory_tools import MemoryTools
     from bridge.llm_router import HybridLLMRouter
     from server.chat import build_chat_router
 
+    # Capability system
+    from capabilities.grants import GrantStore
+    from capabilities.registry import ToolRegistry
+    from server.grants import build_grants_router
+
     exporter = BrainStateExporter(brain)
-    memory_tools = MemoryTools(brain, exporter)
+    grant_store = GrantStore(checkpoint.parent / "grants.sqlite")
+    tool_registry = ToolRegistry(brain, exporter, grant_store)
     llm_router = HybridLLMRouter()
-    chat_router = build_chat_router(brain, exporter, memory_tools, llm_router)
+    chat_router = build_chat_router(brain, exporter, tool_registry, llm_router)
+    grants_router = build_grants_router(grant_store, refresh_fn=tool_registry.refresh_grants)
 
     # Build FastAPI app
     app = build_app(brain=brain, adapter=adapter, pusher=pusher)
     app.include_router(chat_router)
+    app.include_router(grants_router)
 
     # Voice setup
     from bridge.tts import TTSEngine
@@ -97,7 +104,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
             user_message=message,
             system_prompt=system_prompt,
             brain_state=snap,
-            tools=memory_tools.tool_definitions(),
+            tools=tool_registry.tool_definitions(),
         )
 
     voice_router = build_voice_router(

@@ -3,6 +3,7 @@ import { connectWS, subscribe, BrainState } from "./lib/ws";
 import { SensorPanel } from "./components/SensorPanel";
 import { BrainPanel } from "./components/BrainPanel";
 import { ChatPanel } from "./components/ChatPanel";
+import { WishBanner } from "./components/WishBanner";
 
 export default function App() {
   const [state, setState] = useState<BrainState | null>(null);
@@ -28,6 +29,8 @@ export default function App() {
           {" "}5HT {state?.modulators?.["5HT"]?.toFixed(2) ?? "—"}
         </span>
       </header>
+
+      <WishBanner />
 
       {/* Three columns */}
       <div className="flex-1 flex overflow-hidden">
