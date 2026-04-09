@@ -1,6 +1,8 @@
-import { useRef, useEffect, useState, useCallback, useMemo } from "react";
-import ForceGraph2D from "react-force-graph-2d";
+import { useRef, useEffect, useState, useCallback, useMemo, lazy, Suspense } from "react";
 import type { BrainState } from "../lib/ws";
+
+// Lazy import — react-force-graph-2d uses `window` at import time
+const ForceGraph2D = lazy(() => import("react-force-graph-2d"));
 
 /**
  * Brain visualization as a force-directed knowledge graph (Obsidian-style).
@@ -135,31 +137,33 @@ export function BrainPanel({ state }: { state: BrainState | null }) {
 
   return (
     <div ref={containerRef} className="h-full w-full rounded-lg overflow-hidden" style={{ background: "#08090d" }}>
-      <ForceGraph2D
-        width={dims.w}
-        height={dims.h}
-        graphData={graphData}
-        nodeCanvasObject={paintNode}
-        linkCanvasObject={paintLink}
-        nodeRelSize={4}
-        linkDirectionalParticles={0}
-        cooldownTicks={50}
-        d3AlphaDecay={0.05}
-        d3VelocityDecay={0.3}
-        backgroundColor="#08090d"
-        onNodeClick={(node: any) => {
-          if (node.type === "concept") {
-            const label = prompt(`Label for ${node.id}:`);
-            if (label) {
-              fetch("/api/label", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ concept_id: parseInt(node.id.replace("c", "")), label }),
-              });
+      <Suspense fallback={<div className="flex items-center justify-center h-full text-gray-500">Loading graph...</div>}>
+        <ForceGraph2D
+          width={dims.w}
+          height={dims.h}
+          graphData={graphData}
+          nodeCanvasObject={paintNode}
+          linkCanvasObject={paintLink}
+          nodeRelSize={4}
+          linkDirectionalParticles={0}
+          cooldownTicks={50}
+          d3AlphaDecay={0.05}
+          d3VelocityDecay={0.3}
+          backgroundColor="#08090d"
+          onNodeClick={(node: any) => {
+            if (node.type === "concept") {
+              const label = prompt(`Label for ${node.id}:`);
+              if (label) {
+                fetch("/api/label", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ concept_id: parseInt(node.id.replace("c", "")), label }),
+                });
+              }
             }
-          }
-        }}
-      />
+          }}
+        />
+      </Suspense>
     </div>
   );
 }
