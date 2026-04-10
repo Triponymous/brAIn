@@ -71,10 +71,15 @@ def encode_snapshot(snap: dict[str, Any]) -> torch.Tensor:
     vec = torch.zeros(SENSORY_DIM, dtype=torch.float32)
 
     # ── APP IDENTITY: 0-39 (foreground), 40-59 (background) ──
+    # Use DISTRIBUTED code: each app activates 5 neurons (not just 1).
+    # This makes app identity a much STRONGER signal for STDP to learn from.
+    # VSCode activates neurons {3, 11, 22, 28, 37}, Zoom activates {1, 9, 18, 26, 34}
+    # → 10 neurons different between any two apps (instead of just 2).
     app = snap.get("active_app")
     if app and "name" in app:
-        idx = _hash_app_to_index(app["name"], num_slots=40)
-        vec[idx] = _DRIVE
+        for k in range(5):
+            idx = _hash_app_to_index(app["name"] + str(k), num_slots=40)
+            vec[idx] = _DRIVE
 
         # Background apps: each gets one neuron in slots 40-59
         for bg_name in app.get("background_apps", [])[:10]:

@@ -57,8 +57,8 @@ class Brain:
         concept_k: int | None = None,  # defaults to max(1, num_concept // 40)
         tau_mem: float = 100.0,  # Diehl&Cook: 100ms (not biological 20ms) — needed for rate coding
         threshold: float = 1.0,
-        a_plus: float = 0.01,     # potentiation rate (Diehl&Cook: 0.01)
-        a_minus: float = 0.0001,  # depression rate (Diehl&Cook: 0.0001) — 100x weaker!
+        a_plus: float = 0.05,     # potentiation rate (5x Diehl&Cook — faster learning for streaming)
+        a_minus: float = 0.0005,  # depression rate (100x weaker than potentiation)
         w_init: float = 0.3,
         w_init_std: float = 0.15,  # Gaussian init, not uniform jitter
     ) -> None:
@@ -193,23 +193,36 @@ class Brain:
         sensory = self.regions["sensory"]
         sensory_spikes = sensory.step(input_current, dt=dt)
 
-        # 4. Feature (fixed pass-through, no learning)
+        # 4. DECORRELATION: subtract running average to remove shared baseline
+        # This is the key insight from neuroscience: the brain whitens its inputs.
+        # Time-tonic and mic-baseline neurons fire in ALL patterns → they're noise
+        # for concept discrimination. By subtracting the running average, only
+        # the DIFFERENCES from baseline reach the concept layer.
+        if not hasattr(self, '_sensory_running_avg'):
+            self._sensory_running_avg = torch.zeros_like(sensory_spikes)
+        self._sensory_running_avg = self._sensory_running_avg * 0.999 + sensory_spikes * 0.001
+        # Decorrelated signal: what's different from the running average
+        decorrelated = (sensory_spikes - self._sensory_running_avg).clamp(min=0)
+        # Combine: original signal (weak) + decorrelated signal (strong)
+        # This keeps baseline awareness but amplifies differences
+        enhanced_spikes = sensory_spikes * 0.3 + decorrelated * 0.7
+
+        # 5. Feature (fixed pass-through, no learning)
         feature = self.regions["feature"]
         sf = self.synapses["sensory_feature"]
-        feature_input = sf.forward(sensory_spikes)
+        feature_input = sf.forward(sensory_spikes)  # original for feature
         feature_spikes = feature.step(feature_input, dt=dt)
 
-        # 5. Association (fixed pass-through, no learning)
+        # 6. Association (fixed pass-through, no learning)
         association = self.regions["association"]
         fa = self.synapses["feature_association"]
         association_input = fa.forward(feature_spikes)
         association_spikes = association.step(association_input, dt=dt)
 
-        # 6. Concept (WTA) — DIRECT from sensory via learning synapse
-        # This is the Diehl & Cook architecture: input → excitatory WTA
+        # 7. Concept (WTA) — uses DECORRELATED sensory input
         concept = self.regions["concept"]
         sc = self.synapses["sensory_concept"]
-        concept_input = sc.forward(sensory_spikes)
+        concept_input = sc.forward(enhanced_spikes)  # decorrelated!
         concept_spikes = concept.step(concept_input, dt=dt)
 
         # Accumulate concept spikes for visualization
