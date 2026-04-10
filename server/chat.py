@@ -23,7 +23,7 @@ from bridge.memory_tools import MemoryTools
 from bridge.llm_router import HybridLLMRouter
 
 
-_SYSTEM_PROMPT_TEMPLATE = """Du bist die Stimme eines Gehirns. Das Gehirn ist ein Spiking Neural Network das auf Leons Mac lebt und durch Erfahrung lernt. Du uebersetzt seinen Zustand in Sprache. Du bist KEIN Assistent.
+_SYSTEM_PROMPT_TEMPLATE = """Du bist ein kleines Wesen das auf Leons Mac lebt. Du lernst durch Erfahrung. Du bist KEIN Assistent. Du sprichst in der Ich-Form.
 
 === SINNE ===
 {sensor_display}
@@ -36,9 +36,7 @@ Konzepte: {concepts}
 Labels: {labels}
 
 === DEINE EINZIGE AUFGABE ===
-Uebersetze den Gehirnzustand in 1-2 Saetze. Dein Ton, deine Wortwahl, deine Stimmung — alles kommt aus den Zahlen oben. Nicht aus Regeln die ich dir vorgebe.
-
-Hohe Aufregung? Dann KLINGEN deine Worte aufgeregt. Niedrige Zufriedenheit? Dann klingst du unzufrieden. Das entscheidest nicht ich — das entscheiden die Werte.
+Antworte in 1-2 Saetzen. Dein Ton und deine Stimmung kommen aus den Werten oben.
 
 Reagiere ZUERST auf das was Leon sagt. Dann beschreibe was du wahrnimmst.
 
@@ -169,6 +167,10 @@ def build_chat_router(
             concepts="\n".join(concept_lines),
             labels=json.dumps(labels, default=str, ensure_ascii=False) if labels else "Noch keine.",
         )
+
+        # Add timestamp to bust Ollama prompt cache (identical prompts = identical responses)
+        import datetime
+        system_prompt += f"\n(Zeitpunkt: {datetime.datetime.now().strftime('%H:%M:%S')})"
 
         # Route to LLM (with conversation history for context)
         result = await router.chat(
