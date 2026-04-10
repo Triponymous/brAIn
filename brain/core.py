@@ -274,19 +274,19 @@ class Brain:
                 self.modulators.inject("5HT", 0.00003)
 
         # ── 2. Something CHANGED (novelty = sensory spike count jumped) ──
-        if sensory_change > 10:
-            # Significant change: 10+ more/fewer spikes than last tick
-            # e.g. silence→speech, speech→silence, new app
-            scale = min(1.0, sensory_change / 30.0)  # normalize to 0-1
-            self.modulators.inject("DA", 0.001 * scale)   # curiosity
-            self.modulators.inject("NE", 0.0008 * scale)  # alertness
-            self.modulators.inject("ACh", 0.0005 * scale)  # attention
+        # At 100Hz, a single clap spans ~5-10 ticks. We need NE to reach
+        # ~0.10 from those few ticks. With NE tau=500:
+        # 10 ticks × 0.01/tick = 0.1 injected, minus decay = ~0.08 visible.
+        if sensory_change > 5:
+            scale = min(1.0, sensory_change / 20.0)
+            self.modulators.inject("DA", 0.005 * scale)
+            self.modulators.inject("NE", 0.005 * scale)
+            self.modulators.inject("ACh", 0.002 * scale)
 
-        if sensory_change > 20:
-            # Large change: loud clap, sudden silence, app switch
-            scale = min(1.0, sensory_change / 40.0)
-            self.modulators.inject("NE", 0.002 * scale)  # surprise!
-            self.modulators.inject("DA", 0.002 * scale)   # what was that?!
+        if sensory_change > 15:
+            scale = min(1.0, sensory_change / 30.0)
+            self.modulators.inject("NE", 0.015 * scale)  # strong surprise
+            self.modulators.inject("DA", 0.01 * scale)
             self.modulators.inject("ACh", min(0.001, novelty * 0.02))
             self.modulators.inject("ACh", min(0.03, novelty * 0.5))
 
