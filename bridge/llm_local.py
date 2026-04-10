@@ -39,6 +39,7 @@ async def ollama_chat(
         "stream": False,
         "options": {
             "num_predict": 200,
+            "temperature": 0.9,  # higher = more varied responses (default 0.8)
         },
     }
 
