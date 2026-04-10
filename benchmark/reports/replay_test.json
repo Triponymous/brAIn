@@ -1,0 +1,212 @@
+{
+  "test": "replay",
+  "timestamp": 1775851667.5048919,
+  "results": {
+    "typing_vscode": {
+      "pattern": "typing_vscode",
+      "replays": [
+        {
+          "replay": 1,
+          "dominant_concept": 50,
+          "dominant_pct": 16.3,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.043178,
+          "unique_concepts": 130
+        },
+        {
+          "replay": 2,
+          "dominant_concept": 1,
+          "dominant_pct": 9.3,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.05084,
+          "unique_concepts": 27
+        },
+        {
+          "replay": 3,
+          "dominant_concept": 154,
+          "dominant_pct": 8.3,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.049664,
+          "unique_concepts": 41
+        },
+        {
+          "replay": 4,
+          "dominant_concept": 77,
+          "dominant_pct": 8.0,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.05141,
+          "unique_concepts": 43
+        },
+        {
+          "replay": 5,
+          "dominant_concept": 93,
+          "dominant_pct": 13.2,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.050294,
+          "unique_concepts": 37
+        },
+        {
+          "replay": 6,
+          "dominant_concept": 42,
+          "dominant_pct": 8.4,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.050526,
+          "unique_concepts": 37
+        },
+        {
+          "replay": 7,
+          "dominant_concept": 109,
+          "dominant_pct": 11.4,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.051033,
+          "unique_concepts": 41
+        },
+        {
+          "replay": 8,
+          "dominant_concept": 109,
+          "dominant_pct": 11.5,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.051163,
+          "unique_concepts": 42
+        },
+        {
+          "replay": 9,
+          "dominant_concept": 111,
+          "dominant_pct": 14.4,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.050095,
+          "unique_concepts": 35
+        },
+        {
+          "replay": 10,
+          "dominant_concept": 32,
+          "dominant_pct": 8.4,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.050755,
+          "unique_concepts": 33
+        }
+      ],
+      "analysis": {
+        "dominant_concept": 109,
+        "consistency_pct": 20.0,
+        "response_speedup_pct": 0.0,
+        "da_habituation_pct": -5.8
+      },
+      "pass": false
+    },
+    "zoom_call": {
+      "pattern": "zoom_call",
+      "replays": [
+        {
+          "replay": 1,
+          "dominant_concept": 113,
+          "dominant_pct": 16.1,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.452193,
+          "unique_concepts": 49
+        },
+        {
+          "replay": 2,
+          "dominant_concept": 91,
+          "dominant_pct": 20.0,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.513975,
+          "unique_concepts": 5
+        },
+        {
+          "replay": 3,
+          "dominant_concept": 187,
+          "dominant_pct": 15.3,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.496431,
+          "unique_concepts": 17
+        },
+        {
+          "replay": 4,
+          "dominant_concept": 20,
+          "dominant_pct": 20.0,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.508706,
+          "unique_concepts": 5
+        },
+        {
+          "replay": 5,
+          "dominant_concept": 20,
+          "dominant_pct": 20.0,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.534991,
+          "unique_concepts": 5
+        },
+        {
+          "replay": 6,
+          "dominant_concept": 20,
+          "dominant_pct": 20.0,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.526128,
+          "unique_concepts": 5
+        },
+        {
+          "replay": 7,
+          "dominant_concept": 20,
+          "dominant_pct": 20.0,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.49226,
+          "unique_concepts": 5
+        },
+        {
+          "replay": 8,
+          "dominant_concept": 41,
+          "dominant_pct": 8.5,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.496477,
+          "unique_concepts": 15
+        },
+        {
+          "replay": 9,
+          "dominant_concept": 70,
+          "dominant_pct": 10.0,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.499951,
+          "unique_concepts": 10
+        },
+        {
+          "replay": 10,
+          "dominant_concept": 70,
+          "dominant_pct": 10.0,
+          "total_fires": 2500,
+          "first_concept_tick": 0,
+          "avg_da": 0.514277,
+          "unique_concepts": 10
+        }
+      ],
+      "analysis": {
+        "dominant_concept": 20,
+        "consistency_pct": 40.0,
+        "response_speedup_pct": 0.0,
+        "da_habituation_pct": -3.3
+      },
+      "pass": false
+    }
+  },
+  "discrimination": true,
+  "overall_pass": false
+}
