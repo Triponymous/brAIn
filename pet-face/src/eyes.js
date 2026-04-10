@@ -146,12 +146,13 @@ function updateTargetsFromModulators(mods) {
   const ach = mods?.ACh || 0;
   const sht = mods['5HT'] || 0;
 
-  // Normalize modulators to 0-1 range (actual range is ~0-0.3, rarely >0.5)
-  // We scale so that "normal high" (0.1) maps to ~0.5 in our 0-1 space
-  const daN  = Math.min(1, da  * 10);
-  const neN  = Math.min(1, ne  * 10);
-  const achN = Math.min(1, ach * 10);
-  const shtN = Math.min(1, sht * 10);
+  // Normalize modulators to 0-1 range.
+  // Real measured ranges: calm=0.01-0.05, active=0.05-0.15, spike=0.15-0.30
+  // Scale so 0.15 (active) → 0.5, and 0.30 (spike) → 1.0
+  const daN  = Math.min(1, da  * 3.3);
+  const neN  = Math.min(1, ne  * 3.3);
+  const achN = Math.min(1, ach * 3.3);
+  const shtN = Math.min(1, sht * 3.3);
 
   // --- DA (Dopamine): excitement, reward ---
   // Eye height: low DA=0.7x, high DA=1.2x
