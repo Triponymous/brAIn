@@ -42,6 +42,7 @@ from brain.wta import WTALayer
 from brain.working_memory import WMLayer
 from brain.synapses import STDPSynapse, RSTDPSynapse
 from brain.modulators import Modulators
+from brain.concept_tracker import ConceptTracker
 
 
 class Brain:
@@ -166,7 +167,9 @@ class Brain:
         # Sleep consolidation state
         self.sleep_mode = False
         self._sleep_noise_scale = 0.3  # amplitude of noise during sleep
-        self._sleep_decay_exponent = 0.98  # power-law: w *= w^0.98
+        self._sleep_decay_exponent = 0.98
+        # Concept tracker: stable cluster IDs from expansion layer
+        self.concept_tracker = ConceptTracker(expansion_dim=num_expansion)
 
     def enter_sleep(self) -> None:
         """Enter sleep consolidation mode. Real input is replaced with noise,
@@ -232,6 +235,9 @@ class Brain:
         sc = self.synapses["sensory_concept"]
         concept_input = sc.forward(expansion_spikes)
         concept_spikes = concept.step(concept_input, dt=dt)
+
+        # 8. Concept Tracker: cluster expansion signatures into stable IDs
+        self.concept_tracker.tick(expansion_spikes, self.tick_count)
 
         # Accumulate concept spikes for visualization
         self.concept_spike_accum = self.concept_spike_accum * self._spike_decay + concept_spikes.detach()
