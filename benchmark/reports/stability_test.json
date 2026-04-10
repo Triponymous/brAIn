@@ -1,0 +1,127 @@
+{
+  "test": "stability",
+  "timestamp": 1775856093.562693,
+  "checkpoints": [
+    {
+      "tick": 0,
+      "elapsed": 0.0,
+      "w_mean": 0.3008,
+      "w_std": 0.1464,
+      "w_min": 0.0091,
+      "w_max": 0.9401,
+      "dead_rows": 0,
+      "concept_firing": 1,
+      "DA": 0.0,
+      "NE": 0.0
+    },
+    {
+      "tick": 50000,
+      "elapsed": 20.8,
+      "w_mean": 0.3008,
+      "w_std": 0.1638,
+      "w_min": 0.01,
+      "w_max": 0.9996,
+      "dead_rows": 0,
+      "concept_firing": 1,
+      "DA": 0.0288,
+      "NE": 0.0565
+    },
+    {
+      "tick": 100000,
+      "elapsed": 41.1,
+      "w_mean": 0.3008,
+      "w_std": 0.1665,
+      "w_min": 0.01,
+      "w_max": 1.0,
+      "dead_rows": 0,
+      "concept_firing": 1,
+      "DA": 0.006,
+      "NE": 0.0
+    },
+    {
+      "tick": 150000,
+      "elapsed": 61.3,
+      "w_mean": 0.3008,
+      "w_std": 0.1693,
+      "w_min": 0.01,
+      "w_max": 1.0,
+      "dead_rows": 0,
+      "concept_firing": 1,
+      "DA": 0.006,
+      "NE": 0.0
+    },
+    {
+      "tick": 200000,
+      "elapsed": 81.5,
+      "w_mean": 0.3008,
+      "w_std": 0.1748,
+      "w_min": 0.01,
+      "w_max": 0.998,
+      "dead_rows": 0,
+      "concept_firing": 1,
+      "DA": 0.029,
+      "NE": 0.057
+    },
+    {
+      "tick": 250000,
+      "elapsed": 101.6,
+      "w_mean": 0.3008,
+      "w_std": 0.1764,
+      "w_min": 0.01,
+      "w_max": 1.0,
+      "dead_rows": 0,
+      "concept_firing": 1,
+      "DA": 0.006,
+      "NE": 0.0
+    },
+    {
+      "tick": 300000,
+      "elapsed": 121.5,
+      "w_mean": 0.3008,
+      "w_std": 0.1783,
+      "w_min": 0.01,
+      "w_max": 1.0,
+      "dead_rows": 0,
+      "concept_firing": 1,
+      "DA": 0.006,
+      "NE": 0.0
+    },
+    {
+      "tick": 350000,
+      "elapsed": 141.4,
+      "w_mean": 0.3008,
+      "w_std": 0.182,
+      "w_min": 0.01,
+      "w_max": 0.9995,
+      "dead_rows": 0,
+      "concept_firing": 1,
+      "DA": 0.0254,
+      "NE": 0.0497
+    },
+    {
+      "tick": 400000,
+      "elapsed": 161.3,
+      "w_mean": 0.3008,
+      "w_std": 0.1834,
+      "w_min": 0.01,
+      "w_max": 1.0,
+      "dead_rows": 0,
+      "concept_firing": 1,
+      "DA": 0.006,
+      "NE": 0.0
+    },
+    {
+      "tick": 450000,
+      "elapsed": 181.2,
+      "w_mean": 0.3008,
+      "w_std": 0.1851,
+      "w_min": 0.01,
+      "w_max": 1.0,
+      "dead_rows": 0,
+      "concept_firing": 1,
+      "DA": 0.006,
+      "NE": 0.0
+    }
+  ],
+  "overall_pass": true
+}

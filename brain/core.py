@@ -288,27 +288,29 @@ class Brain:
             self.modulators.inject("DA", 0.00003)
 
             # 5HT: contentment when activity is steady (low change)
+            # Need eq ~0.05 during steady work. 5HT tau=1000.
+            # 0.00005/tick × 1000 = 0.05 equilibrium.
             if sensory_change < 5:
-                self.modulators.inject("5HT", 0.00003)
+                self.modulators.inject("5HT", 0.00005)
 
-        # ── 2. Something CHANGED (novelty = sensory spike count jumped) ──
-        # At 100Hz, a single clap spans ~5-10 ticks. We need NE to reach
-        # ~0.10 from those few ticks. With NE tau=500:
-        # 10 ticks × 0.01/tick = 0.1 injected, minus decay = ~0.08 visible.
+        # ── 2. Something CHANGED (sensory spike count jumped) ──
+        # Target: NE reaches ~0.15 on loud clap, ~0.05 on speech start.
+        # MUST NOT exceed 0.3 sustained — cap injection to prevent saturation.
         if sensory_change > 8:
-            # Change >8 spikes: something notable (start/stop speaking, app switch)
-            # Normal speech jitter is ~3-6, so this only triggers on real transitions
-            scale = min(1.0, sensory_change / 25.0)
-            self.modulators.inject("DA", 0.004 * scale)
-            self.modulators.inject("NE", 0.003 * scale)
-            self.modulators.inject("ACh", 0.002 * scale)
-
-        if sensory_change > 15:
             scale = min(1.0, sensory_change / 30.0)
-            self.modulators.inject("NE", 0.015 * scale)  # strong surprise
-            self.modulators.inject("DA", 0.01 * scale)
-            self.modulators.inject("ACh", min(0.001, novelty * 0.02))
-            self.modulators.inject("ACh", min(0.03, novelty * 0.5))
+            # Only inject if current level is below cap (prevents saturation to 1.0)
+            if self.modulators.level("NE") < 0.25:
+                self.modulators.inject("NE", 0.002 * scale)
+            if self.modulators.level("DA") < 0.25:
+                self.modulators.inject("DA", 0.002 * scale)
+            self.modulators.inject("ACh", 0.001 * scale)
+
+        if sensory_change > 20:
+            scale = min(1.0, sensory_change / 40.0)
+            if self.modulators.level("NE") < 0.25:
+                self.modulators.inject("NE", 0.005 * scale)
+            if self.modulators.level("DA") < 0.25:
+                self.modulators.inject("DA", 0.003 * scale)
 
         # Homeostasis is now handled by weight normalization inside STDP synapse.
 

@@ -38,9 +38,11 @@ import torch
 
 SENSORY_DIM = 200
 
-_DRIVE = 8.0       # strong primary drive
-_DRIVE_BG = 3.0    # background app drive
-_DRIVE_CTX = 6.0   # context/rhythm feature drive
+_DRIVE = 8.0       # strong: app identity, keystroke/mouse bins (discriminating!)
+_DRIVE_BG = 3.0    # medium: background apps
+_DRIVE_CTX = 6.0   # medium: rhythm, context features
+_DRIVE_MIC = 4.0   # reduced: mic mel (shared across many patterns)
+_DRIVE_TIME = 2.0  # weak: time tonic (same for all patterns at same time)
 
 
 def _hash_app_to_index(name: str, num_slots: int) -> int:
@@ -145,7 +147,7 @@ def encode_snapshot(snap: dict[str, Any]) -> torch.Tensor:
         # Mel-spectrogram: 112-143
         if "mel" in mic and len(mic["mel"]) == 32:
             mel = torch.tensor(mic["mel"], dtype=torch.float32)
-            mel_scaled = (mel / 5.0).clamp(0.0, 1.0) * _DRIVE
+            mel_scaled = (mel / 5.0).clamp(0.0, 1.0) * _DRIVE_MIC  # reduced drive
             vec[112:144] = mel_scaled
         # RMS loudness: 144-147 (4 bins, simplified)
         if "rms" in mic:
@@ -157,10 +159,10 @@ def encode_snapshot(snap: dict[str, Any]) -> torch.Tensor:
     if tt is not None:
         if "day_phase" in tt and len(tt["day_phase"]) == 4:
             day = torch.tensor(tt["day_phase"], dtype=torch.float32)
-            vec[148:152] = (day + 1.0) * _DRIVE * 0.5
+            vec[148:152] = (day + 1.0) * _DRIVE_TIME * 0.5  # weak — same for all patterns
         if "week_phase" in tt and len(tt["week_phase"]) == 4:
             week = torch.tensor(tt["week_phase"], dtype=torch.float32)
-            vec[152:156] = (week + 1.0) * _DRIVE * 0.5
+            vec[152:156] = (week + 1.0) * _DRIVE_TIME * 0.5
 
     # ── APP CONTEXT: 156-159 ──
     if app:

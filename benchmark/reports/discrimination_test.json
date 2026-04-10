@@ -1,0 +1,84 @@
+{
+  "test": "discrimination",
+  "timestamp": 1775856161.368514,
+  "scenario_concepts": {
+    "typing_vscode": [
+      [
+        106,
+        54,
+        154
+      ],
+      [
+        106,
+        54,
+        159
+      ],
+      [
+        82,
+        106,
+        159
+      ]
+    ],
+    "zoom_call": [
+      [
+        106,
+        54,
+        154
+      ],
+      [
+        82,
+        54,
+        106
+      ],
+      [
+        82,
+        106,
+        159
+      ]
+    ],
+    "music_spotify": [
+      [
+        154,
+        54,
+        106
+      ],
+      [
+        54,
+        82,
+        106
+      ],
+      [
+        170,
+        82,
+        159
+      ]
+    ],
+    "idle_away": [
+      [
+        106,
+        82,
+        54
+      ],
+      [
+        82,
+        106,
+        159
+      ],
+      [
+        170,
+        154,
+        159
+      ]
+    ]
+  },
+  "confusion": {
+    "typing_vscode_vs_zoom_call": 88.88888888888887,
+    "typing_vscode_vs_music_spotify": 77.77777777777777,
+    "typing_vscode_vs_idle_away": 55.55555555555554,
+    "zoom_call_vs_music_spotify": 88.88888888888887,
+    "zoom_call_vs_idle_away": 55.55555555555554,
+    "music_spotify_vs_idle_away": 66.66666666666666
+  },
+  "distinct_groups": 0,
+  "overall_pass": false
+}
