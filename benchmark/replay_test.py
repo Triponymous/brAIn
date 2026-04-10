@@ -50,9 +50,10 @@ PATTERNS = {
     },
 }
 
-REPLAY_COUNT = 15           # play each pattern 15 times
-TICKS_PER_REPLAY = 2000     # each replay = 2000 ticks (20 seconds at 100Hz)
-PAUSE_TICKS = 1000          # 1000 ticks pause between replays (10 seconds)
+REPLAY_COUNT = 20           # play each pattern 20 times
+TICKS_PER_REPLAY = 500      # each replay = 500 ticks (5 seconds — realistic exposure)
+PAUSE_TICKS = 500           # 500 ticks pause (5 seconds)
+WARMUP_TICKS = 100000       # 100K ticks warmup (lots of alternating training)
 
 
 def run_replay_test(pattern_name: str, brain: Brain) -> dict:
@@ -174,6 +175,19 @@ def run_all():
     print("=" * 60)
     print("  BENCHMARK TEST 2: REPLAY TEST")
     print("  Does the SNN recognize repeated patterns?")
+
+    # Warmup: train on alternating patterns so STDP has time to differentiate
+    print(f"\n  Warmup: {WARMUP_TICKS} ticks on alternating patterns...")
+    pattern_names_all = list(PATTERNS.keys())
+    for tick in range(WARMUP_TICKS):
+        pidx = (tick // 5000) % len(pattern_names_all)
+        pname = pattern_names_all[pidx]
+        if pname == "idle_away":
+            pidx = 0
+            pname = pattern_names_all[0]
+        vec = encode_snapshot(PATTERNS[pname]())
+        brain.tick(vec)
+    print(f"  Warmup complete. Tick: {brain.tick_count}")
     print("=" * 60)
 
     results = {}

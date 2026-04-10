@@ -91,23 +91,14 @@ class WTALayer:
             inhibit_mask = losers_above.float() * (self.inhibit_factor - 1.0) + 1.0
             self.membrane = self.membrane * inhibit_mask
 
-        # ── Adaptive Threshold (Diehl & Cook 2015) ──
-        # When a neuron fires: threshold += theta_plus (immediate increase)
-        # Every tick: threshold decays toward baseline with time constant ip_tau
-        # Effect: a neuron that wins a lot gets a very high threshold,
-        # giving OTHER neurons a chance to win for DIFFERENT patterns.
-        # But the decay is VERY slow (tau=100K ticks) so once a neuron
-        # "claims" a pattern, it keeps that pattern for a long time.
-        #
-        # This is fundamentally different from our old IP:
-        # Old: threshold += rate * (firing_rate - target) → oscillates
-        # New: threshold += theta_plus on spike, slow decay → stable assignment
+        # ── Very gentle adaptive threshold ──
+        # Barely raises threshold for frequent winners — just enough to
+        # prevent one neuron from claiming ALL patterns.
+        # ip_rate=0.002 with tau=10M → very slow adaptation
         decay = math.exp(-dt / self.ip_tau)
         self.thresholds = self.threshold + (self.thresholds - self.threshold) * decay
-        # Increase threshold for neurons that just fired
         self.thresholds = self.thresholds + self.ip_rate * spikes
-        # Track firing rate for diagnostics
-        alpha = dt / max(self.ip_tau, 1000.0)
+        alpha = dt / 10000.0
         self._firing_rate = self._firing_rate * (1 - alpha) + spikes * alpha
 
         # ── Lateral Inhibition Learning (anti-Hebbian) ──

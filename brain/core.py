@@ -48,14 +48,15 @@ class Brain:
     def __init__(
         self,
         num_sensory: int = 200,
+        num_expansion: int = 500,  # expansion layer for pattern separation
         num_feature: int = 200,
         num_association: int = 500,
         num_concept: int = 200,
         num_wm: int = 100,
         num_motor: int = 50,
         num_meta: int = 10,
-        concept_k: int | None = None,  # defaults to max(1, num_concept // 40)
-        tau_mem: float = 100.0,  # Diehl&Cook: 100ms (not biological 20ms) — needed for rate coding
+        concept_k: int | None = None,
+        tau_mem: float = 100.0,
         threshold: float = 1.0,
         a_plus: float = 0.05,     # potentiation rate (5x Diehl&Cook — faster learning for streaming)
         a_minus: float = 0.0005,  # depression rate (100x weaker than potentiation)
@@ -74,6 +75,18 @@ class Brain:
             concept_k = 3
         feature_k = max(1, num_feature // 10)   # 20 out of 200
         association_k = max(1, num_association // 10)  # 50 out of 500
+
+        # ── Expansion Layer (Cerebellar Granule Cell inspired) ──
+        # Random sparse projection: 200 sensory → 500 expansion neurons.
+        # Each expansion neuron connects to ~3% of sensory neurons (6 inputs).
+        # Threshold = 2 (need ≥2 active inputs to fire).
+        # This DECORRELATES overlapping patterns by projecting them into
+        # a higher-dimensional space with sparse, random connectivity.
+        # Neuroscience: the cerebellum uses exactly this trick (200 mossy fibers
+        # → 100,000 granule cells) for pattern separation.
+        self._expansion_weights = (torch.rand(num_expansion, num_sensory) < 0.03).float()
+        self._expansion_threshold = 2.0
+        self.num_expansion = num_expansion
 
         self.regions: dict[str, object] = {
             "sensory": LIFLayer(num_sensory, tau_mem=tau_mem, threshold=threshold),
@@ -123,7 +136,9 @@ class Brain:
         # Our architecture: Sensory → [Concept via STDP] → WM/Motor
         # Feature/Association still exist for compatibility but their
         # synapses are FIXED (identity-like, no learning).
-        sensory_concept = _make_stdp(num_sensory, num_concept)
+        # STDP learns on expansion→concept (not sensory→concept)
+        # The expansion layer has already separated overlapping patterns
+        sensory_concept = _make_stdp(num_expansion, num_concept)
 
         # Non-learning pass-through synapses for Feature and Association
         # (kept for compatibility with dashboard/visualization code)
@@ -194,36 +209,28 @@ class Brain:
         sensory = self.regions["sensory"]
         sensory_spikes = sensory.step(input_current, dt=dt)
 
-        # 4. DECORRELATION: subtract running average to remove shared baseline
-        # This is the key insight from neuroscience: the brain whitens its inputs.
-        # Time-tonic and mic-baseline neurons fire in ALL patterns → they're noise
-        # for concept discrimination. By subtracting the running average, only
-        # the DIFFERENCES from baseline reach the concept layer.
-        if not hasattr(self, '_sensory_running_avg'):
-            self._sensory_running_avg = torch.zeros_like(sensory_spikes)
-        self._sensory_running_avg = self._sensory_running_avg * 0.999 + sensory_spikes * 0.001
-        # Decorrelated signal: what's different from the running average
-        decorrelated = (sensory_spikes - self._sensory_running_avg).clamp(min=0)
-        # Combine: original signal (weak) + decorrelated signal (strong)
-        # This keeps baseline awareness but amplifies differences
-        enhanced_spikes = sensory_spikes * 0.3 + decorrelated * 0.7
+        # 4. EXPANSION LAYER (Cerebellar Granule Cell model)
+        # Random sparse projection separates overlapping sensory patterns
+        # into distinct sparse codes. No learning — fixed random weights.
+        expansion_input = self._expansion_weights @ sensory_spikes
+        expansion_spikes = (expansion_input >= self._expansion_threshold).float()
 
-        # 5. Feature (fixed pass-through, no learning)
+        # 5. Feature (fixed pass-through for visualization)
         feature = self.regions["feature"]
         sf = self.synapses["sensory_feature"]
-        feature_input = sf.forward(sensory_spikes)  # original for feature
+        feature_input = sf.forward(sensory_spikes)
         feature_spikes = feature.step(feature_input, dt=dt)
 
-        # 6. Association (fixed pass-through, no learning)
+        # 6. Association (fixed pass-through for visualization)
         association = self.regions["association"]
         fa = self.synapses["feature_association"]
         association_input = fa.forward(feature_spikes)
         association_spikes = association.step(association_input, dt=dt)
 
-        # 7. Concept (WTA) — uses DECORRELATED sensory input
+        # 7. Concept (WTA) — learns from EXPANSION layer (separated patterns!)
         concept = self.regions["concept"]
         sc = self.synapses["sensory_concept"]
-        concept_input = sc.forward(enhanced_spikes)  # decorrelated!
+        concept_input = sc.forward(expansion_spikes)
         concept_spikes = concept.step(concept_input, dt=dt)
 
         # Accumulate concept spikes for visualization
@@ -345,7 +352,7 @@ class Brain:
         # This is the Diehl & Cook architecture proven to work.
         ach = self.modulators.level("ACh")
         modulation = 1.0 + ach
-        sc.update(sensory_spikes, concept_spikes, dt=dt, modulation=modulation)
+        sc.update(expansion_spikes, concept_spikes, dt=dt, modulation=modulation)
         cw.update(concept_spikes, wm_spikes, dt=dt, modulation=0.5)
 
         # 10. R-STDP update for motor (gated by DA = reward proxy)

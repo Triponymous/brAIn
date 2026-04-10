@@ -117,15 +117,12 @@ class STDPSynapse:
         # KEY: This preserves RELATIVE weight differences within a row
         # (some inputs stronger than others = selectivity) while preventing
         # the total from exploding or collapsing.
-        # Weight normalization: applied periodically, NOT every tick.
-        # Diehl & Cook normalize after each MNIST image (~350ms = ~35 ticks).
-        # For our continuous stream, normalize every 500 ticks (~5 seconds).
-        # This gives STDP time to create weight differences BEFORE normalization
-        # scales the row back to target (preserving relative differences).
-        if self._synaptic_scaling and self._scaling_tick_counter % 2000 == 0:
-            row_sums = self.weights.sum(dim=1, keepdim=True)
-            scale = self._target_w_sum / row_sums.clamp(min=1e-8)
-            self.weights = (self.weights * scale).clamp(self.w_min, self.w_max)
+        # Weight normalization: DISABLED.
+        # Row-sum normalization makes all concept neurons receive identical
+        # total input → WTA winner is random. Without normalization, STDP
+        # creates genuine input-strength differences between neurons.
+        # The w_floor (0.01) + 100:1 potentiation:depression ratio prevents
+        # weight collapse without normalization.
 
 
 class RSTDPSynapse(STDPSynapse):
