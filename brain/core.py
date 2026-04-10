@@ -236,60 +236,57 @@ class Brain:
         self._arousal_smooth = self._arousal_smooth * 0.99 + input_variability * 0.01
 
         # ═══ MODULATOR INJECTION ═══
-        # Biologically motivated mapping:
-        #   DA  (Dopamine)      = reward + curiosity + novelty
-        #   NE  (Noradrenaline) = alertness + stress + arousal
-        #   ACh (Acetylcholine) = attention + focus + learning gate
-        #   5HT (Serotonin)     = contentment + calm + satiation
+        # Simple, direct, proven approach:
+        # Read the ACTUAL sensory spike count and react to CHANGES.
+        # No complex smooth/relative thresholds — just absolute levels.
+        #
+        # Measured values (from user testing):
+        #   Silence: sensory = 24-26 spikes/tick
+        #   Speaking: sensory = 44-54 spikes/tick
+        #   Clapping: sensory = 50-60 spikes/tick (brief)
+        #
+        # Equilibrium targets at 100Hz tick rate:
+        #   Calm: DA~0.02, NE~0, ACh~0.03, 5HT~0.03
+        #   Active (speaking): DA~0.05, ACh~0.06
+        #   Surprise (clap after silence): NE spikes to ~0.1
 
-        # ═══ MODULATOR INJECTION ═══
-        # CRITICAL: These run at 100Hz! Injection per tick must be TINY.
-        # Target equilibrium: 0.02-0.08 calm, 0.1-0.3 active, rarely >0.4
-        # Formula: equilibrium ≈ injection_per_tick × tau
-        # ACh tau=300: want eq=0.03 → injection = 0.03/300 = 0.0001/tick
-        # DA  tau=200: want eq=0.02 → injection = 0.02/200 = 0.0001/tick
-        # NE  tau=500: want eq=0.02 → injection = 0.02/500 = 0.00004/tick
-        # 5HT tau=1000: want eq=0.03 → injection = 0.03/1000 = 0.00003/tick
+        real_activity = sensory_sum - 8  # subtract time tonic neurons
+        user_present = real_activity > 5  # more than just app + time
 
-        # Only inject when there's REAL user activity (not just time tonic)
-        real_activity = sensory_sum - 8  # subtract ~8 time tonic neurons
-        user_present = real_activity > 2
+        # Track previous sensory level for change detection
+        if not hasattr(self, '_prev_sensory_sum'):
+            self._prev_sensory_sum = sensory_sum
 
-        # ── Baseline: user is present ──
+        sensory_change = abs(sensory_sum - self._prev_sensory_sum)
+        self._prev_sensory_sum = sensory_sum
+
+        # ── 1. User is present and active (speaking, mousing, etc.) ──
         if user_present:
-            self.modulators.inject("ACh", 0.00005)  # mild attention
-            if novelty < self._novelty_smooth * 1.5:
-                self.modulators.inject("5HT", 0.00003)  # contentment
+            # ACh: attention scales with activity level
+            ach_inject = min(0.0002, real_activity * 0.000005)
+            self.modulators.inject("ACh", ach_inject)
 
-        # ── FLOW STATE: high activity + low variability ──
-        if self._activity_smooth > 10 and self._arousal_smooth < 1.5:
-            self.modulators.inject("ACh", 0.0001)
-            self.modulators.inject("5HT", 0.00005)
+            # DA: mild curiosity when active
             self.modulators.inject("DA", 0.00003)
 
-        # ── STRESS: high activity + high variability ──
-        if self._activity_smooth > 10 and self._arousal_smooth > 3.0:
-            self.modulators.inject("NE", 0.0001)
-            self.modulators.inject("ACh", 0.00005)
-            self.modulators.inject("5HT", -0.00002)
+            # 5HT: contentment when activity is steady (low change)
+            if sensory_change < 5:
+                self.modulators.inject("5HT", 0.00003)
 
-        # ── Novelty: something ACTUALLY changed (not just noise) ──
-        # Only inject on REAL novelty events. The threshold must be high enough
-        # that normal sensor jitter doesn't trigger it every tick.
-        # Target: DA/NE spike to ~0.1 briefly on real events, settle at ~0.02 calm.
-        #
-        # Equilibrium math: inject/tick × tau = steady state
-        # For a brief spike: inject 0.0005/tick for 50 ticks (0.5s) → DA += 0.025
-        # For strong spike: inject 0.002/tick for 20 ticks (0.2s) → NE += 0.04
-        if novelty > self._novelty_smooth * 3.0 and novelty > 0.02:
-            # Real novelty event (not just sensor jitter)
-            self.modulators.inject("DA", min(0.0005, novelty * 0.02))
-            self.modulators.inject("ACh", min(0.0002, novelty * 0.01))
+        # ── 2. Something CHANGED (novelty = sensory spike count jumped) ──
+        if sensory_change > 10:
+            # Significant change: 10+ more/fewer spikes than last tick
+            # e.g. silence→speech, speech→silence, new app
+            scale = min(1.0, sensory_change / 30.0)  # normalize to 0-1
+            self.modulators.inject("DA", 0.001 * scale)   # curiosity
+            self.modulators.inject("NE", 0.0008 * scale)  # alertness
+            self.modulators.inject("ACh", 0.0005 * scale)  # attention
 
-        if novelty > self._novelty_smooth * 5.0 and novelty > 0.05:
-            # Strong surprise (clap, sudden loud voice, app switch)
-            self.modulators.inject("DA", min(0.002, novelty * 0.05))
-            self.modulators.inject("NE", min(0.002, novelty * 0.05))
+        if sensory_change > 20:
+            # Large change: loud clap, sudden silence, app switch
+            scale = min(1.0, sensory_change / 40.0)
+            self.modulators.inject("NE", 0.002 * scale)  # surprise!
+            self.modulators.inject("DA", 0.002 * scale)   # what was that?!
             self.modulators.inject("ACh", min(0.001, novelty * 0.02))
             self.modulators.inject("ACh", min(0.03, novelty * 0.5))
 
