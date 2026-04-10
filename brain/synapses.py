@@ -109,11 +109,23 @@ class STDPSynapse:
         # Floor of 0.01 keeps a tiny signal flowing so learning can revive.
         self.weights = torch.clamp(self.weights, max(self.w_min, 0.01), self.w_max)
 
-        # ── Synaptic Scaling DISABLED ──
-        # Every attempt at synaptic scaling has contributed to weight death.
-        # The w_min=0.01 floor + symmetric STDP is sufficient for stability.
-        # Re-enable only after proving weights survive 24h without scaling.
-        self._scaling_tick_counter += 1
+        # ── Weight Normalization (Diehl & Cook 2015) ──
+        # Normalize per POST-neuron: each post-neuron's total incoming
+        # weight (column sum in their notation, row sum in ours since
+        # our weight matrix is [post, pre]) stays at target.
+        #
+        # KEY: This preserves RELATIVE weight differences within a row
+        # (some inputs stronger than others = selectivity) while preventing
+        # the total from exploding or collapsing.
+        # Weight normalization: applied periodically, NOT every tick.
+        # Diehl & Cook normalize after each MNIST image (~350ms = ~35 ticks).
+        # For our continuous stream, normalize every 500 ticks (~5 seconds).
+        # This gives STDP time to create weight differences BEFORE normalization
+        # scales the row back to target (preserving relative differences).
+        if self._synaptic_scaling and self._scaling_tick_counter % 500 == 0:
+            row_sums = self.weights.sum(dim=1, keepdim=True)
+            scale = self._target_w_sum / row_sums.clamp(min=1e-8)
+            self.weights = (self.weights * scale).clamp(self.w_min, self.w_max)
 
 
 class RSTDPSynapse(STDPSynapse):

@@ -55,10 +55,10 @@ class Brain:
         num_motor: int = 50,
         num_meta: int = 10,
         concept_k: int | None = None,  # defaults to max(1, num_concept // 40)
-        tau_mem: float = 20.0,
+        tau_mem: float = 100.0,  # Diehl&Cook: 100ms (not biological 20ms) — needed for rate coding
         threshold: float = 1.0,
-        a_plus: float = 0.005,
-        a_minus: float = 0.005,  # SYMMETRIC — asymmetric killed all weights over hours
+        a_plus: float = 0.01,     # potentiation rate (Diehl&Cook: 0.01)
+        a_minus: float = 0.0001,  # depression rate (Diehl&Cook: 0.0001) — 100x weaker!
         w_init: float = 0.3,
         w_init_std: float = 0.15,  # Gaussian init, not uniform jitter
     ) -> None:
@@ -66,9 +66,11 @@ class Brain:
         # level. Without this, all-to-all weights cause EVERY feature neuron to fire
         # on every tick (input >> threshold), destroying selectivity.
         # k values: ~10% of layer size = biologically realistic sparsity.
-        # Default concept_k: ~2.5% of layer (5 out of 200)
+        # Default concept_k: 1 = true Winner-Takes-All (Diehl&Cook style)
+        # k=5 caused all patterns to share the same winners. k=1 forces
+        # each pattern to have exactly ONE dominant concept neuron.
         if concept_k is None:
-            concept_k = max(1, num_concept // 40)
+            concept_k = 1
         feature_k = max(1, num_feature // 10)   # 20 out of 200
         association_k = max(1, num_association // 10)  # 50 out of 500
 

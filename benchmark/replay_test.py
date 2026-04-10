@@ -51,8 +51,8 @@ PATTERNS = {
 }
 
 REPLAY_COUNT = 10           # play each pattern 10 times
-TICKS_PER_REPLAY = 500      # each replay = 500 ticks (5 seconds at 100Hz)
-PAUSE_TICKS = 300           # 300 ticks pause between replays (3 seconds)
+TICKS_PER_REPLAY = 2000     # each replay = 2000 ticks (20 seconds at 100Hz)
+PAUSE_TICKS = 1000          # 1000 ticks pause between replays (10 seconds)
 
 
 def run_replay_test(pattern_name: str, brain: Brain) -> dict:

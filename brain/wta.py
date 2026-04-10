@@ -1,4 +1,4 @@
-"""Winner-Take-All layer.
+"""Winner-Take-All layer with adaptive thresholds (Diehl & Cook 2015).
 
 Like LIFLayer (leak + integrate + threshold) but at most k neurons can
 spike per timestep. When more than k cross threshold, only the k with the
@@ -11,6 +11,7 @@ rather than recurrent inhibitory dynamics. Sufficient for sparse concept
 formation in Phase 2.
 """
 from __future__ import annotations
+import math
 import torch
 
 
@@ -33,8 +34,8 @@ class WTALayer:
         threshold: float = 1.0,
         inhibit_factor: float = 0.5,
         # Intrinsic plasticity parameters
-        ip_rate: float = 0.0001,   # how fast thresholds adapt
-        ip_tau: float = 1000.0,    # firing rate averaging window (ticks)
+        ip_rate: float = 0.05,       # threshold increase per win (Diehl&Cook: 0.05)
+        ip_tau: float = 1000000.0,  # threshold decay tau (very slow — let winners keep their territory)
     ) -> None:
         if k < 1:
             raise ValueError(f"k must be >= 1, got {k}")
@@ -79,20 +80,24 @@ class WTALayer:
             inhibit_mask = losers_above.float() * (self.inhibit_factor - 1.0) + 1.0
             self.membrane = self.membrane * inhibit_mask
 
-        # ── Intrinsic plasticity: adapt thresholds ──
-        # Track exponential moving average of each neuron's firing rate
-        alpha = dt / self.ip_tau
+        # ── Adaptive Threshold (Diehl & Cook 2015) ──
+        # When a neuron fires: threshold += theta_plus (immediate increase)
+        # Every tick: threshold decays toward baseline with time constant ip_tau
+        # Effect: a neuron that wins a lot gets a very high threshold,
+        # giving OTHER neurons a chance to win for DIFFERENT patterns.
+        # But the decay is VERY slow (tau=100K ticks) so once a neuron
+        # "claims" a pattern, it keeps that pattern for a long time.
+        #
+        # This is fundamentally different from our old IP:
+        # Old: threshold += rate * (firing_rate - target) → oscillates
+        # New: threshold += theta_plus on spike, slow decay → stable assignment
+        decay = math.exp(-dt / self.ip_tau)
+        self.thresholds = self.threshold + (self.thresholds - self.threshold) * decay
+        # Increase threshold for neurons that just fired
+        self.thresholds = self.thresholds + self.ip_rate * spikes
+        # Track firing rate for diagnostics (not used for threshold adaptation)
+        alpha = dt / max(self.ip_tau, 1000.0)
         self._firing_rate = self._firing_rate * (1 - alpha) + spikes * alpha
-
-        # Nudge thresholds: fire too much → raise threshold, too little → lower
-        error = self._firing_rate - self._target_rate
-        self.thresholds = self.thresholds + self.ip_rate * error
-        # Keep thresholds in a sane range (0.1x to 5x of base threshold)
-        self.thresholds = torch.clamp(
-            self.thresholds,
-            self.threshold * 0.1,
-            self.threshold * 5.0,
-        )
 
         return spikes
 
