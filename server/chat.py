@@ -102,31 +102,29 @@ def build_chat_router(
         if "keystroke_rate" in sensor_bus:
             keys = sensor_bus["keystroke_rate"].get("count", 0)
             if keys > 20:
-                sensor_lines.append("Ich hoere schnelles Tippen! Viele Tasten!")
+                sensor_lines.append("Tastatur: VIEL Tippen gerade!")
             elif keys > 5:
-                sensor_lines.append("Ich hoere Tippen auf der Tastatur.")
+                sensor_lines.append("Tastatur: etwas Tippen.")
             elif keys > 0:
-                sensor_lines.append("Ich hoere vereinzelte Tastendruecke.")
+                sensor_lines.append("Tastatur: vereinzelt.")
             else:
-                sensor_lines.append("Die Tastatur ist still.")
+                sensor_lines.append("Tastatur: still, kein Tippen.")
         if "mouse_rate" in sensor_bus:
             mouse = sensor_bus["mouse_rate"].get("count", 0)
             if mouse > 30:
-                sensor_lines.append("Die Maus bewegt sich sehr viel! Jemand klickt und scrollt.")
+                sensor_lines.append("Maus: sehr aktiv!")
             elif mouse > 5:
-                sensor_lines.append("Die Maus bewegt sich etwas.")
+                sensor_lines.append("Maus: bewegt sich etwas.")
             else:
-                sensor_lines.append("Die Maus ist ruhig.")
+                sensor_lines.append("Maus: ruhig.")
         if "idle" in sensor_bus:
             idle = sensor_bus["idle"].get("seconds", 0)
             if idle > 300:
-                sensor_lines.append(f"Leon ist seit {int(idle/60)} Minuten weg. Ich bin allein.")
+                sensor_lines.append(f"Leon: seit {int(idle/60)} Minuten weg.")
             elif idle > 30:
-                sensor_lines.append("Leon macht gerade eine Pause.")
-            elif idle > 5:
-                sensor_lines.append("Leon ist da, aber gerade ruhig.")
+                sensor_lines.append("Leon: macht Pause.")
             else:
-                sensor_lines.append("Leon ist aktiv am Schreibtisch!")
+                sensor_lines.append("Leon: am Mac.")
         if "mic" in sensor_bus:
             rms = sensor_bus["mic"].get("rms", 0)
             # MacBook Air mic levels: silence~0.0002, speech~0.001-0.003, clap~0.005+
