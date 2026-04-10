@@ -14,6 +14,10 @@ export type MacroState = {
   concept_membrane?: number[];
 };
 
+// Long-term concept memory: tracks peak activation per concept across the session.
+// Concepts that were once active stay visible (dimmed) even when idle.
+const _conceptPeaks = new Map<number, number>();
+
 const MAX_SPIKES: Record<string, number> = {
   sensory: 200, feature: 200, association: 500, concept: 200,
   wm: 100, motor: 50, meta: 10,
@@ -83,38 +87,46 @@ export function buildMacroGraph(state: MacroState): VizGraph {
     });
   }
 
-  // ── Active Concept Neurons (shown around the Concept region) ──
+  // ── Concept Neurons (shown around the Concept region) ──
+  // Track concepts that have EVER been significantly active this session.
+  // This way they stay visible even when the user is idle.
   const cm = state.concept_membrane ?? [];
   if (cm.length > 0) {
-    const maxMem = Math.max(0.1, ...cm.map(Math.abs));
     const conceptRegion = REGION_DEFS.find((r) => r.id === "concept")!;
     const cx = conceptRegion.target[0];
     const cy = conceptRegion.target[1];
     const cz = conceptRegion.target[2];
 
-    // Show top 15 concepts as stable nodes.
-    // Use FIXED positions per concept ID (not rank) so they don't jump around.
-    // Color based on absolute activity level, not relative rank.
-    const sorted = cm
-      .map((v, i) => ({ i, raw: Math.abs(v) }))
-      .sort((a, b) => b.raw - a.raw)
-      .slice(0, 15)
-      .filter((c) => c.raw > 0.1);
+    // Update long-term concept memory (persists across renders)
+    for (let i = 0; i < cm.length; i++) {
+      const val = Math.abs(cm[i]);
+      const prev = _conceptPeaks.get(i) || 0;
+      if (val > prev) _conceptPeaks.set(i, val);
+      // Slow decay of peaks (half-life ~5 min at 30Hz push rate)
+      if (prev > 0.01) _conceptPeaks.set(i, prev * 0.9999);
+    }
+
+    // Show concepts that are currently active OR were recently active
+    const sorted = Array.from(_conceptPeaks.entries())
+      .map(([i, peak]) => ({ i, raw: Math.abs(cm[i] ?? 0), peak }))
+      .filter((c) => c.peak > 1.0)  // ever reached significance
+      .sort((a, b) => b.peak - a.peak)
+      .slice(0, 15);
 
     for (let idx = 0; idx < sorted.length; idx++) {
-      const { i, raw } = sorted[idx];
-      const activity = Math.min(1, raw / 10); // absolute scale: 10 = max brightness
-      // Position based on CONCEPT ID (stable!) not rank (which flickers)
-      const angle = ((i * 137.5) % 360) * (Math.PI / 180); // golden angle spread
+      const { i, raw, peak } = sorted[idx];
+      const isActive = raw > 0.5;  // currently firing
+      const activity = isActive ? Math.min(1, raw / 10) : 0.1;  // dim when sleeping
+      const angle = ((i * 137.5) % 360) * (Math.PI / 180);
       const radius = 35 + (i % 5) * 8;
 
       nodes.push({
         id: `c_${i}`,
         type: "neuron",
         regionId: "concept",
-        label: `C${i} (${raw.toFixed(1)})`,
-        color: activity > 0.8 ? "#fbbf24" : activity > 0.4 ? "#fbbf24a0" : "#fbbf2450",
-        val: 2 + activity * 3,
+        label: `C${i}${isActive ? " ●" : " ○"} (${raw.toFixed(1)})`,
+        color: isActive ? "#fbbf24" : "#fbbf2430",  // bright gold when active, dim when sleeping
+        val: isActive ? 2 + activity * 3 : 1.5,     // smaller when sleeping
         activity,
         fx: cx + Math.cos(angle) * radius,
         fy: cy + Math.sin(angle) * radius * 0.7,
