@@ -103,22 +103,16 @@ class STDPSynapse:
         if post_spikes.any():
             self.apost = self.apost + self.a_minus * post_spikes
 
-        # Clip weights
-        self.weights = torch.clamp(self.weights, self.w_min, self.w_max)
+        # Clip weights — floor at 0.01 (not 0!) so connections never fully die.
+        # A fully dead connection (w=0) can NEVER recover via STDP because
+        # forward() produces 0 current → post never fires → no potentiation.
+        # Floor of 0.01 keeps a tiny signal flowing so learning can revive.
+        self.weights = torch.clamp(self.weights, max(self.w_min, 0.01), self.w_max)
 
-        # ── Synaptic Scaling (slow homeostatic normalization) ──
-        # Real synaptic scaling operates on timescales of hours, not per-spike.
-        # We apply a GENTLE nudge toward target every tick: 0.1% correction.
-        # This prevents runaway over hours without killing STDP learning.
-        if self._synaptic_scaling and self._scaling_tick_counter % 100 == 0:
-            w_sums = self.weights.sum(dim=1, keepdim=True)
-            ratio = self._target_w_sum / w_sums.clamp(min=1e-8)
-            # Soft nudge: move 1% toward target (not snap to target)
-            nudge = 1.0 + (ratio - 1.0) * 0.01
-            # Only apply when drift exceeds 50% (generous tolerance)
-            needs_it = (ratio > 1.5) | (ratio < 0.67)
-            scale = torch.where(needs_it, nudge, torch.ones_like(nudge))
-            self.weights = (self.weights * scale).clamp(self.w_min, self.w_max)
+        # ── Synaptic Scaling DISABLED ──
+        # Every attempt at synaptic scaling has contributed to weight death.
+        # The w_min=0.01 floor + symmetric STDP is sufficient for stability.
+        # Re-enable only after proving weights survive 24h without scaling.
         self._scaling_tick_counter += 1
 
 
