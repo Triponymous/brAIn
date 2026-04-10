@@ -85,8 +85,11 @@ class Brain:
         # a higher-dimensional space with sparse, random connectivity.
         # Neuroscience: the cerebellum uses exactly this trick (200 mossy fibers
         # → 100,000 granule cells) for pattern separation.
-        self._expansion_weights = (torch.rand(num_expansion, num_sensory) < 0.03).float()
-        self._expansion_threshold = 2.0
+        # Expansion: 10% connectivity, threshold=1 (fire if ANY connected input is active)
+        # This amplifies small differences: if typing has neuron 72 active and zoom doesn't,
+        # ~50 expansion neurons connect to 72 and fire for typing but not zoom.
+        self._expansion_weights = (torch.rand(num_expansion, num_sensory) < 0.10).float()
+        self._expansion_threshold = 1.0
         self.num_expansion = num_expansion
 
         self.regions: dict[str, object] = {
@@ -168,8 +171,8 @@ class Brain:
         self.sleep_mode = False
         self._sleep_noise_scale = 0.3  # amplitude of noise during sleep
         self._sleep_decay_exponent = 0.98
-        # Concept tracker: stable cluster IDs from expansion layer
-        self.concept_tracker = ConceptTracker(expansion_dim=num_expansion)
+        # Concept tracker: stable cluster IDs from masked sensory fingerprints
+        self.concept_tracker = ConceptTracker(expansion_dim=num_sensory)
 
     def enter_sleep(self) -> None:
         """Enter sleep consolidation mode. Real input is replaced with noise,
@@ -215,7 +218,17 @@ class Brain:
         # 4. EXPANSION LAYER (Cerebellar Granule Cell model)
         # Random sparse projection separates overlapping sensory patterns
         # into distinct sparse codes. No learning — fixed random weights.
-        expansion_input = self._expansion_weights @ sensory_spikes
+        #
+        # CRITICAL: mask out shared-baseline neurons (time-tonic 148-155,
+        # baseline-idle 100, baseline-mic 144) that are identical across
+        # all patterns. Only discriminating neurons go through expansion.
+        discriminating_spikes = sensory_spikes.clone()
+        discriminating_spikes[148:156] = 0  # time-tonic (same for all patterns)
+        discriminating_spikes[100] = 0      # idle baseline bin
+        discriminating_spikes[144] = 0      # mic RMS baseline bin
+        discriminating_spikes[160:164] = 0  # activity level (derived, not unique)
+
+        expansion_input = self._expansion_weights @ discriminating_spikes
         expansion_spikes = (expansion_input >= self._expansion_threshold).float()
 
         # 5. Feature (fixed pass-through for visualization)
@@ -236,8 +249,9 @@ class Brain:
         concept_input = sc.forward(expansion_spikes)
         concept_spikes = concept.step(concept_input, dt=dt)
 
-        # 8. Concept Tracker: cluster expansion signatures into stable IDs
-        self.concept_tracker.tick(expansion_spikes, self.tick_count)
+        # 8. Concept Tracker: cluster MASKED sensory signatures into stable IDs
+        # Use discriminating_spikes (shared baseline removed), not expansion
+        self.concept_tracker.tick(discriminating_spikes, self.tick_count)
 
         # Accumulate concept spikes for visualization
         self.concept_spike_accum = self.concept_spike_accum * self._spike_decay + concept_spikes.detach()

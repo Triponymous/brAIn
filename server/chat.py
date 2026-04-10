@@ -28,12 +28,15 @@ _SYSTEM_PROMPT_TEMPLATE = """Du bist ein kleines Wesen das auf Leons Mac lebt. D
 === SINNE ===
 {sensor_display}
 
-=== GEHIRNZUSTAND ===
+=== MEIN ZUSTAND ===
 Neugier: {da:.3f} | Aufregung: {ne:.3f} | Fokus: {ach:.3f} | Zufriedenheit: {sht:.3f}
 Schlafmodus: {sleep_mode}
 
-Konzepte: {concepts}
-Labels: {labels}
+=== WAS ICH ERKENNE (meine gelernten Muster) ===
+{concepts}
+
+Wenn ein Muster ein Label hat, benutze das Label in deiner Antwort.
+Wenn ein Muster KEIN Label hat und du es nicht kennst, frag Leon was es ist.
 
 === DEINE EINZIGE AUFGABE ===
 Antworte in 1-2 Saetzen. Dein Ton und deine Stimmung kommen aus den Werten oben.
@@ -139,20 +142,30 @@ def build_chat_router(
         if not sensor_lines:
             sensor_lines.append("Ich kann gerade nichts wahrnehmen... meine Sinne schlafen.")
 
-        # Build concept summary
+        # Build concept summary from ConceptTracker (stable cluster IDs)
+        tracker = brain.concept_tracker.snapshot()
         concept_lines = []
-        for c in snap.get("active_concepts", [])[:8]:
-            line = f"  C{c['id']}: activation={c['activation']}"
-            if c.get("label"):
-                line += f" [{c['label']}]"
-            elif c.get("suggested_label"):
-                line += f" (vermutlich: {c['suggested_label']})"
-            if c.get("profile"):
-                tags = ", ".join(f"{p['tag']}({p['pct']}%)" for p in c["profile"])
-                line += f" correlates={tags}"
-            concept_lines.append(line)
-        if not concept_lines:
-            concept_lines.append("  (noch keine aktiven Konzepte)")
+        current = tracker.get("current_cluster", -1)
+        current_label = tracker.get("current_label")
+
+        if current >= 0:
+            if current_label:
+                concept_lines.append(f"Aktuelles Muster: '{current_label}' (Muster #{current})")
+            else:
+                concept_lines.append(f"Aktuelles Muster: #{current} (noch kein Name — frag Leon!)")
+        else:
+            concept_lines.append("Kein klares Muster erkannt.")
+
+        known = [c for c in tracker.get("clusters", []) if c.get("label")]
+        if known:
+            concept_lines.append("Bekannte Muster:")
+            for c in known[:10]:
+                status = "AKTIV" if c["id"] == current else f"zuletzt vor {brain.tick_count - c['last_seen']} Ticks"
+                concept_lines.append(f"  #{c['id']} '{c['label']}' (erkannt {c['count']}x, {status})")
+
+        unknown = [c for c in tracker.get("clusters", []) if not c.get("label") and c["count"] > 3]
+        if unknown:
+            concept_lines.append(f"Unbekannte Muster: {len(unknown)} (frag Leon was sie sind!)")
 
         system_prompt = _SYSTEM_PROMPT_TEMPLATE.format(
             sensor_display="\n".join(sensor_lines),
@@ -163,7 +176,6 @@ def build_chat_router(
             ach=mods.get("ACh", 0),
             sht=mods.get("5HT", 0),
             concepts="\n".join(concept_lines),
-            labels=json.dumps(labels, default=str, ensure_ascii=False) if labels else "Noch keine.",
         )
 
         # Add timestamp to bust Ollama prompt cache (identical prompts = identical responses)
@@ -193,8 +205,11 @@ def build_chat_router(
 
     @api.post("/api/label")
     async def label(req: LabelRequest) -> dict[str, str]:
+        # Label a ConceptTracker cluster (stable ID), not a raw neuron
+        brain.concept_tracker.set_label(req.concept_id, req.label)
+        # Also keep old exporter label for backward compat
         exporter.set_label(req.concept_id, req.label)
-        return {"status": "ok", "concept_id": str(req.concept_id), "label": req.label}
+        return {"status": "ok", "cluster_id": str(req.concept_id), "label": req.label}
 
     @api.get("/api/concept/{concept_id}")
     async def concept_profile(concept_id: int) -> dict[str, Any]:

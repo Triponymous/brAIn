@@ -25,7 +25,7 @@ class ConceptTracker:
     def __init__(
         self,
         expansion_dim: int = 500,
-        similarity_threshold: float = 0.7,  # cosine sim to match existing cluster
+        similarity_threshold: float = 0.6,  # Jaccard similarity to match (typing vs zoom Jaccard ~0.43)
         max_clusters: int = 50,
         snapshot_interval: int = 200,  # snapshot every 200 ticks (2 seconds) — fast reaction
     ) -> None:
@@ -102,13 +102,13 @@ class ConceptTracker:
             self._current_cluster = min_idx
 
     def _cosine_sim(self, a: torch.Tensor, b: torch.Tensor) -> float:
-        """Cosine similarity between two binary vectors."""
-        dot = (a * b).sum()
-        norm_a = a.norm()
-        norm_b = b.norm()
-        if norm_a < 1e-8 or norm_b < 1e-8:
+        """Jaccard similarity between two binary vectors.
+        Better than cosine for sparse binary patterns."""
+        intersection = (a * b).sum()
+        union = ((a + b) > 0).float().sum()
+        if union < 1e-8:
             return 0.0
-        return float(dot / (norm_a * norm_b))
+        return float(intersection / union)
 
     @property
     def current_cluster_id(self) -> int:

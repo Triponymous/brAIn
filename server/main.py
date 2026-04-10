@@ -154,6 +154,9 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter:
                 sensor_display["mic_rms"] = round(_smooth_mic, 4)
                 sensor_display["mic_rms_raw"] = round(raw_mic, 6)  # debug: show unsmoothed
 
+            # ConceptTracker: stable cluster info for dashboard + LLM
+            tracker_snap = brain.concept_tracker.snapshot()
+
             base_state = {
                 "tick": brain.tick_count,
                 "sleep_mode": brain.sleep_mode,
@@ -161,6 +164,7 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter:
                 "concept_membrane": brain.concept_spike_accum.tolist(),
                 "wm_membrane": brain.regions["wm"].membrane.tolist(),
                 "sensors": sensor_display,
+                "concepts": tracker_snap,  # stable cluster IDs!
                 "spike_counts": {
                     "sensory": int(brain._last_sensory_spikes) if hasattr(brain, '_last_sensory_spikes') else 0,
                     "feature": int(brain._last_feature_spikes) if hasattr(brain, '_last_feature_spikes') else 0,

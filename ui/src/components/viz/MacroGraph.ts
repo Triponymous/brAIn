@@ -87,61 +87,50 @@ export function buildMacroGraph(state: MacroState): VizGraph {
     });
   }
 
-  // ── Concept Neurons (shown around the Concept region) ──
-  // Track concepts that have EVER been significantly active this session.
-  // This way they stay visible even when the user is idle.
-  const cm = state.concept_membrane ?? [];
-  if (cm.length > 0) {
+  // ── Concept Clusters (from ConceptTracker — stable IDs!) ──
+  const concepts = (state as any).concepts;
+  if (concepts && concepts.clusters) {
     const conceptRegion = REGION_DEFS.find((r) => r.id === "concept")!;
     const cx = conceptRegion.target[0];
     const cy = conceptRegion.target[1];
     const cz = conceptRegion.target[2];
+    const currentCluster = concepts.current_cluster;
 
-    // Update long-term concept memory (persists across renders)
-    for (let i = 0; i < cm.length; i++) {
-      const val = Math.abs(cm[i]);
-      const prev = _conceptPeaks.get(i) || 0;
-      if (val > prev) _conceptPeaks.set(i, val);
-      // Slow decay of peaks (half-life ~5 min at 30Hz push rate)
-      if (prev > 0.01) _conceptPeaks.set(i, prev * 0.9999);
-    }
+    const clusters = concepts.clusters as Array<{
+      id: number; label: string | null; count: number; active: boolean;
+    }>;
 
-    // Show concepts that are currently active OR were recently active
-    const sorted = Array.from(_conceptPeaks.entries())
-      .map(([i, peak]) => ({ i, raw: Math.abs(cm[i] ?? 0), peak }))
-      .filter((c) => c.peak > 1.0)  // ever reached significance
-      .sort((a, b) => b.peak - a.peak)
-      .slice(0, 15);
+    for (let idx = 0; idx < Math.min(clusters.length, 15); idx++) {
+      const c = clusters[idx];
+      const isActive = c.id === currentCluster;
+      const activity = isActive ? 1.0 : 0.2;
+      const angle = ((c.id * 137.5) % 360) * (Math.PI / 180);
+      const radius = 35 + (idx % 4) * 12;
 
-    for (let idx = 0; idx < sorted.length; idx++) {
-      const { i, raw, peak } = sorted[idx];
-      const isActive = raw > 0.5;  // currently firing
-      const activity = isActive ? Math.min(1, raw / 10) : 0.1;  // dim when sleeping
-      const angle = ((i * 137.5) % 360) * (Math.PI / 180);
-      const radius = 35 + (i % 5) * 8;
+      const displayLabel = c.label
+        ? `${c.label} (${c.count}x)`
+        : `Muster #${c.id} (${c.count}x)`;
 
       nodes.push({
-        id: `c_${i}`,
+        id: `cl_${c.id}`,
         type: "neuron",
         regionId: "concept",
-        label: `C${i}${isActive ? " ●" : " ○"} (${raw.toFixed(1)})`,
-        color: isActive ? "#fbbf24" : "#fbbf2430",  // bright gold when active, dim when sleeping
-        val: isActive ? 2 + activity * 3 : 1.5,     // smaller when sleeping
+        label: displayLabel,
+        color: isActive ? "#fbbf24" : c.label ? "#fbbf2480" : "#fbbf2430",
+        val: isActive ? 5 : c.label ? 3 : 2,
         activity,
         fx: cx + Math.cos(angle) * radius,
         fy: cy + Math.sin(angle) * radius * 0.7,
-        fz: cz + (i % 3 - 1) * 8,
+        fz: cz + (c.id % 3 - 1) * 8,
       });
 
-      // Connect FROM region TO concept (spikes flow outward, not back)
-      // No particles — concepts are the END of the pipeline, not a source
       links.push({
         source: "r_concept",
-        target: `c_${i}`,
-        value: activity * 0.3,
-        color: `rgba(251,191,36,${(activity * 0.2).toFixed(2)})`,
-        particles: 0,
-        particleSpeed: 0,
+        target: `cl_${c.id}`,
+        value: isActive ? 0.5 : 0.1,
+        color: isActive ? "rgba(251,191,36,0.4)" : "rgba(251,191,36,0.1)",
+        particles: isActive ? 2 : 0,
+        particleSpeed: 0.008,
       });
     }
   }

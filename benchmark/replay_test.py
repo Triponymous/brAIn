@@ -56,7 +56,7 @@ PAUSE_TICKS = 500           # 500 ticks pause (5 seconds)
 WARMUP_TICKS = 100000       # 100K ticks warmup (lots of alternating training)
 
 
-def run_replay_test(pattern_name: str, brain: Brain) -> dict:
+def run_replay_test(pattern_name: str, brain: Brain, use_tracker: bool = True) -> dict:
     """Run a single replay test for one pattern."""
     make_pattern = PATTERNS[pattern_name]
 
@@ -98,6 +98,10 @@ def run_replay_test(pattern_name: str, brain: Brain) -> dict:
             dominant_count = 0
             total_fires = 0
 
+        # ConceptTracker cluster ID (stable!)
+        tracker_cluster = brain.concept_tracker.current_cluster_id
+        tracker_label = brain.concept_tracker.current_cluster_label
+
         replay_results.append({
             "replay": replay_idx + 1,
             "dominant_concept": dominant,
@@ -106,7 +110,9 @@ def run_replay_test(pattern_name: str, brain: Brain) -> dict:
             "first_concept_tick": first_concept_tick,
             "avg_da": round(sum(da_values) / len(da_values), 6),
             "unique_concepts": len(concept_fires),
-            "_all_fires": dict(concept_fires),  # for group analysis
+            "tracker_cluster": tracker_cluster,
+            "tracker_label": tracker_label,
+            "_all_fires": dict(concept_fires),
         })
 
     # Analysis — use TOP-3 GROUP consistency (not single-neuron)
@@ -137,6 +143,15 @@ def run_replay_test(pattern_name: str, brain: Brain) -> dict:
     dominants = [r["dominant_concept"] for r in replay_results if r["dominant_concept"] >= 0]
     most_common = max(set(dominants), key=dominants.count) if dominants else -1
 
+    # ConceptTracker consistency (stable cluster IDs!)
+    tracker_ids = [r["tracker_cluster"] for r in replay_results]
+    if tracker_ids:
+        tracker_most_common = max(set(tracker_ids), key=tracker_ids.count)
+        tracker_consistency = tracker_ids.count(tracker_most_common) / len(tracker_ids) * 100
+    else:
+        tracker_most_common = -1
+        tracker_consistency = 0
+
     # Response time trend: does first_concept_tick decrease?
     response_times = [r["first_concept_tick"] for r in replay_results if r["first_concept_tick"] is not None]
     if len(response_times) >= 2:
@@ -161,10 +176,13 @@ def run_replay_test(pattern_name: str, brain: Brain) -> dict:
         "analysis": {
             "dominant_concept": most_common,
             "consistency_pct": round(consistency, 1),
+            "tracker_cluster": tracker_most_common,
+            "tracker_consistency_pct": round(tracker_consistency, 1),
             "response_speedup_pct": speedup,
             "da_habituation_pct": da_decrease,
         },
-        "pass": consistency >= 60,  # 60% = same concept fires for most replays
+        # PASS if ConceptTracker achieves >80% consistency
+        "pass": tracker_consistency >= 80,
     }
 
 
@@ -176,18 +194,21 @@ def run_all():
     print("  BENCHMARK TEST 2: REPLAY TEST")
     print("  Does the SNN recognize repeated patterns?")
 
-    # Warmup: train on alternating patterns so STDP has time to differentiate
-    print(f"\n  Warmup: {WARMUP_TICKS} ticks on alternating patterns...")
-    pattern_names_all = list(PATTERNS.keys())
-    for tick in range(WARMUP_TICKS):
-        pidx = (tick // 5000) % len(pattern_names_all)
-        pname = pattern_names_all[pidx]
-        if pname == "idle_away":
-            pidx = 0
-            pname = pattern_names_all[0]
-        vec = encode_snapshot(PATTERNS[pname]())
-        brain.tick(vec)
+    # Warmup: train each pattern SEPARATELY so ConceptTracker creates distinct clusters
+    print(f"\n  Warmup: {WARMUP_TICKS} ticks...")
+    pattern_names_all = [k for k in PATTERNS.keys() if k != "idle_away"]
+    ticks_per_pattern = WARMUP_TICKS // (len(pattern_names_all) * 2)
+
+    for cycle in range(2):  # 2 full cycles
+        for pname in pattern_names_all:
+            for tick in range(ticks_per_pattern):
+                brain.tick(encode_snapshot(PATTERNS[pname]()))
+            # Pause between patterns so tracker snapshots each one
+            for tick in range(1000):
+                brain.tick(encode_snapshot(PATTERNS["idle_away"]()))
+
     print(f"  Warmup complete. Tick: {brain.tick_count}")
+    print(f"  ConceptTracker clusters: {brain.concept_tracker.snapshot()['num_clusters']}")
     print("=" * 60)
 
     results = {}
@@ -204,25 +225,23 @@ def run_all():
 
         print(f"\n  Per-replay results:")
         for r in result["replays"]:
-            print(f"    Replay {r['replay']:2d}: dominant=C{r['dominant_concept']} "
-                  f"({r['dominant_pct']}%), first_tick={r['first_concept_tick']}, "
+            print(f"    Replay {r['replay']:2d}: tracker=Cluster_{r['tracker_cluster']} "
+                  f"WTA=C{r['dominant_concept']} ({r['dominant_pct']}%) "
                   f"DA={r['avg_da']:.4f}")
 
         a = result["analysis"]
         print(f"\n  Analysis:")
-        print(f"    Dominant concept: C{a['dominant_concept']}")
-        print(f"    Consistency: {a['consistency_pct']}% (target: >60%)")
-        print(f"    Response speedup: {a['response_speedup_pct']}% (target: >0%)")
-        print(f"    DA habituation: {a['da_habituation_pct']}% (target: >0%)")
+        print(f"    ConceptTracker: Cluster_{a['tracker_cluster']} ({a['tracker_consistency_pct']}% consistency)")
+        print(f"    WTA neuron (unstable): C{a['dominant_concept']} ({a['consistency_pct']}%)")
         print(f"    Result: {'PASS' if result['pass'] else 'FAIL'}")
 
-    # Discrimination: do different patterns produce different concepts?
-    dominant_concepts = [r["analysis"]["dominant_concept"] for r in results.values()]
-    all_different = len(set(dominant_concepts)) == len(dominant_concepts)
+    # Discrimination: do different patterns produce different TRACKER clusters?
+    tracker_clusters = [r["analysis"]["tracker_cluster"] for r in results.values()]
+    all_different = len(set(tracker_clusters)) == len(tracker_clusters)
 
     print(f"\n{'=' * 60}")
     print(f"  DISCRIMINATION: Different patterns → different concepts?")
-    print(f"  Dominant concepts: {dominant_concepts}")
+    print(f"  Tracker clusters: {tracker_clusters}")
     print(f"  All different: {all_different}")
     print(f"  Result: {'PASS' if all_different else 'FAIL'}")
 

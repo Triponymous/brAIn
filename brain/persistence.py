@@ -48,6 +48,13 @@ CREATE TABLE IF NOT EXISTS wta_state (
     thresholds BLOB NOT NULL,
     firing_rate BLOB NOT NULL
 );
+CREATE TABLE IF NOT EXISTS concept_tracker (
+    cluster_id INTEGER PRIMARY KEY,
+    centroid BLOB NOT NULL,
+    label TEXT,
+    count INTEGER NOT NULL,
+    last_seen INTEGER NOT NULL
+);
 """
 
 
@@ -138,6 +145,22 @@ def save_brain(brain: Brain, path: Path) -> None:
                         _tensor_to_blob(region._firing_rate),
                     ),
                 )
+        # Expansion layer weights (fixed random — must be saved for deterministic replay)
+        if hasattr(brain, '_expansion_weights'):
+            conn.execute(
+                "INSERT INTO meta(key, value) VALUES ('expansion_weights', ?)",
+                (_tensor_to_blob(brain._expansion_weights),),
+            )
+
+        # ConceptTracker clusters (stable concept IDs + labels)
+        if hasattr(brain, 'concept_tracker'):
+            ct = brain.concept_tracker
+            for i in range(len(ct.centroids)):
+                conn.execute(
+                    "INSERT INTO concept_tracker(cluster_id, centroid, label, count, last_seen) VALUES (?, ?, ?, ?, ?)",
+                    (i, _tensor_to_blob(ct.centroids[i]), ct.cluster_labels[i],
+                     ct.cluster_counts[i], ct.cluster_last_seen[i]),
+                )
         conn.commit()
     finally:
         conn.close()
@@ -189,6 +212,33 @@ def load_brain(path: Path) -> Brain:
                     region._firing_rate = _blob_to_tensor(firing_rate_blob)
         except sqlite3.OperationalError:
             pass  # Old checkpoint without wta_state table — use defaults
+
+        # Expansion layer weights
+        try:
+            row = conn.execute("SELECT value FROM meta WHERE key='expansion_weights'").fetchone()
+            if row and hasattr(brain, '_expansion_weights'):
+                brain._expansion_weights = _blob_to_tensor(row[0])
+        except (sqlite3.OperationalError, Exception):
+            pass
+
+        # ConceptTracker clusters (may not exist in older checkpoints)
+        try:
+            rows = conn.execute(
+                "SELECT cluster_id, centroid, label, count, last_seen FROM concept_tracker ORDER BY cluster_id"
+            ).fetchall()
+            if rows and hasattr(brain, 'concept_tracker'):
+                ct = brain.concept_tracker
+                ct.centroids = []
+                ct.cluster_labels = []
+                ct.cluster_counts = []
+                ct.cluster_last_seen = []
+                for cluster_id, centroid_blob, label, count, last_seen in rows:
+                    ct.centroids.append(_blob_to_tensor(centroid_blob))
+                    ct.cluster_labels.append(label)
+                    ct.cluster_counts.append(count)
+                    ct.cluster_last_seen.append(last_seen)
+        except sqlite3.OperationalError:
+            pass  # Old checkpoint — use empty tracker
 
         return brain
     finally:
