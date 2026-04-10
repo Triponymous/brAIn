@@ -34,8 +34,8 @@ class WTALayer:
         threshold: float = 1.0,
         inhibit_factor: float = 0.5,
         # Intrinsic plasticity parameters
-        ip_rate: float = 0.05,       # threshold increase per win (Diehl&Cook: 0.05)
-        ip_tau: float = 1000000.0,  # threshold decay tau (very slow — let winners keep their territory)
+        ip_rate: float = 0.01,       # threshold increase per spike — tuned for consistency + discrimination
+        ip_tau: float = 10000000.0, # threshold decay tau (Diehl&Cook: 1e7 — quasi-permanent)
     ) -> None:
         if k < 1:
             raise ValueError(f"k must be >= 1, got {k}")

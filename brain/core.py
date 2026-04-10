@@ -113,10 +113,31 @@ class Brain:
             syn._target_w_sum = syn.weights.sum(dim=1, keepdim=True).mean().reshape(1)
             return syn
 
+        # ── Diehl & Cook architecture: only ONE learning synapse ──
+        # The gold standard for unsupervised STDP (95% MNIST accuracy) uses
+        # exactly 2 layers: Input → Excitatory (WTA). Adding intermediate
+        # layers (Feature, Association) with STDP dilutes the signal and
+        # prevents concept specialization (proven by benchmark failure).
+        #
+        # Our architecture: Sensory → [Concept via STDP] → WM/Motor
+        # Feature/Association still exist for compatibility but their
+        # synapses are FIXED (identity-like, no learning).
+        sensory_concept = _make_stdp(num_sensory, num_concept)
+
+        # Non-learning pass-through synapses for Feature and Association
+        # (kept for compatibility with dashboard/visualization code)
+        sf_fixed = STDPSynapse(num_sensory, num_feature, w_init=0.3)
+        sf_fixed._synaptic_scaling = False
+        fa_fixed = STDPSynapse(num_feature, num_association, w_init=0.3)
+        fa_fixed._synaptic_scaling = False
+        ac_fixed = STDPSynapse(num_association, num_concept, w_init=0.0)
+        ac_fixed._synaptic_scaling = False
+
         self.synapses: dict[str, object] = {
-            "sensory_feature": _make_stdp(num_sensory, num_feature),
-            "feature_association": _make_stdp(num_feature, num_association),
-            "association_concept": _make_stdp(num_association, num_concept),
+            "sensory_feature": sf_fixed,           # fixed, no learning
+            "feature_association": fa_fixed,        # fixed, no learning
+            "association_concept": ac_fixed,        # fixed, no learning
+            "sensory_concept": sensory_concept,     # THE learning synapse
             "concept_wm": _make_stdp(num_concept, num_wm),
             "concept_motor": _make_rstdp(num_concept, num_motor),
         }
@@ -172,22 +193,23 @@ class Brain:
         sensory = self.regions["sensory"]
         sensory_spikes = sensory.step(input_current, dt=dt)
 
-        # 4. Feature
+        # 4. Feature (fixed pass-through, no learning)
         feature = self.regions["feature"]
         sf = self.synapses["sensory_feature"]
         feature_input = sf.forward(sensory_spikes)
         feature_spikes = feature.step(feature_input, dt=dt)
 
-        # 5. Association
+        # 5. Association (fixed pass-through, no learning)
         association = self.regions["association"]
         fa = self.synapses["feature_association"]
         association_input = fa.forward(feature_spikes)
         association_spikes = association.step(association_input, dt=dt)
 
-        # 6. Concept (WTA)
+        # 6. Concept (WTA) — DIRECT from sensory via learning synapse
+        # This is the Diehl & Cook architecture: input → excitatory WTA
         concept = self.regions["concept"]
-        ac = self.synapses["association_concept"]
-        concept_input = ac.forward(association_spikes)
+        sc = self.synapses["sensory_concept"]
+        concept_input = sc.forward(sensory_spikes)
         concept_spikes = concept.step(concept_input, dt=dt)
 
         # Accumulate concept spikes for visualization
@@ -288,25 +310,7 @@ class Brain:
             self.modulators.inject("ACh", min(0.001, novelty * 0.02))
             self.modulators.inject("ACh", min(0.03, novelty * 0.5))
 
-        # ═══ SYNAPTIC HOMEOSTASIS — prevents weight drift ═══
-        # OLD: every 500 ticks (5s) with 20% scaling → killed all STDP learning
-        # NEW: every 30,000 ticks (~5 min) with 2% scaling → gentle guardrails
-        #
-        # Real brains use homeostatic plasticity on timescales of hours/days.
-        # Our version just prevents total weight collapse or explosion.
-        if self.tick_count % 30000 == 0 and self.tick_count > 0:
-            for syn_name, syn in self.synapses.items():
-                w = syn.weights
-                row_sums = w.sum(dim=1, keepdim=True)
-                row_mean = row_sums / w.shape[1]
-                # Only intervene if a row is extremely unbalanced
-                # (mean < 0.05 = nearly dead, mean > 0.8 = nearly saturated)
-                needs_up = (row_mean < 0.05).float()
-                needs_down = (row_mean > 0.8).float()
-                scale = torch.ones_like(row_sums)
-                scale = scale + needs_up * 0.02    # nudge dead rows up by 2%
-                scale = scale - needs_down * 0.02  # nudge saturated rows down by 2%
-                syn.weights = (w * scale).clamp(syn.w_min, syn.w_max)
+        # Homeostasis is now handled by weight normalization inside STDP synapse.
 
         # 7. WM
         wm = self.regions["wm"]
@@ -320,12 +324,12 @@ class Brain:
         motor_input = cm.forward(concept_spikes)
         motor_spikes = motor.step(motor_input, dt=dt)
 
-        # 9. STDP updates (gated by ACh = attention)
+        # 9. STDP update — ONLY on sensory→concept (the learning synapse)
+        # Feature/Association synapses are fixed (no learning).
+        # This is the Diehl & Cook architecture proven to work.
         ach = self.modulators.level("ACh")
-        modulation = 1.0 + ach  # ACh boosts learning rate when attention is high
-        sf.update(sensory_spikes, feature_spikes, dt=dt, modulation=modulation)
-        fa.update(feature_spikes, association_spikes, dt=dt, modulation=modulation)
-        ac.update(association_spikes, concept_spikes, dt=dt, modulation=modulation)
+        modulation = 1.0 + ach
+        sc.update(sensory_spikes, concept_spikes, dt=dt, modulation=modulation)
         cw.update(concept_spikes, wm_spikes, dt=dt, modulation=0.5)
 
         # 10. R-STDP update for motor (gated by DA = reward proxy)

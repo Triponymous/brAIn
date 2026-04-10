@@ -50,7 +50,7 @@ PATTERNS = {
     },
 }
 
-REPLAY_COUNT = 10           # play each pattern 10 times
+REPLAY_COUNT = 15           # play each pattern 15 times
 TICKS_PER_REPLAY = 2000     # each replay = 2000 ticks (20 seconds at 100Hz)
 PAUSE_TICKS = 1000          # 1000 ticks pause between replays (10 seconds)
 
