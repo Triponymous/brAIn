@@ -105,18 +105,36 @@ def run_replay_test(pattern_name: str, brain: Brain) -> dict:
             "first_concept_tick": first_concept_tick,
             "avg_da": round(sum(da_values) / len(da_values), 6),
             "unique_concepts": len(concept_fires),
+            "_all_fires": dict(concept_fires),  # for group analysis
         })
 
-    # Analysis
-    dominants = [r["dominant_concept"] for r in replay_results if r["dominant_concept"] >= 0]
+    # Analysis — use TOP-3 GROUP consistency (not single-neuron)
+    # With k=3, a "concept" is a GROUP of 3 neurons, not one neuron.
+    # Measure: do the top-3 neurons across all replays form a stable set?
+    all_top3_sets = []
+    for r in replay_results:
+        # Get top-3 most frequent concepts for this replay
+        top3 = set(sorted(r.get("_all_fires", {}).keys(),
+                          key=lambda c: r.get("_all_fires", {}).get(c, 0), reverse=True)[:3])
+        all_top3_sets.append(top3)
 
-    # Consistency: does the same concept dominate across replays?
-    if dominants:
-        most_common = max(set(dominants), key=dominants.count)
-        consistency = dominants.count(most_common) / len(dominants) * 100
+    # Consistency: average pairwise Jaccard similarity between replay top-3 sets
+    if len(all_top3_sets) >= 2:
+        jaccard_sum = 0
+        count = 0
+        for i in range(len(all_top3_sets)):
+            for j in range(i + 1, len(all_top3_sets)):
+                inter = len(all_top3_sets[i] & all_top3_sets[j])
+                union = len(all_top3_sets[i] | all_top3_sets[j])
+                jaccard_sum += inter / max(1, union)
+                count += 1
+        consistency = jaccard_sum / count * 100
     else:
-        most_common = -1
         consistency = 0
+
+    # Most common dominant for backward compat
+    dominants = [r["dominant_concept"] for r in replay_results if r["dominant_concept"] >= 0]
+    most_common = max(set(dominants), key=dominants.count) if dominants else -1
 
     # Response time trend: does first_concept_tick decrease?
     response_times = [r["first_concept_tick"] for r in replay_results if r["first_concept_tick"] is not None]

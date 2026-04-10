@@ -34,7 +34,7 @@ class WTALayer:
         threshold: float = 1.0,
         inhibit_factor: float = 0.5,
         # Intrinsic plasticity parameters
-        ip_rate: float = 0.01,       # threshold increase per spike — tuned for consistency + discrimination
+        ip_rate: float = 0.002,      # threshold increase per spike — slower because lateral inhibition handles discrimination
         ip_tau: float = 10000000.0, # threshold decay tau (Diehl&Cook: 1e7 — quasi-permanent)
     ) -> None:
         if k < 1:
@@ -53,13 +53,24 @@ class WTALayer:
         self.ip_rate = ip_rate
         self.ip_tau = ip_tau
         self.thresholds = torch.full((num_neurons,), threshold)
-        self._firing_rate = torch.full((num_neurons,), k / num_neurons)  # init at target
-        self._target_rate = k / num_neurons  # expected proportion of spikes
+        self._firing_rate = torch.full((num_neurons,), k / num_neurons)
+        self._target_rate = k / num_neurons
+
+        # Lateral inhibition weights (learned via anti-Hebbian rule):
+        # When two neurons co-fire, their mutual inhibition INCREASES.
+        # This pushes them apart → they specialize for different patterns.
+        # Shape: [num_neurons, num_neurons], diagonal = 0 (no self-inhibition)
+        self.lateral_weights = torch.zeros(num_neurons, num_neurons)
+        self._lateral_rate = 0.0005  # slow lateral learning — don't rotate within-pattern
 
     def step(self, input_current: torch.Tensor, dt: float = 1.0) -> torch.Tensor:
-        # Standard LIF integrate
+        # Lateral inhibition: subtract weighted sum of other neurons' membrane
+        # This makes neurons that frequently co-fire compete harder
+        lateral_inhib = self.lateral_weights @ self.membrane.clamp(min=0)
+
+        # Standard LIF integrate with lateral inhibition
         leak = -self.membrane / self.tau_mem
-        self.membrane = self.membrane + dt * (leak + input_current)
+        self.membrane = self.membrane + dt * (leak + input_current - lateral_inhib)
 
         # Find above-threshold neurons (per-neuron adaptive thresholds)
         above = self.membrane >= self.thresholds
@@ -95,9 +106,24 @@ class WTALayer:
         self.thresholds = self.threshold + (self.thresholds - self.threshold) * decay
         # Increase threshold for neurons that just fired
         self.thresholds = self.thresholds + self.ip_rate * spikes
-        # Track firing rate for diagnostics (not used for threshold adaptation)
+        # Track firing rate for diagnostics
         alpha = dt / max(self.ip_tau, 1000.0)
         self._firing_rate = self._firing_rate * (1 - alpha) + spikes * alpha
+
+        # ── Lateral Inhibition Learning (anti-Hebbian) ──
+        # If two neurons co-fire (or fire close together), INCREASE mutual inhibition.
+        # This pushes co-firing neurons to specialize for different patterns.
+        # outer(spikes, spikes) = 1 where both neurons fired this tick.
+        if spikes.sum() > 0:
+            co_fire = torch.outer(spikes, spikes)
+            # Remove self-connections (diagonal)
+            co_fire.fill_diagonal_(0)
+            # Increase lateral weights where neurons co-fired
+            self.lateral_weights = self.lateral_weights + self._lateral_rate * co_fire
+            # Slow decay to prevent runaway inhibition
+            self.lateral_weights = self.lateral_weights * 0.9999
+            # Clamp to [0, 1]
+            self.lateral_weights = self.lateral_weights.clamp(0, 1.0)
 
         return spikes
 

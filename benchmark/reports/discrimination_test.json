@@ -1,84 +1,84 @@
 {
   "test": "discrimination",
-  "timestamp": 1775857352.887454,
+  "timestamp": 1775859480.013608,
   "scenario_concepts": {
     "typing_vscode": [
       [
-        65,
-        41,
-        100
+        26,
+        141,
+        134
       ],
       [
-        100,
-        156,
-        87
+        0,
+        75,
+        54
       ],
       [
-        171,
-        20,
-        167
+        11,
+        85,
+        46
       ]
     ],
     "zoom_call": [
       [
-        65,
-        41,
-        100
+        58,
+        59,
+        84
       ],
       [
-        41,
-        156,
-        87
+        193,
+        21,
+        159
       ],
       [
-        171,
-        87,
-        167
+        88,
+        33,
+        129
       ]
     ],
     "music_spotify": [
       [
-        65,
-        41,
-        100
+        96,
+        43,
+        132
       ],
       [
-        156,
-        87,
-        167
+        98,
+        51,
+        5
       ],
       [
-        171,
-        20,
-        167
+        91,
+        12,
+        39
       ]
     ],
     "idle_away": [
       [
-        100,
-        156,
-        87
+        25,
+        194,
+        165
       ],
       [
-        171,
-        156,
-        167
+        58,
+        84,
+        109
       ],
       [
-        171,
-        20,
-        183
+        26,
+        141,
+        62
       ]
     ]
   },
   "confusion": {
-    "typing_vscode_vs_zoom_call": 77.77777777777777,
-    "typing_vscode_vs_music_spotify": 88.88888888888887,
-    "typing_vscode_vs_idle_away": 44.444444444444436,
-    "zoom_call_vs_music_spotify": 77.77777777777777,
-    "zoom_call_vs_idle_away": 33.33333333333333,
-    "music_spotify_vs_idle_away": 55.55555555555554
+    "typing_vscode_vs_zoom_call": 0.0,
+    "typing_vscode_vs_music_spotify": 0.0,
+    "typing_vscode_vs_idle_away": 0.0,
+    "zoom_call_vs_music_spotify": 0.0,
+    "zoom_call_vs_idle_away": 0.0,
+    "music_spotify_vs_idle_away": 0.0
   },
-  "distinct_groups": 0,
-  "overall_pass": false
+  "distinct_groups": 4,
+  "overall_pass": true
 }

@@ -66,11 +66,12 @@ class Brain:
         # level. Without this, all-to-all weights cause EVERY feature neuron to fire
         # on every tick (input >> threshold), destroying selectivity.
         # k values: ~10% of layer size = biologically realistic sparsity.
-        # Default concept_k: 1 = true Winner-Takes-All (Diehl&Cook style)
-        # k=5 caused all patterns to share the same winners. k=1 forces
-        # each pattern to have exactly ONE dominant concept neuron.
+        # concept_k=3: allows multiple neurons to co-fire per tick.
+        # Lateral inhibition learning then pushes co-firing neurons apart
+        # so they specialize for different patterns. k=1 prevents this
+        # because there's no co-firing to learn from.
         if concept_k is None:
-            concept_k = 1
+            concept_k = 3
         feature_k = max(1, num_feature // 10)   # 20 out of 200
         association_k = max(1, num_association // 10)  # 50 out of 500
 

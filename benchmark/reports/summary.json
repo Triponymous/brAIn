@@ -1,9 +1,9 @@
 {
-  "timestamp": 1775857357.867009,
+  "timestamp": 1775859488.511898,
   "results": {
     "stability": true,
     "replay": false,
-    "discrimination": false,
+    "discrimination": true,
     "modulator": true
   }
 }
