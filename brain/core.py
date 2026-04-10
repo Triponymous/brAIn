@@ -277,10 +277,12 @@ class Brain:
         # At 100Hz, a single clap spans ~5-10 ticks. We need NE to reach
         # ~0.10 from those few ticks. With NE tau=500:
         # 10 ticks × 0.01/tick = 0.1 injected, minus decay = ~0.08 visible.
-        if sensory_change > 5:
-            scale = min(1.0, sensory_change / 20.0)
-            self.modulators.inject("DA", 0.005 * scale)
-            self.modulators.inject("NE", 0.005 * scale)
+        if sensory_change > 8:
+            # Change >8 spikes: something notable (start/stop speaking, app switch)
+            # Normal speech jitter is ~3-6, so this only triggers on real transitions
+            scale = min(1.0, sensory_change / 25.0)
+            self.modulators.inject("DA", 0.004 * scale)
+            self.modulators.inject("NE", 0.003 * scale)
             self.modulators.inject("ACh", 0.002 * scale)
 
         if sensory_change > 15:
