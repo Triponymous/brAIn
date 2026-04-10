@@ -5,6 +5,7 @@ type Message = {
   text: string;
   backend?: string;
   tool_results?: Array<{ tool: string; result: unknown }>;
+  timestamp?: number;
 };
 
 function loadSavedMessages(): Message[] {
@@ -59,7 +60,7 @@ export function ChatPanel() {
     const msg = input.trim();
     if (!msg || loading) return;
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", text: msg }]);
+    setMessages((prev) => [...prev, { role: "user", text: msg, timestamp: Date.now() }]);
     setLoading(true);
 
     try {
@@ -81,6 +82,7 @@ export function ChatPanel() {
           text: data.text || "(no response)",
           backend: data.backend,
           tool_results: data.tool_results,
+          timestamp: Date.now(),
         },
       ]);
     } catch (err) {
@@ -106,6 +108,9 @@ export function ChatPanel() {
         {messages.map((m, i) => (
           <div key={i} className={m.role === "user" ? "text-blue-300" : "text-gray-200"}>
             <span className="text-gray-500 text-xs">{m.role === "user" ? "You" : "Pet"}</span>
+            {m.timestamp && (
+              <span className="text-gray-600 text-[10px] ml-1">{new Date(m.timestamp).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+            )}
             {m.backend && (
               <span className="text-gray-600 text-[10px] ml-1">[{m.backend}]</span>
             )}
