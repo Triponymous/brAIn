@@ -7,11 +7,23 @@ type Message = {
   tool_results?: Array<{ tool: string; result: unknown }>;
 };
 
+function loadSavedMessages(): Message[] {
+  try {
+    const saved = localStorage.getItem("braintest_chat");
+    return saved ? JSON.parse(saved) : [];
+  } catch { return []; }
+}
+
 export function ChatPanel() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(loadSavedMessages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Persist messages to localStorage
+  useEffect(() => {
+    localStorage.setItem("braintest_chat", JSON.stringify(messages.slice(-50)));
+  }, [messages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

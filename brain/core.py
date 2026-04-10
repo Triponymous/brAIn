@@ -151,15 +151,17 @@ class Brain:
             # This triggers spontaneous reactivation of learned assemblies
             input_current = torch.randn_like(input_current) * self._sleep_noise_scale
 
-            # Power-law weight decay every 100 ticks during sleep:
-            # Strong weights stay strong, weak weights get weaker.
-            # w *= w^0.02 → for w=0.8: 0.8*0.8^0.02 = 0.796 (barely changes)
-            #              → for w=0.1: 0.1*0.1^0.02 = 0.095 (shrinks faster)
-            if self.tick_count % 100 == 0:
+            # Sleep consolidation: gentle weight decay every 5 MINUTES.
+            # Over an 8-hour sleep: 8*60/5 = 96 decay steps.
+            # w=0.3 after 96 steps: 0.3 * 0.999^96 = 0.272 (small reduction)
+            # w=0.05 after 96 steps: 0.05 * 0.995^96 = 0.031 (bigger reduction)
+            # This prunes noise without killing strong connections.
+            if self.tick_count % 30000 == 0:  # every 5 min at 100Hz
                 for syn in self.synapses.values():
                     w = syn.weights
-                    # Power-law: multiply by w^exponent. Avoid log(0).
-                    decay = torch.pow(w.clamp(min=1e-6), 1.0 - self._sleep_decay_exponent)
+                    # Multiplicative decay: strong weights barely affected, weak shrink more
+                    # Scale: 0.999 for w>0.2 (keep), 0.99 for w<0.05 (prune)
+                    decay = torch.where(w > 0.1, torch.tensor(0.999), torch.tensor(0.99))
                     syn.weights = (w * decay).clamp(syn.w_min, syn.w_max)
 
             # Suppress modulators during sleep (calm brain)
