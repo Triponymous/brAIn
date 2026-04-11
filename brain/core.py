@@ -322,29 +322,70 @@ class Brain:
         #   Surprise (clap after silence): NE spikes to ~0.1
 
         real_activity = sensory_sum - 8  # subtract time tonic neurons
-        user_present = real_activity > 5  # more than just app + time
+        user_present = real_activity > 5
 
         # Track previous sensory level for change detection
         if not hasattr(self, '_prev_sensory_sum'):
             self._prev_sensory_sum = sensory_sum
+            self._activity_history = []  # rolling 30-min activity window
+            self._switch_rate_smooth = 0.0
 
         sensory_change = abs(sensory_sum - self._prev_sensory_sum)
         self._prev_sensory_sum = sensory_sum
 
-        # ── 1. User is present and active (speaking, mousing, etc.) ──
-        if user_present:
-            # ACh: attention scales with activity level
-            ach_inject = min(0.0002, real_activity * 0.000005)
-            self.modulators.inject("ACh", ach_inject)
+        # ── Track sustained activity for stress detection ──
+        # Read stress indicators directly from encoding neurons:
+        # Neuron 76: key variability (>0 = erratic typing)
+        # Neuron 77: burst detection (>0 = sudden typing spike)
+        # Neuron 159: frantic window switching (>0 = rapid app changes)
+        n = input_current.shape[0]
+        # Thresholds calibrated against real encoding:
+        # calm_coding: key_var neuron = 0.3-0.9 (variability 0.1-0.3)
+        # stressed_coding: key_var neuron = 3.0-6.0 (variability 1.0-2.0)
+        # Threshold at 2.0 cleanly separates calm from stress
+        is_erratic = float(input_current[76].item()) > 2.0 if n > 76 else False
+        is_burst = float(input_current[77].item()) > 0.5 if n > 77 else False
+        is_frantic = float(input_current[159].item()) > 0.5 if n > 159 else False
+        stress_signals = int(is_erratic) + int(is_burst) + int(is_frantic)
 
-            # DA: mild curiosity when active
+        # Activity snapshot every 100 ticks (~1s) for faster stress detection
+        if self.tick_count % 100 == 0:
+            self._activity_history.append({
+                "activity": real_activity,
+                "stress_signals": stress_signals,
+                "sensory_change": sensory_change,
+            })
+            # Keep last 300 entries (5 min at 1s intervals)
+            if len(self._activity_history) > 300:
+                self._activity_history.pop(0)
+
+        # ── Sustained stress detection ──
+        # Stress = high activity + stress signals for >2 minutes
+        sustained_stress = False
+        if len(self._activity_history) >= 120:  # at least 2 minutes
+            recent = self._activity_history[-120:]
+            avg_activity = sum(h["activity"] for h in recent) / len(recent)
+            stress_count = sum(1 for h in recent if h["stress_signals"] > 0)
+            stress_pct = stress_count / len(recent)
+            sustained_stress = avg_activity > 12 and stress_pct > 0.3
+
+        # ── 1. User is present and active ──
+        if user_present:
+            # ACh scales with activity — target eq=0.03 during normal, 0.06 during focus
+            ach_inject = min(0.0003, real_activity * 0.000008)
+            self.modulators.inject("ACh", ach_inject)
             self.modulators.inject("DA", 0.00003)
 
-            # 5HT: contentment when activity is steady (low change)
-            # Need eq ~0.05 during steady work. 5HT tau=1000.
-            # 0.00005/tick × 1000 = 0.05 equilibrium.
-            if sensory_change < 5:
+            # 5HT: rises during calm steady work, DROPS during stress
+            if sensory_change < 5 and not sustained_stress:
                 self.modulators.inject("5HT", 0.00005)
+            elif sustained_stress:
+                self.modulators.inject("5HT", -0.00003)  # stress suppresses contentment
+
+        # ── Sustained stress → NE rises slowly ──
+        if sustained_stress:
+            self.modulators.inject("NE", 0.0001)  # slow sustained NE build
+            self.modulators.inject("ACh", 0.0001)  # heightened attention
 
         # ── 2. Something CHANGED (sensory spike count jumped) ──
         # Target: NE reaches ~0.15 on loud clap, ~0.05 on speech start.

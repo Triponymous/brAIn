@@ -1,0 +1,39 @@
+{
+  "timestamp": 1775877030.177396,
+  "results": [
+    {
+      "name": "stress_detection",
+      "pass": true,
+      "ne_calm": 0.0,
+      "ne_stress": 0.05005001666666556,
+      "sht_calm": 0.04966856746738317,
+      "sht_stress": -0.030015002499725746
+    },
+    {
+      "name": "flow_protection",
+      "pass": true,
+      "modulators": {
+        "DA": 0.006015012499994641,
+        "NE": 0.0,
+        "ACh": 0.029091477079195488,
+        "5HT": 0.050025004166666075
+      }
+    },
+    {
+      "name": "rhythm_learning",
+      "pass": true,
+      "distinct_phases": 3,
+      "total_phases": 8
+    },
+    {
+      "name": "memory_persistence",
+      "pass": true
+    },
+    {
+      "name": "uniqueness",
+      "pass": true
+    }
+  ],
+  "passed": 5,
+  "total": 5
+}
