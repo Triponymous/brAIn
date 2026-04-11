@@ -153,10 +153,37 @@ class ProactiveEngine:
 
     def _check(self) -> dict[str, str] | None:
         mods = self.brain.modulators.snapshot()
+
+        # 0. ConceptTracker transition — the BEST trigger for proactive messages
+        transition = self.brain.concept_tracker.get_transition()
+        if transition:
+            if transition["is_new"]:
+                # New pattern the pet has never seen before!
+                return {
+                    "category": "new_pattern",
+                    "context": f"Neues Muster entdeckt (Muster #{transition['to_cluster']}). "
+                               f"Das habe ich noch nie gesehen.",
+                }
+            elif transition["to_label"]:
+                # Switched to a known pattern
+                return {
+                    "category": "pattern_switch",
+                    "context": f"Wechsel erkannt: jetzt '{transition['to_label']}' "
+                               f"(vorher: {transition['from_label'] or 'unbekannt'}).",
+                }
+            elif transition["from_label"] and not transition["to_label"]:
+                # Left a known pattern for an unknown one
+                return {
+                    "category": "unknown_pattern",
+                    "context": f"Leon hat aufgehoert mit '{transition['from_label']}'. "
+                               f"Jetzt passiert etwas Neues (Muster #{transition['to_cluster']}). "
+                               f"Was machst du, Leon?",
+                }
+
         accum = self.brain.concept_spike_accum
         max_val = float(accum.max().item())
 
-        # 1. New concept emerged
+        # 1. New concept emerged (old method — kept as fallback)
         active_ids = (accum > max_val * 0.3).nonzero(as_tuple=True)[0].tolist() if max_val > 0.01 else []
         new_concepts = [cid for cid in active_ids if cid not in self._seen_concepts]
         for cid in active_ids:

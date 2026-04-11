@@ -89,10 +89,14 @@ async def brain_tick_loop(brain: Any, adapter: Any, hz: float = 100.0, exporter:
                         sensor_display["app"] = sensor_snap_ep["active_app"].get("name", "?")
                     if "keystroke_rate" in sensor_snap_ep:
                         sensor_display["keys"] = sensor_snap_ep["keystroke_rate"].get("count", 0)
+                    # Include ConceptTracker cluster info
+                    tracker = brain.concept_tracker.snapshot()
+                    sensor_display["cluster_id"] = tracker.get("current_cluster", -1)
+                    sensor_display["cluster_label"] = tracker.get("current_label")
                     episode_logger.log(
                         tick=brain.tick_count,
-                        modulators=snap.get("modulators", {}),
-                        active_concepts=snap.get("active_concepts", []),
+                        modulators=brain.modulators.snapshot(),
+                        active_concepts=[tracker.get("current_cluster", -1)],
                         sensor_summary=sensor_display,
                         sleep_mode=brain.sleep_mode,
                     )

@@ -223,10 +223,13 @@ class Brain:
         # baseline-idle 100, baseline-mic 144) that are identical across
         # all patterns. Only discriminating neurons go through expansion.
         discriminating_spikes = sensory_spikes.clone()
-        discriminating_spikes[148:156] = 0  # time-tonic (same for all patterns)
-        discriminating_spikes[100] = 0      # idle baseline bin
-        discriminating_spikes[144] = 0      # mic RMS baseline bin
-        discriminating_spikes[160:164] = 0  # activity level (derived, not unique)
+        n = len(discriminating_spikes)
+        # Mask out shared-baseline neurons (only if full 200-dim encoding)
+        if n >= 164:
+            discriminating_spikes[148:156] = 0  # time-tonic
+            discriminating_spikes[100] = 0      # idle baseline
+            discriminating_spikes[144] = 0      # mic RMS baseline
+            discriminating_spikes[160:164] = 0  # activity level
 
         expansion_input = self._expansion_weights @ discriminating_spikes
         expansion_spikes = (expansion_input >= self._expansion_threshold).float()

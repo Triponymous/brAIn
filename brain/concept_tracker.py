@@ -124,6 +124,27 @@ class ConceptTracker:
         if 0 <= cluster_id < len(self.cluster_labels):
             self.cluster_labels[cluster_id] = label
 
+    def get_transition(self) -> dict[str, Any] | None:
+        """Returns info about the last cluster transition, if any.
+        Used by the proactive engine to ask 'what is this new pattern?'"""
+        if not hasattr(self, '_prev_cluster'):
+            self._prev_cluster = -1
+        if self._current_cluster != self._prev_cluster:
+            old = self._prev_cluster
+            self._prev_cluster = self._current_cluster
+            if old >= 0:  # don't trigger on first assignment
+                return {
+                    "from_cluster": old,
+                    "from_label": self.cluster_labels[old] if old < len(self.cluster_labels) else None,
+                    "to_cluster": self._current_cluster,
+                    "to_label": self.current_cluster_label,
+                    "is_new": self._current_cluster >= 0 and (
+                        self._current_cluster >= len(self.cluster_counts) or
+                        self.cluster_counts[self._current_cluster] <= 1
+                    ),
+                }
+        return None
+
     def snapshot(self) -> dict[str, Any]:
         """Return current state for LLM/dashboard."""
         clusters = []
@@ -135,11 +156,10 @@ class ConceptTracker:
                 "last_seen": self.cluster_last_seen[i],
                 "active": i == self._current_cluster,
             })
-        # Sort by count (most seen first)
         clusters.sort(key=lambda c: -c["count"])
         return {
             "current_cluster": self._current_cluster,
             "current_label": self.current_cluster_label,
             "num_clusters": len(self.centroids),
-            "clusters": clusters[:20],  # top 20
+            "clusters": clusters[:20],
         }
