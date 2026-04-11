@@ -104,21 +104,22 @@ def build_chat_router(
             sensor_lines.append(f"Ich sehe ein Fenster: '{app_name}'")
             if bg_apps:
                 sensor_lines.append(f"Im Hintergrund laufen: {', '.join(bg_apps[:5])}")
-        # Keyboard: check both raw count AND spike count (spikes catch encoding-level activity)
+        # Keyboard: read from adapter's smoothed pynput counts
         keys_raw = sensor_bus.get("keystroke_rate", {}).get("count", 0) if sensor_bus.get("keystroke_rate") else 0
-        # Also check sensory spike count — if sensory > 30, something is active
-        sensory_spikes = 0
-        try:
-            sensory_spikes = int(brain._last_sensory_spikes) if hasattr(brain, '_last_sensory_spikes') else 0
-        except Exception:
-            pass
-        keys_active = keys_raw > 0 or sensory_spikes > 35  # 35+ spikes = keyboard+mic active
-        if keys_raw > 20:
-            sensor_lines.append("Tastatur: VIEL Tippen gerade!")
-        elif keys_raw > 5 or sensory_spikes > 40:
-            sensor_lines.append("Tastatur: etwas Tippen.")
-        elif keys_raw > 0:
-            sensor_lines.append("Tastatur: vereinzelt.")
+        # Also check adapter's smoothed value (survives between samples)
+        adapter_keys = 0
+        for attr_name in ('_adapter', 'adapter'):
+            a = getattr(brain, attr_name, None)
+            if a and hasattr(a, '_last_keys'):
+                adapter_keys = getattr(a, '_last_keys', 0)
+                break
+        keys = max(keys_raw, adapter_keys)
+        if keys > 10:
+            sensor_lines.append("Tastatur: Leon tippt viel!")
+        elif keys > 2:
+            sensor_lines.append("Tastatur: Leon tippt.")
+        elif keys > 0:
+            sensor_lines.append("Tastatur: vereinzelt getippt.")
         else:
             sensor_lines.append("Tastatur: still.")
         if "mouse_rate" in sensor_bus:

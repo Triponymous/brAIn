@@ -45,6 +45,8 @@ class MacDesktopAdapter:
         self._pynput_key_count = 0
         self._pynput_mouse_count = 0
         self._pynput_listeners = []
+        self._last_keys = 0.0  # smoothed keyboard count for chat endpoint
+        self._last_mouse = 0.0  # smoothed mouse count for chat endpoint
         if not mock_mode:
             self._start_main_thread_listeners()
 
@@ -101,10 +103,15 @@ class MacDesktopAdapter:
         # Inject main-thread pynput counts into the bus before encoding
         if hasattr(self, '_pynput_lock'):
             with self._pynput_lock:
-                if self._pynput_key_count > 0:
-                    self.bus.write("keystroke_rate", {"count": self._pynput_key_count, "variability": 0.0, "burst": 0.0})
-                    self._pynput_key_count = 0
-                if self._pynput_mouse_count > 0:
-                    self.bus.write("mouse_rate", {"count": self._pynput_mouse_count, "variability": 0.0, "burst": 0.0})
-                    self._pynput_mouse_count = 0
+                key_count = self._pynput_key_count
+                mouse_count = self._pynput_mouse_count
+                self._pynput_key_count = 0
+                self._pynput_mouse_count = 0
+            if key_count > 0:
+                self.bus.write("keystroke_rate", {"count": key_count, "variability": 0.0, "burst": 0.0})
+            if mouse_count > 0:
+                self.bus.write("mouse_rate", {"count": mouse_count, "variability": 0.0, "burst": 0.0})
+            # Keep a smoothed copy for the chat endpoint to read
+            self._last_keys = max(key_count, getattr(self, '_last_keys', 0) * 0.8)
+            self._last_mouse = max(mouse_count, getattr(self, '_last_mouse', 0) * 0.8)
         return encode_snapshot(self.bus.snapshot())
