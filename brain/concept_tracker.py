@@ -25,7 +25,7 @@ class ConceptTracker:
     def __init__(
         self,
         expansion_dim: int = 500,
-        similarity_threshold: float = 0.6,  # Jaccard similarity to match (typing vs zoom Jaccard ~0.43)
+        similarity_threshold: float = 0.4,  # Jaccard similarity to match (lower = fewer clusters, more stable)
         max_clusters: int = 50,
         snapshot_interval: int = 200,  # snapshot every 200 ticks (2 seconds) — fast reaction
     ) -> None:
