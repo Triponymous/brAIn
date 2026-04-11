@@ -25,7 +25,7 @@ class ConceptTracker:
     def __init__(
         self,
         expansion_dim: int = 500,
-        similarity_threshold: float = 0.4,  # Jaccard similarity to match (lower = fewer clusters, more stable)
+        similarity_threshold: float = 0.3,  # Jaccard similarity to match (0.3 = tolerant for real-world noise)
         max_clusters: int = 50,
         snapshot_interval: int = 200,  # snapshot every 200 ticks (2 seconds) — fast reaction
     ) -> None:
@@ -77,7 +77,7 @@ class ConceptTracker:
 
         if best_sim >= self.similarity_threshold and best_idx >= 0:
             # Match existing cluster — update centroid (running average)
-            alpha = 0.1  # blend new signature into centroid
+            alpha = 0.2  # blend new signature into centroid (fast adaptation)
             self.centroids[best_idx] = (
                 self.centroids[best_idx] * (1 - alpha) + signature * alpha
             )
