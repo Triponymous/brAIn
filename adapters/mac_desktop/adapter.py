@@ -28,20 +28,20 @@ class MacDesktopAdapter:
     def __init__(self, mock_mode: bool = False) -> None:
         self.mock_mode = mock_mode
         self.bus = SensorBus()
+        # KeystrokeRate and MouseRate sensors: set to mock_mode=True
+        # because we handle input via main-thread pynput listeners below.
+        # The sensor-level pynput fallback starts in a worker thread where
+        # macOS doesn't deliver events (Cocoa RunLoop issue).
         self.sensors: list[Sensor] = [
             ActiveAppSensor(mock_mode=mock_mode),
-            KeystrokeRateSensor(mock_mode=mock_mode),
-            MouseRateSensor(mock_mode=mock_mode),
+            KeystrokeRateSensor(mock_mode=True),  # we inject counts from adapter
+            MouseRateSensor(mock_mode=True),       # we inject counts from adapter
             IdleSensor(mock_mode=mock_mode),
             MicSensor(mock_mode=mock_mode),
             TimeTonicSensor(mock_mode=mock_mode),
         ]
         self._tasks: list[asyncio.Task] = []
 
-        # Start pynput keyboard+mouse listeners in MAIN THREAD.
-        # pynput on macOS needs the main thread for Cocoa RunLoop events.
-        # The sensor objects have their own pynput fallback, but it starts
-        # in a worker thread where it doesn't receive events.
         self._pynput_key_count = 0
         self._pynput_mouse_count = 0
         self._pynput_listeners = []
