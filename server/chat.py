@@ -83,37 +83,19 @@ def build_chat_router(
         labels = exporter.all_labels()
         mods = brain.modulators.snapshot()
 
-        # Get live sensor data from the adapter bus
-        sensor_bus = {}
-        for attr_name in ('_adapter', 'adapter'):
-            if hasattr(brain, attr_name):
-                sensor_bus = getattr(brain, attr_name).bus.snapshot()
-                break
+        # Use the SAME smoothed sensor data that the dashboard sees
+        # (stored by push_loop on brain._last_sensor_display)
+        sensor_display_cached = getattr(brain, '_last_sensor_display', {})
 
-        # If we can't get it from brain, try app state
-        if not sensor_bus:
-            # Fallback: use whatever the push loop last saw
-            sensor_bus = getattr(chat, '_last_sensor_bus', {})
-
-        # Build sensor display in PET LANGUAGE (not technical!)
-        # The pet thinks in feelings and observations, not RMS values.
+        # Build sensor display using the SAME data the dashboard shows
+        # (smoothed by push_loop, stored on brain._last_sensor_display)
+        sd = sensor_display_cached
         sensor_lines = []
-        if "active_app" in sensor_bus:
-            app_name = sensor_bus['active_app'].get('name', '?')
-            bg_apps = sensor_bus['active_app'].get('background_apps', [])
-            sensor_lines.append(f"Ich sehe ein Fenster: '{app_name}'")
-            if bg_apps:
-                sensor_lines.append(f"Im Hintergrund laufen: {', '.join(bg_apps[:5])}")
-        # Keyboard: read from adapter's smoothed pynput counts
-        keys_raw = sensor_bus.get("keystroke_rate", {}).get("count", 0) if sensor_bus.get("keystroke_rate") else 0
-        # Also check adapter's smoothed value (survives between samples)
-        adapter_keys = 0
-        for attr_name in ('_adapter', 'adapter'):
-            a = getattr(brain, attr_name, None)
-            if a and hasattr(a, '_last_keys'):
-                adapter_keys = getattr(a, '_last_keys', 0)
-                break
-        keys = max(keys_raw, adapter_keys)
+
+        app = sd.get("app", "?")
+        sensor_lines.append(f"Fenster: '{app}'")
+
+        keys = sd.get("keys", 0)
         if keys > 10:
             sensor_lines.append("Tastatur: Leon tippt viel!")
         elif keys > 2:
@@ -122,35 +104,35 @@ def build_chat_router(
             sensor_lines.append("Tastatur: vereinzelt getippt.")
         else:
             sensor_lines.append("Tastatur: still.")
-        if "mouse_rate" in sensor_bus:
-            mouse = sensor_bus["mouse_rate"].get("count", 0)
-            if mouse > 30:
-                sensor_lines.append("Maus: sehr aktiv!")
-            elif mouse > 5:
-                sensor_lines.append("Maus: bewegt sich etwas.")
-            else:
-                sensor_lines.append("Maus: ruhig.")
-        if "idle" in sensor_bus:
-            idle = sensor_bus["idle"].get("seconds", 0)
-            if idle > 300:
-                sensor_lines.append(f"Leon: seit {int(idle/60)} Minuten weg.")
-            elif idle > 30:
-                sensor_lines.append("Leon: macht Pause.")
-            else:
-                sensor_lines.append("Leon: am Mac.")
-        if "mic" in sensor_bus:
-            rms = sensor_bus["mic"].get("rms", 0)
-            # MacBook Air mic levels: silence~0.0002, speech~0.001-0.003, clap~0.005+
-            if rms > 0.003:
-                sensor_lines.append("Ich hoere deutliche Geraeusche! Da passiert was!")
-            elif rms > 0.001:
-                sensor_lines.append("Ich hoere Geraeusche — jemand redet oder bewegt sich.")
-            elif rms > 0.0005:
-                sensor_lines.append("Ich hoere ganz leise etwas im Hintergrund.")
-            else:
-                sensor_lines.append("Es ist still um mich herum.")
-        if not sensor_lines:
-            sensor_lines.append("Ich kann gerade nichts wahrnehmen... meine Sinne schlafen.")
+
+        mouse = sd.get("mouse", 0)
+        if mouse > 20:
+            sensor_lines.append("Maus: sehr aktiv!")
+        elif mouse > 3:
+            sensor_lines.append("Maus: bewegt sich.")
+        else:
+            sensor_lines.append("Maus: ruhig.")
+
+        idle = sd.get("idle", 0)
+        if idle > 300:
+            sensor_lines.append(f"Leon: seit {int(idle/60)} Minuten weg.")
+        elif idle > 30:
+            sensor_lines.append("Leon: macht Pause.")
+        else:
+            sensor_lines.append("Leon: am Mac.")
+
+        mic = sd.get("mic_rms", 0)
+        if mic > 0.003:
+            sensor_lines.append("Ich hoere deutliche Geraeusche!")
+        elif mic > 0.001:
+            sensor_lines.append("Ich hoere Geraeusche.")
+        elif mic > 0.0005:
+            sensor_lines.append("Ich hoere ganz leise etwas.")
+        else:
+            sensor_lines.append("Es ist still.")
+
+        if not sd:
+            sensor_lines = ["Meine Sinne starten gerade..."]
 
         # Build concept summary from ConceptTracker (stable cluster IDs)
         tracker = brain.concept_tracker.snapshot()

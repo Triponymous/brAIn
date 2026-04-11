@@ -162,6 +162,10 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter:
             # ConceptTracker: stable cluster info for dashboard + LLM
             tracker_snap = brain.concept_tracker.snapshot()
 
+            # Store latest sensor display on brain for the chat endpoint to read
+            # This is the SMOOTHED data that matches what the dashboard shows
+            brain._last_sensor_display = dict(sensor_display)
+
             base_state = {
                 "tick": brain.tick_count,
                 "sleep_mode": brain.sleep_mode,
