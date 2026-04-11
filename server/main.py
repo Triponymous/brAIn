@@ -143,12 +143,13 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter:
                 sensor_display["switch_rate"] = app_data.get("switch_rate", 0.0)
             if "keystroke_rate" in sensor_snap:
                 raw_keys = sensor_snap["keystroke_rate"].get("count", 0)
-                _smooth_keys = max(raw_keys, _smooth_keys * _decay)
-                sensor_display["keys"] = round(_smooth_keys)
+                # Weighted average smoothing (keeps ~1s of history)
+                _smooth_keys = _smooth_keys * _decay + raw_keys * (1 - _decay)
+                sensor_display["keys"] = round(max(raw_keys, _smooth_keys))
             if "mouse_rate" in sensor_snap:
                 raw_mouse = sensor_snap["mouse_rate"].get("count", 0)
-                _smooth_mouse = max(raw_mouse, _smooth_mouse * _decay)
-                sensor_display["mouse"] = round(_smooth_mouse)
+                _smooth_mouse = _smooth_mouse * _decay + raw_mouse * (1 - _decay)
+                sensor_display["mouse"] = round(max(raw_mouse, _smooth_mouse))
             if "idle" in sensor_snap:
                 sensor_display["idle"] = round(sensor_snap["idle"].get("seconds", 0), 1)
             if "mic" in sensor_snap:

@@ -169,6 +169,31 @@ def build_chat_router(
         if unknown:
             concept_lines.append(f"Unbekannte Muster: {len(unknown)} (frag Leon was sie sind!)")
 
+        # Recent history from episode logger (last 5 entries = ~50 seconds)
+        history_lines = []
+        try:
+            from bridge.episode_log import EpisodeLogger
+            ep_path = Path("checkpoints/episodes.db")
+            if ep_path.exists():
+                ep = EpisodeLogger(ep_path)
+                recent = ep.query(last_n=5)
+                ep.close()
+                for e in reversed(recent):  # oldest first
+                    ts = e.get("timestamp", 0)
+                    import datetime as dt_mod
+                    t = dt_mod.datetime.fromtimestamp(ts).strftime("%H:%M:%S") if ts else "?"
+                    sensors = e.get("sensor_summary", {})
+                    cluster = sensors.get("cluster_id", -1)
+                    label = sensors.get("cluster_label") or f"Muster #{cluster}" if cluster >= 0 else "?"
+                    app = sensors.get("app", "?")
+                    history_lines.append(f"  {t}: {label} (App: {app})")
+        except Exception:
+            pass
+
+        if history_lines:
+            concept_lines.append("\nWas in letzter Zeit passiert ist:")
+            concept_lines.extend(history_lines)
+
         system_prompt = _SYSTEM_PROMPT_TEMPLATE.format(
             sensor_display="\n".join(sensor_lines),
             tick_count=brain.tick_count,
@@ -180,7 +205,6 @@ def build_chat_router(
             concepts="\n".join(concept_lines),
         )
 
-        # Add timestamp to bust Ollama prompt cache (identical prompts = identical responses)
         import datetime
         system_prompt += f"\n(Zeitpunkt: {datetime.datetime.now().strftime('%H:%M:%S')})"
 
