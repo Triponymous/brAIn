@@ -38,6 +38,47 @@ class MacDesktopAdapter:
         ]
         self._tasks: list[asyncio.Task] = []
 
+        # Start pynput keyboard+mouse listeners in MAIN THREAD.
+        # pynput on macOS needs the main thread for Cocoa RunLoop events.
+        # The sensor objects have their own pynput fallback, but it starts
+        # in a worker thread where it doesn't receive events.
+        self._pynput_key_count = 0
+        self._pynput_mouse_count = 0
+        self._pynput_listeners = []
+        if not mock_mode:
+            self._start_main_thread_listeners()
+
+    def _start_main_thread_listeners(self) -> None:
+        """Start pynput listeners for keyboard+mouse in the current thread."""
+        import threading
+        self._pynput_lock = threading.Lock()
+        try:
+            from pynput.keyboard import Listener as KListener
+            kl = KListener(on_press=self._on_key)
+            kl.daemon = True
+            kl.start()
+            self._pynput_listeners.append(kl)
+            print("[adapter] pynput keyboard listener started (main thread)")
+        except Exception as e:
+            print(f"[adapter] pynput keyboard failed: {e}")
+        try:
+            from pynput.mouse import Listener as MListener
+            ml = MListener(on_move=self._on_mouse, on_click=self._on_mouse, on_scroll=self._on_mouse)
+            ml.daemon = True
+            ml.start()
+            self._pynput_listeners.append(ml)
+            print("[adapter] pynput mouse listener started (main thread)")
+        except Exception as e:
+            print(f"[adapter] pynput mouse failed: {e}")
+
+    def _on_key(self, *args) -> None:
+        with self._pynput_lock:
+            self._pynput_key_count += 1
+
+    def _on_mouse(self, *args) -> None:
+        with self._pynput_lock:
+            self._pynput_mouse_count += 1
+
     async def run(self) -> None:
         """Start all sensor coroutines. Returns when all are cancelled."""
         self._tasks = [asyncio.create_task(s.run(self.bus)) for s in self.sensors]
@@ -57,4 +98,13 @@ class MacDesktopAdapter:
 
     def encode(self) -> torch.Tensor:
         """Encode the current bus snapshot into the 200-dim sensory vector."""
+        # Inject main-thread pynput counts into the bus before encoding
+        if hasattr(self, '_pynput_lock'):
+            with self._pynput_lock:
+                if self._pynput_key_count > 0:
+                    self.bus.write("keystroke_rate", {"count": self._pynput_key_count, "variability": 0.0, "burst": 0.0})
+                    self._pynput_key_count = 0
+                if self._pynput_mouse_count > 0:
+                    self.bus.write("mouse_rate", {"count": self._pynput_mouse_count, "variability": 0.0, "burst": 0.0})
+                    self._pynput_mouse_count = 0
         return encode_snapshot(self.bus.snapshot())
