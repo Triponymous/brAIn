@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "Default capabilities for brAIntest Pet",
+  "description": "Default capabilities for Brain Pet",
   "windows": ["main"],
   "permissions": [
     "core:default",

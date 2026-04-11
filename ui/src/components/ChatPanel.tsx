@@ -10,7 +10,7 @@ type Message = {
 
 function loadSavedMessages(): Message[] {
   try {
-    const saved = localStorage.getItem("braintest_chat");
+    const saved = localStorage.getItem("brain_chat");
     return saved ? JSON.parse(saved) : [];
   } catch { return []; }
 }
@@ -23,7 +23,7 @@ export function ChatPanel() {
 
   // Persist messages to localStorage
   useEffect(() => {
-    localStorage.setItem("braintest_chat", JSON.stringify(messages.slice(-50)));
+    localStorage.setItem("brain_chat", JSON.stringify(messages.slice(-50)));
   }, [messages]);
 
   useEffect(() => {

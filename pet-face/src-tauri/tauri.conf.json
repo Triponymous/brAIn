@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nickelghost/tauri-v2-schema/main/schema.json",
-  "productName": "brAIntest Pet",
-  "identifier": "com.braintest.pet",
+  "productName": "Brain Pet",
+  "identifier": "com.brain.pet",
   "build": {
     "frontendDist": "../src"
   },
@@ -9,7 +9,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "brAIntest Pet",
+        "title": "Brain Pet",
         "width": 466,
         "height": 466,
         "decorations": false,

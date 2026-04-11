@@ -22,7 +22,8 @@ let listeners: Set<Listener> = new Set();
 let latestState: BrainState | null = null;
 
 export function connectWS() {
-  const url = `ws://${window.location.host}/ws`;
+  // Connect directly to daemon (bypass Vite proxy which has ECONNRESET issues)
+  const url = `ws://localhost:8765/ws`;
   ws = new WebSocket(url);
   ws.onmessage = (ev) => {
     try {

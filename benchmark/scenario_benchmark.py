@@ -1,6 +1,6 @@
 """University-grade SNN Benchmark: 5 Real-World Scenarios.
 
-Tests the 5 core promises of the brAIntest system:
+Tests the 5 core promises of the Brain system:
 1. Stress Detection (sustained hektisches Tippen → NE rises)
 2. Flow Protection (deep focus → low NE, high ACh, high 5HT)
 3. Rhythm Learning (different clusters for different activities)
@@ -229,7 +229,7 @@ def test_uniqueness() -> dict:
 
 def run_all():
     print("=" * 60)
-    print("  brAIntest SZENARIO-BENCHMARK (Forschungsniveau)")
+    print("  Brain SZENARIO-BENCHMARK (Forschungsniveau)")
     print(f"  {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
 

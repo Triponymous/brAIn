@@ -9,7 +9,7 @@ from pathlib import Path
 
 def main():
     print("=" * 60)
-    print("  brAIntest SNN BENCHMARK SUITE")
+    print("  Brain SNN BENCHMARK SUITE")
     print(f"  {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
 

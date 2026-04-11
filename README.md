@@ -1,65 +1,94 @@
-# brAIntest — Mini-OSCEN
+# Brain
 
-A persistent neuromorphic brain with LLM bridge.
-See `docs/plans/2026-04-08-mini-oscen-design.md` for the design.
+A persistent, neuromorphic brain built on spiking neural networks — it observes your desktop, forms concepts through STDP learning, and communicates via an LLM bridge. The SNN runs continuously, developing its own internal representations of your activity patterns while neuromodulators (dopamine, norepinephrine, serotonin, acetylcholine) shape learning in real time.
 
-## Status
-- [x] Phase 1: SNN core foundations (LIF, STDP, 2-region brain, viz)
-- [x] Phase 2: Full multi-region brain + WTA + modulators + R-STDP + SQLite persistence
-- [x] Phase 3a: Mac sensor adapter + daemon (FastAPI + WebSocket)
-- [x] Phase 3b: LLM bridge + dashboard (hybrid Ollama/Claude, memory tools, React canvas viz)
-- [x] Phase 3c: Pet face (Tauri animated eyes) + voice (Piper TTS + Whisper STT + ⌥+Space hotkey)
-- [x] Phase 4: Capability wishlist + grant system (web search, shell, files — emergent)
-- [ ] Phase 5: Standing orders + more tools
-- [ ] Phase 6+: ESP32 hardware, wake-word, distribution
+## What this is
+
+A complete neuromorphic system that:
+
+- **Learns from real sensor input** — keyboard, mouse, screen, microphone feed into a multi-region spiking neural network
+- **Forms concepts autonomously** — winner-take-all competition + STDP produce sparse, distinct concept neurons that differentiate activity patterns
+- **Remembers across restarts** — full brain state (weights, modulators, labels) persists to SQLite
+- **Talks back** — an LLM bridge translates brain state into natural language; the brain's internal state shapes what it says
+- **Has a face** — animated pet eyes (Tauri) + German TTS/STT with push-to-talk
+- **Grants itself tools** — emergent capability system where the brain can wish for and receive tools (web search, shell, file access)
+
+## Requirements
+
+- **macOS** (Apple Silicon) — tested on MacBook Air M4, 32 GB RAM
+- **Python 3.11+**
+- **Node.js 18+** (for dashboard and pet face)
+- **Rust toolchain** (for Tauri pet face)
+- [Ollama](https://ollama.com) with `qwen3:8b` (or configure another local model in `config.json`)
 
 ## Quick start
 
 ```bash
+# 1. Install Python dependencies
 uv venv
 uv pip install -e ".[dev]"
+
+# 2. Run tests
 .venv/bin/pytest -v
 
-# Phase 1 viz (2-region STDP demo)
-.venv/bin/python scripts/visualize_two_region.py
-
-# Phase 2 soak test (full brain, concept emergence, save/resume)
-.venv/bin/python scripts/run_soak.py --ticks 20000
-.venv/bin/python scripts/run_soak.py --ticks 5000 --resume
-
-# Phase 3a daemon (real Mac sensors — needs Accessibility + Mic permissions)
-.venv/bin/python -m server.braind start
-
-# Phase 3a daemon (mock sensors, no permissions needed)
+# 3. Start the daemon (mock sensors — no permissions needed)
 .venv/bin/python -m server.braind start --mock-sensors
 
-# Watch the brain state stream
-wscat -c ws://localhost:8000/ws        # if you have wscat
-curl http://localhost:8000/healthz     # quick health check
+# 4. Start the dashboard (in a second terminal)
+cd ui && npm install && npm run dev
+# Open http://localhost:5173
 
-# Dashboard (open alongside running daemon)
-cd ui && npm run dev
-# Then open http://localhost:5173
+# 5. Chat with the brain
+curl -X POST http://localhost:8000/api/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"message": "was siehst du?"}'
+```
 
-# Chat with the pet (via REST — or use the dashboard chat panel)
-curl -X POST http://localhost:8000/api/chat -H 'Content-Type: application/json' -d '{"message": "was siehst du?"}'
+### Full sensor mode (real desktop observation)
 
-# TTS test (speak through Mac speakers)
-curl -X POST http://localhost:8000/api/tts -H 'Content-Type: application/json' -d '{"text":"Hallo, ich bin dein Pet."}' -o /tmp/hello.wav && afplay /tmp/hello.wav
+```bash
+# Requires macOS Accessibility + Microphone permissions for Terminal.app
+./start.sh
+```
 
-# Pet face (Tauri app with animated eyes — ⌥+Space for push-to-talk)
+### Pet face (animated eyes + voice)
+
+```bash
 cd pet-face && npx tauri dev
 ```
 
-## Known limitations (Phase 1)
+## Architecture
 
-The two-region brain in this phase has **no lateral inhibition** between feature
-neurons. As a result, when trained on multiple input patterns, both feature neurons
-tend to collapse onto the first pattern they see (verified across 20 seeds in
-`scripts/visualize_two_region.py`). This is structural, not stochastic, and is
-deliberately left to **Phase 2**, which adds a Concept layer with winner-take-all
-competition that will produce distinct, sparse concept representations.
+```
+brain/          Spiking neural network (LIF neurons, STDP, BCM metaplasticity,
+                neuromodulators, concept layer with WTA, working memory)
+server/         FastAPI daemon — WebSocket streaming of brain state at 30 Hz
+bridge/         LLM bridge — hybrid Ollama/Claude router, memory tools,
+                proactive commentary, episode logging
+adapters/       Mac sensor adapters (keyboard, mouse, screen idle, microphone)
+capabilities/   Emergent tool system — wish detection, grant registry,
+                tools (web search, shell, local files)
+ui/             React + Tailwind dashboard — real-time 3D brain graph,
+                modulator gauges, chat panel
+pet-face/       Tauri app — animated eyes that reflect brain state + 
+                Piper TTS / Whisper STT with push-to-talk
+benchmark/      SNN benchmark suite (stability, discrimination, replay,
+                scenario tests)
+scripts/        Utility scripts (visualization, soak tests, launchd setup)
+```
 
-The `weights_after.png` plot from Phase 1 still demonstrates that STDP learns
-input statistics — the matrix moves from uniform 0.5 to a clearly structured
-binary pattern — but the visual story of "two distinct concepts" requires Phase 2.
+## Configuration
+
+All settings live in `config.json`:
+
+| Section | Key settings |
+|---------|-------------|
+| `brain` | Network size (sensory, feature, association, concept, WM, motor neurons), WTA k, tick rate |
+| `llm` | Local model (Ollama), cloud model (Claude), routing |
+| `sensors` | Enable/disable keyboard, mouse, microphone |
+| `daemon` | Port, push rate, save interval, checkpoint path |
+| `voice` | TTS model, STT model, language |
+
+## License
+
+MIT

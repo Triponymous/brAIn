@@ -3,18 +3,18 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.brAIntest.braind</string>
+  <string>com.brain.braind</string>
 
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/leonmatthies/brAIntest/.venv/bin/python</string>
+    <string>/Users/leonmatthies/brain/.venv/bin/python</string>
     <string>-m</string>
     <string>server.braind</string>
     <string>start</string>
   </array>
 
   <key>WorkingDirectory</key>
-  <string>/Users/leonmatthies/brAIntest</string>
+  <string>/Users/leonmatthies/brain</string>
 
   <key>RunAtLoad</key>
   <true/>
@@ -23,10 +23,10 @@
   <true/>
 
   <key>StandardOutPath</key>
-  <string>/Users/leonmatthies/brAIntest/logs/braind.out.log</string>
+  <string>/Users/leonmatthies/brain/logs/braind.out.log</string>
 
   <key>StandardErrorPath</key>
-  <string>/Users/leonmatthies/brAIntest/logs/braind.err.log</string>
+  <string>/Users/leonmatthies/brain/logs/braind.err.log</string>
 
   <key>ProcessType</key>
   <string>Interactive</string>

@@ -1,5 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    braintest_pet_face::run();
+    brain_pet_face::run();
 }

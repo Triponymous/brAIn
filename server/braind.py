@@ -1,4 +1,4 @@
-"""braind — Mini-OSCEN background daemon CLI.
+"""braind — Brain background daemon CLI.
 
 Usage:
     braind start [--mock-sensors] [--port 8000] [--checkpoint PATH]

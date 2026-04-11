@@ -28,3 +28,7 @@ logs/
 
 # Voice models (large binary files)
 models/
+
+# Claude Code / design docs (internal)
+.claude/
+docs/plans/
