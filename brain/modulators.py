@@ -24,7 +24,7 @@ class Modulators:
         self,
         baseline: dict[str, float] | None = None,
         tau: dict[str, float] | None = None,
-        level_min: float = -1.0,
+        level_min: float = 0.0,  # modulators can't go negative (no "anti-emotion")
         level_max: float = 1.0,
     ) -> None:
         self.baseline = {n: 0.0 for n in _NAMES}

@@ -70,7 +70,7 @@ async def brain_tick_loop(brain: Any, adapter: Any, hz: float = 100.0, exporter:
 
     def _tick_thread():
         period = 1.0 / hz
-        sleep_idle_threshold = 600.0  # 10 minutes idle → enter sleep
+        sleep_idle_threshold = 300.0  # 5 minutes idle → enter sleep
         while not stop_event.is_set():
             vec = adapter.encode()
 

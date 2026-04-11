@@ -25,8 +25,8 @@ class ConceptTracker:
     def __init__(
         self,
         expansion_dim: int = 500,
-        similarity_threshold: float = 0.3,  # Jaccard similarity to match (0.3 = tolerant for real-world noise)
-        max_clusters: int = 50,
+        similarity_threshold: float = 0.35, # Jaccard similarity — balance between too many and too few clusters
+        max_clusters: int = 15,  # max distinct patterns — old weak ones get replaced
         snapshot_interval: int = 200,  # snapshot every 200 ticks (2 seconds) — fast reaction
     ) -> None:
         self.expansion_dim = expansion_dim
@@ -56,6 +56,10 @@ class ConceptTracker:
             # Create binary signature: which neurons fired > 30% of the time
             signature = (self._accum / self._accum_count > 0.3).float()
             self._assign_cluster(signature, tick_count)
+            # Periodically merge similar clusters (every 50 assignments)
+            total_assigns = sum(self.cluster_counts)
+            if total_assigns % 50 == 0:
+                self._merge_similar_clusters()
             self._accum = torch.zeros(self.expansion_dim)
             self._accum_count = 0
             self._tick_counter = 0
@@ -100,6 +104,42 @@ class ConceptTracker:
             self.cluster_counts[min_idx] = 1
             self.cluster_last_seen[min_idx] = tick_count
             self._current_cluster = min_idx
+
+    def _merge_similar_clusters(self) -> None:
+        """Merge clusters whose centroids are too similar (Jaccard > 0.5).
+        Keeps the one with more counts, transfers the label if any."""
+        if len(self.centroids) < 2:
+            return
+        merged = True
+        while merged:
+            merged = False
+            for i in range(len(self.centroids)):
+                for j in range(i + 1, len(self.centroids)):
+                    sim = self._cosine_sim(self.centroids[i], self.centroids[j])
+                    if sim > 0.7:  # very similar → merge (0.7 = high overlap)
+                        # Keep the one with more observations
+                        keep, drop = (i, j) if self.cluster_counts[i] >= self.cluster_counts[j] else (j, i)
+                        # Transfer counts
+                        self.cluster_counts[keep] += self.cluster_counts[drop]
+                        # Keep label from either
+                        if not self.cluster_labels[keep] and self.cluster_labels[drop]:
+                            self.cluster_labels[keep] = self.cluster_labels[drop]
+                        # Blend centroids
+                        self.centroids[keep] = (self.centroids[keep] + self.centroids[drop]) / 2
+                        # Remove the weaker
+                        self.centroids.pop(drop)
+                        self.cluster_labels.pop(drop)
+                        self.cluster_counts.pop(drop)
+                        self.cluster_last_seen.pop(drop)
+                        # Fix current_cluster reference
+                        if self._current_cluster == drop:
+                            self._current_cluster = keep
+                        elif self._current_cluster > drop:
+                            self._current_cluster -= 1
+                        merged = True
+                        break
+                if merged:
+                    break
 
     def _cosine_sim(self, a: torch.Tensor, b: torch.Tensor) -> float:
         """Jaccard similarity between two binary vectors.
