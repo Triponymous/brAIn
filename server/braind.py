@@ -199,7 +199,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     proactive_task = asyncio.create_task(proactive.run(check_interval=10.0))
 
     # Run uvicorn in the same loop
-    config = uvicorn.Config(app, host="127.0.0.1", port=args.port, log_level="info")
+    config = uvicorn.Config(app, host="127.0.0.1", port=args.port, log_level="info", ws="wsproto")
     server = uvicorn.Server(config)
     try:
         await server.serve()

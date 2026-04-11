@@ -12,6 +12,7 @@ import asyncio
 from typing import Any, Optional
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 
 from server.ws import WSPusher
 
@@ -22,6 +23,14 @@ def build_app(
     pusher: Optional[WSPusher],
 ) -> FastAPI:
     app = FastAPI(title="braind", version="3.0.0")
+
+    # Allow browser WebSocket connections from Vite dev server
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.get("/healthz")
     async def healthz() -> dict:
