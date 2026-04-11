@@ -9,7 +9,7 @@
     "num_sensory": 200,
     "num_feature": 200,
     "num_association": 500,
-    "num_concept": 200,
+    "num_concept": 1000,
     "num_wm": 100,
     "num_motor": 50,
     "concept_k": 5,
