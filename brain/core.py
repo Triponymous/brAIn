@@ -252,9 +252,18 @@ class Brain:
         concept_input = sc.forward(expansion_spikes)
         concept_spikes = concept.step(concept_input, dt=dt)
 
-        # 8. Concept Tracker: cluster MASKED sensory signatures into stable IDs
-        # Use discriminating_spikes (shared baseline removed), not expansion
-        self.concept_tracker.tick(discriminating_spikes, self.tick_count)
+        # 8. Concept Tracker: uses sensory spikes WITH time-tonic included.
+        # Time-tonic is masked from the EXPANSION layer (for pattern discrimination)
+        # but KEPT in the ConceptTracker so it can distinguish
+        # "typing in the morning" from "typing in the evening".
+        # Only mask baseline-idle and activity-level (truly redundant).
+        tracker_spikes = sensory_spikes.clone()
+        if len(tracker_spikes) >= 164:
+            tracker_spikes[100] = 0      # idle baseline
+            tracker_spikes[160:164] = 0  # activity level
+            # Time-tonic (148-155) KEPT — enables daily rhythm learning
+            # Mic baseline (144) KEPT — enables audio-context awareness
+        self.concept_tracker.tick(tracker_spikes, self.tick_count)
 
         # Accumulate concept spikes for visualization
         self.concept_spike_accum = self.concept_spike_accum * self._spike_decay + concept_spikes.detach()
