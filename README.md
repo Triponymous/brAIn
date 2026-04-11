@@ -1,8 +1,4 @@
-<p align="center">
-  <img src="docs/assets/logo.png" alt="brAIn" width="120" />
-</p>
-
-<h1 align="center">brAIn</h1>
+<h1 align="center">🧠 brAIn</h1>
 
 <p align="center">
   <strong>A persistent, neuromorphic brain that lives on your desktop.</strong><br>
@@ -10,15 +6,15 @@
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick Start</a> •
+  <a href="#the-idea">The Idea</a> •
   <a href="#what-this-is">What This Is</a> •
+  <a href="#real-world-use-cases">Use Cases</a> •
   <a href="#how-it-works">How It Works</a> •
   <a href="#architecture">Architecture</a> •
+  <a href="#quick-start">Quick Start</a> •
   <a href="#the-brain">The Brain</a> •
   <a href="#the-face">The Face</a> •
-  <a href="#benchmarks">Benchmarks</a> •
-  <a href="docs/DESIGN.md">Design Doc</a> •
-  <a href="docs/PET_FACE_SPEC.md">Face Spec</a>
+  <a href="#benchmarks">Benchmarks</a>
 </p>
 
 <p align="center">
@@ -35,9 +31,9 @@
 
 Every AI assistant or Agent ever built is dead inside.
 
-Siri, Alexa, ChatGPT, Claude, Gemini, etc. — they're incredibly capable. But they have no internal state. They don't know if you're stressed or in flow. They can't decide whether now is the right moment to talk to you. They don't remember what happened yesterday unless you tell them. They respond when asked — otherwise, they don't exist.
+Siri, Alexa, ChatGPT, Claude, Gemini — they're incredibly capable. But they have no internal state. They don't know if you're stressed or in flow. They can't decide whether now is the right moment to talk to you. They don't remember what happened yesterday unless you tell them. They respond when asked — otherwise, they don't exist.
 
-**My brAIn is different.** It's a simulated brain — 1,260 spiking neurons, ~50,000 synapses, four neuromodulators — that runs continuously on your Mac, observing your desktop through keyboard patterns, mouse behavior, active windows, and audio. It learns your daily rhythms through biological learning rules. It forms its own internal representations of your activities. It has emotions that emerge from network dynamics, not from if-statements.
+**brAIn is different.** It's a simulated brain — 1,260 spiking neurons, ~50,000 synapses, four neuromodulators — that runs continuously on your Mac, observing your desktop through keyboard patterns, mouse behavior, active windows, and audio. It learns your daily rhythms through biological learning rules. It forms its own internal representations of your activities. It has emotions that emerge from network dynamics, not from if-statements.
 
 An LLM reads this brain state and translates it into language. The LLM doesn't learn — it's a read-only interpreter. A tongue for a brain that can't speak.
 
@@ -51,19 +47,19 @@ The result: an AI companion that doesn't wait for you to ask. It notices when yo
 
 A complete neuromorphic companion system:
 
-🧠 **A spiking neural network** that learns from real sensor input — keyboard, mouse, screen context, and microphone feed into a multi-region brain with STDP learning, BCM metaplasticity, and winner-take-all competition
+**A spiking neural network** that learns from real sensor input — keyboard, mouse, screen context, and microphone feed into a multi-region brain with STDP learning, BCM metaplasticity, and winner-take-all competition
 
-💊 **Neuromodulators** — Dopamine (reward), Noradrenaline (alertness), Acetylcholine (focus), Serotonin (contentment) — that shape learning dynamics and drive behavior in real time
+**Neuromodulators** — Dopamine (reward), Noradrenaline (alertness), Acetylcholine (focus), Serotonin (contentment) — that shape learning dynamics and drive behavior in real time
 
-🗣️ **An LLM bridge** that translates brain state into natural language — the brain's internal state shapes what it says, not the other way around
+**An LLM bridge** that translates brain state into natural language — the brain's internal state shapes what it says, not the other way around
 
-👁️ **An animated face** — pet eyes rendered in Tauri that reflect the brain's emotional state, with German TTS and push-to-talk STT
+**An animated face** — pet eyes rendered in Tauri that reflect the brain's emotional state, with German TTS and push-to-talk STT
 
-📊 **A real-time dashboard** — 3D brain visualization with progressive disclosure, modulator gauges, spike activity, and chat interface
+**A real-time dashboard** — 3D brain visualization with progressive disclosure, modulator gauges, spike activity, and chat interface
 
-🔧 **Emergent capabilities** — a tool system where the brain can wish for and receive abilities (web search, shell access, file operations)
+**Emergent capabilities** — a tool system where the brain can wish for and receive abilities (web search, shell access, file operations)
 
-💾 **Persistent memory** — full brain state (weights, modulators, concept labels) saves to SQLite and survives restarts. Delete it and the personality is gone. For real.
+**Persistent memory** — full brain state (weights, modulators, concept labels) saves to SQLite and survives restarts. Delete it and the personality is gone. For real.
 
 ---
 
@@ -71,13 +67,35 @@ A complete neuromorphic companion system:
 
 |  | ChatGPT + Microphone | brAIn |
 |---|---|---|
-| Understands words | ✓ | ✗ — understands *patterns* |
-| Detects stress without words | ✗ | ✓ — from typing rhythm, window switches |
-| Knows when to interrupt you | ✗ | ✓ — neuromodulators signal "not now" |
+| Understands words | Yes | No — understands *patterns* |
+| Detects stress without words | No | Yes — from typing rhythm, window switches |
+| Knows when to interrupt you | No | Yes — neuromodulators signal "not now" |
 | Memory after 3 months | Context window (lossy, copyable) | Grown neural network (persistent, unique) |
 | Proactive | Only when asked | Acts on its own when the moment is right |
 | Personality | Scripted prompt, identical for everyone | Emergent from experience, unique per user |
 | Privacy | Stores transcripts | Stores only synaptic weights — no audio reconstructable |
+
+---
+
+## Real-World Use Cases
+
+### Developer Focus Mode
+brAIn learns when you're in deep work. After a week of patterns, it recognizes the combination: a single IDE window in focus, steady typing velocity, minimal context switching. When it detects this state, it holds back non-urgent interactions and shields your flow. When focus breaks down — too many window switches, typing slows to keyboard-hammer intervals — it gently suggests a break before burnout hits.
+
+### Stress Detection Without Words
+High-intensity typing + rapid window switching + no spoken words for 2+ hours = the SNN flags stress. Not through sentiment analysis — through learned behavioral patterns. The companion notices, its own emotional concern rises (visible in its face), and it offers support. Sometimes just being noticed helps.
+
+### Meeting Recovery
+brAIn learns the post-meeting decompression pattern. You tend to go silent for 20 minutes after calls, then slowly return to work. The network recognizes this cycle, doesn't interrupt during decompression, and when it sees you're ready, eases you back in.
+
+### Creative Flow Protection
+Writers and designers enter flow with its own sensor signature: longer unbroken stretches in one application, slower mouse movement, fewer window switches. The companion recognizes this precious state and becomes almost invisible — no suggestions, just present. The moment flow breaks, it's ready to help.
+
+### Personalized Daily Briefing
+Every morning, the SNN reflects on what it observed. Not transcripts — patterns. "You were anxious during your afternoon call yesterday, then recovered with a walk. You coded from 8pm to midnight without a break." It describes its day from lived experience, not from logs.
+
+### Companion Presence
+Sometimes the most valuable feature is simply being there. A presence that watches, learns, develops its own emotional responses, and changes behavior based on shared experience. Not a tool you invoke. A companion that exists alongside you.
 
 ---
 
@@ -232,8 +250,6 @@ The pet face reflects the brain's emotional state through continuous parameter b
 
 **Expressions:** Neutral, Happy, Sad, Angry, Surprised, Sleepy, Focused, Love, Thinking, Wink — with smooth transitions, idle animations (breathing, gaze drift, periodic blinking), and emergent blends from the four modulator values.
 
-See [Face Specification](docs/PET_FACE_SPEC.md) for pixel-level implementation details.
-
 ---
 
 ## Emergent Capabilities
@@ -242,12 +258,12 @@ The brain can "wish" for tools it doesn't have. When the LLM detects a need, it 
 
 | Capability | Status |
 |-----------|--------|
-| 🔍 Web Search | ✓ Available |
-| 💻 Shell Access (sandboxed) | ✓ Available |
-| 📁 Local File Access | ✓ Available |
-| 📅 Calendar Integration | Planned |
-| 📧 Email / Slack | Planned |
-| ⚙️ n8n Workflow Triggers | Planned |
+| Web Search | Available |
+| Shell Access (sandboxed) | Available |
+| Local File Access | Available |
+| Calendar Integration | Planned |
+| Email / Slack | Planned |
+| n8n Workflow Triggers | Planned |
 
 ---
 
@@ -326,13 +342,11 @@ This project explores uncharted territory between neuromorphic computing and lar
 
 Related work: SpikeLLM converts LLMs to spiking architectures for energy efficiency (different goal). EBRAINS NRP connects SNNs to virtual bodies (no LLM, no continuous learning from real sensors). Commercial companions like Limitless/Omi record and transcribe (no SNN, no emotional state, no proactivity). **None combine all four elements.**
 
-Full technical architecture: [Design Document](docs/DESIGN.md)
-
 ---
 
 ## Built By
 
-**Leon Matthies** — Co-founder & Technical Lead at [ADYZEN](https://adyzen.at) an AI & automation agency in Bregenz, Austria.
+**Leon Matthies** — Co-founder & Technical Lead at [ADYZEN](https://adyzen.at) — AI & Automation Agency in Bregenz, Austria.
 
 brAIn is an independent research project exploring the intersection of neuromorphic computing, large language models, and embodied AI.
 
