@@ -40,7 +40,7 @@ async def ollama_chat(
         "stream": False,
         "options": {
             "num_predict": 200,
-            "temperature": 1.0,   # high for variety
+            "temperature": 0.85,  # balance variety vs coherence
             "seed": _rnd.randint(1, 999999),  # random seed BUSTS the KV cache
         },
     }
