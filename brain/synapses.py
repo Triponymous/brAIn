@@ -47,7 +47,7 @@ class STDPSynapse:
         self.apre = torch.zeros(num_pre)
         self.apost = torch.zeros(num_post)
         # Synaptic scaling: target row sum = num_pre * mean(w_init)
-        self._synaptic_scaling = True
+        self._synaptic_scaling = False  # DISABLED — BCM metaplasticity handles stability
         self._target_w_sum = torch.tensor(num_pre * w_init, dtype=torch.float32).reshape(1)
         self._scaling_tick_counter = 0
 
@@ -86,15 +86,37 @@ class STDPSynapse:
         apre_snapshot = self.apre.clone()
         apost_snapshot = self.apost.clone()
 
-        # Pre spikes: depress weights using OLD apost (post in the past)
+        # ── BCM Metaplasticity: sliding threshold determines LTP vs LTD ──
+        # θ_M = running average of post²  (high activity → high threshold → harder to potentiate)
+        # If post > θ_M: potentiation is STRONGER (neuron is selective for this input)
+        # If post < θ_M: depression is STRONGER (neuron should NOT fire for this input)
+        # This creates selectivity: each neuron learns to respond to specific patterns.
+        if not hasattr(self, '_bcm_theta'):
+            self._bcm_theta = torch.full((self.num_post,), 0.01)  # start low → easy potentiation initially
+            self._bcm_tau = 5000.0   # faster adaptation → quicker selectivity
+
+        # Update sliding threshold: θ_M tracks average(post²)
+        post_sq = post_spikes * post_spikes  # binary, so same as post_spikes
+        alpha_bcm = 1.0 / self._bcm_tau
+        self._bcm_theta = self._bcm_theta * (1 - alpha_bcm) + post_sq * alpha_bcm
+
+        # BCM modulation factor per post-neuron: (post - θ_M)
+        # Positive = potentiate more, Negative = depress more
+        bcm_factor = (post_spikes - self._bcm_theta).unsqueeze(1)  # [num_post, 1]
+
+        # Pre spikes: depress weights, MODULATED by BCM
         if pre_spikes.any():
             depression = torch.outer(apost_snapshot, pre_spikes)
-            self.weights = self.weights - modulation * depression
+            # BCM: neurons below threshold get MORE depression
+            bcm_depression = depression * (1.0 - bcm_factor.clamp(-1, 0))
+            self.weights = self.weights - modulation * bcm_depression
 
-        # Post spikes: potentiate weights using OLD apre (pre in the past)
+        # Post spikes: potentiate weights, MODULATED by BCM
         if post_spikes.any():
             potentiation = torch.outer(post_spikes, apre_snapshot)
-            self.weights = self.weights + modulation * potentiation
+            # BCM: neurons above threshold get MORE potentiation
+            bcm_potentiation = potentiation * (1.0 + bcm_factor.clamp(0, 2))
+            self.weights = self.weights + modulation * bcm_potentiation
 
         # Now increment traces with the new spikes (these will be read on the
         # NEXT update call).

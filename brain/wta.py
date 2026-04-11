@@ -34,8 +34,8 @@ class WTALayer:
         threshold: float = 1.0,
         inhibit_factor: float = 0.5,
         # Intrinsic plasticity parameters
-        ip_rate: float = 0.002,      # threshold increase per spike — slower because lateral inhibition handles discrimination
-        ip_tau: float = 10000000.0, # threshold decay tau (Diehl&Cook: 1e7 — quasi-permanent)
+        ip_rate: float = 0.5,        # AGGRESSIVE threshold increase per spike
+        ip_tau: float = 100000.0,   # moderate decay — let neurons recover after ~15min
     ) -> None:
         if k < 1:
             raise ValueError(f"k must be >= 1, got {k}")
