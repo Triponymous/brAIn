@@ -257,12 +257,15 @@ class Brain:
         # but KEPT in the ConceptTracker so it can distinguish
         # "typing in the morning" from "typing in the evening".
         # Only mask baseline-idle and activity-level (truly redundant).
+        # ConceptTracker gets FULL sensory spikes — nothing masked.
+        # Every sensor matters for distinguishing situations:
+        # - Idle neurons (100-107): separates "da" from "weg"
+        # - Activity level (160-163): separates "aktiv" from "ruhig"
+        # - Time-tonic (148-155): separates "morgens" from "abends"
+        # - Mic (112-147): separates "leise" from "laut"
+        # The EXPANSION layer masks shared features for STDP learning,
+        # but the ConceptTracker needs EVERYTHING to form useful clusters.
         tracker_spikes = sensory_spikes.clone()
-        if len(tracker_spikes) >= 164:
-            tracker_spikes[100] = 0      # idle baseline
-            tracker_spikes[160:164] = 0  # activity level
-            # Time-tonic (148-155) KEPT — enables daily rhythm learning
-            # Mic baseline (144) KEPT — enables audio-context awareness
         self.concept_tracker.tick(tracker_spikes, self.tick_count)
 
         # Accumulate concept spikes for visualization

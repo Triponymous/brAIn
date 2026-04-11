@@ -100,24 +100,31 @@ export function buildMacroGraph(state: MacroState): VizGraph {
       id: number; label: string | null; count: number; active: boolean;
     }>;
 
+    // Find max count for relative sizing
+    const maxCount = Math.max(1, ...clusters.map((c) => c.count));
+
     for (let idx = 0; idx < Math.min(clusters.length, 15); idx++) {
       const c = clusters[idx];
       const isActive = c.id === currentCluster;
-      const activity = isActive ? 1.0 : 0.2;
+      // Activity based on how often this cluster has been seen (relative to most-seen)
+      const relativeSize = c.count / maxCount;
+      const activity = isActive ? 1.0 : relativeSize * 0.6;
       const angle = ((c.id * 137.5) % 360) * (Math.PI / 180);
-      const radius = 35 + (idx % 4) * 12;
+      const radius = 30 + (idx % 4) * 12;
 
       const displayLabel = c.label
-        ? `${c.label} (${c.count}x)`
-        : `Muster #${c.id} (${c.count}x)`;
+        ? `${c.label} (${c.count}x)${isActive ? " ●" : ""}`
+        : `Muster #${c.id} (${c.count}x)${isActive ? " ●" : ""}`;
 
       nodes.push({
         id: `cl_${c.id}`,
         type: "neuron",
         regionId: "concept",
         label: displayLabel,
-        color: isActive ? "#fbbf24" : c.label ? "#fbbf2480" : "#fbbf2430",
-        val: isActive ? 5 : c.label ? 3 : 2,
+        // Active = bright gold, labeled = medium gold, unknown = dim
+        color: isActive ? "#fbbf24" : c.label ? `rgba(251,191,36,${0.3 + relativeSize * 0.5})` : "#fbbf2430",
+        // Size scales with count — frequently seen clusters are bigger
+        val: isActive ? 4 + relativeSize * 3 : 1.5 + relativeSize * 3,
         activity,
         fx: cx + Math.cos(angle) * radius,
         fy: cy + Math.sin(angle) * radius * 0.7,
