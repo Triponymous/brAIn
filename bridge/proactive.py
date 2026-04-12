@@ -135,16 +135,13 @@ class ProactiveEngine:
                 notification = self._check()
                 if notification:
                     now = time.time()
-                    dynamic_min = self._dynamic_interval()
-                    if now - self._last_notification >= dynamic_min:
+                    # Minimum 3 minutes between notifications (not 30s)
+                    if now - self._last_notification >= 180:
                         self._last_notification = now
-                        message = await self._generate_message(
-                            notification["category"],
-                            notification["context"],
-                        )
+                        # Use the context directly — LLM makes it worse
                         await self.pusher.broadcast({
                             "type": "notification",
-                            "message": message,
+                            "message": notification["context"],
                             "category": notification["category"],
                             "tick": self.brain.tick_count,
                         }, detail_state=None)
