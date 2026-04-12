@@ -24,6 +24,10 @@ let notificationListeners: Set<NotificationListener> = new Set();
 let latestState: BrainState | null = null;
 
 export function connectWS() {
+  // Prevent duplicate connections (React StrictMode calls effects twice)
+  if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
+    return;
+  }
   const url = `ws://localhost:8765/ws`;
   ws = new WebSocket(url);
   ws.onmessage = (ev) => {
