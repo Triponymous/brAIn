@@ -27,7 +27,7 @@ const ForceGraph3D = lazy(() => import("react-force-graph-3d"));
 
 type ExtendedState = BrainState & {
   sensors?: { app?: string; keys?: number; mouse?: number; idle?: number; mic_rms?: number };
-  spike_counts?: { sensory?: number; feature?: number; concept?: number };
+  spike_counts?: { sensory?: number; concept?: number; wm?: number };
 };
 
 /*
@@ -45,22 +45,13 @@ type ExtendedState = BrainState & {
  */
 const REGIONS = [
   { id: "r_sensory", label: "Sensorik", desc: "Sinneseindruecke empfangen",
-    color: "#6ee7b7", pos: [0, 120, -50] as const, dataKey: "sensory" as const, maxSpikes: 200 },
-
-  { id: "r_feature", label: "Mustererkennung", desc: "Muster & Features erkennen",
-    color: "#67e8f9", pos: [-30, -10, 30] as const, dataKey: "feature" as const, maxSpikes: 300 },
-
-  { id: "r_association", label: "Verknuepfung", desc: "Informationen verbinden",
-    color: "#c084fc", pos: [10, 90, -100] as const, dataKey: "feature" as const, maxSpikes: 300 },
+    color: "#6ee7b7", pos: [0, 120, -50] as const, dataKey: "sensory" as const, maxSpikes: 60 },
 
   { id: "r_concept", label: "Konzeptbildung", desc: "Abstrakte Konzepte bilden",
-    color: "#34d399", pos: [0, 80, 100] as const, dataKey: "concept" as const, maxSpikes: 30 },
+    color: "#fbbf24", pos: [0, 80, 100] as const, dataKey: "concept" as const, maxSpikes: 200 },
 
-  { id: "r_wm", label: "Gedaechtnis", desc: "Aktive Erinnerungen halten",
-    color: "#a78bfa", pos: [0, -30, 0] as const, dataKey: null, maxSpikes: 1 },
-
-  { id: "r_motor", label: "Motorik", desc: "Aktionen & Output steuern",
-    color: "#fbbf24", pos: [0, 130, 20] as const, dataKey: null, maxSpikes: 1 },
+  { id: "r_wm", label: "Gedaechtnis", desc: "Kurzzeit-Erinnerungen halten (Feedback → Konzept)",
+    color: "#60a5fa", pos: [0, -30, 0] as const, dataKey: "wm" as const, maxSpikes: 40 },
 ];
 
 // Sensors – arc well outside the brain to the left
@@ -73,15 +64,11 @@ const SENSORS = [
   { id: "s_time",  label: "Zeit",     color: "#818cf8", pos: [-140, -20,   5] as const },
 ];
 
-// Neural pathway: sensory input → processing → output
+// Neural pathway: sensory → concept ↔ WM (bidirectional feedback loop)
 const PIPELINE: [string, string][] = [
-  ["r_sensory", "r_feature"],      // sensory → temporal (pattern recognition)
-  ["r_feature", "r_association"],   // temporal → parietal (integration)
-  ["r_association", "r_concept"],   // parietal → prefrontal (conceptualization)
-  ["r_concept", "r_wm"],           // prefrontal → hippocampus (memory)
-  ["r_concept", "r_motor"],        // prefrontal → motor (action)
-  ["r_wm", "r_association"],       // hippocampus → parietal (recall feeds back)
-  ["r_sensory", "r_motor"],        // sensory → motor (reflexes, fast path)
+  ["r_sensory", "r_concept"],      // sensory → concept (via expansion + STDP)
+  ["r_concept", "r_wm"],           // concept → WM (store active concepts)
+  ["r_wm", "r_concept"],           // WM → concept (temporal context feedback)
 ];
 
 type GNode = { id: string; type: "sensor"|"region"|"concept"; label: string; desc: string; val: number; color: string; active: boolean; activity: number; fx: number; fy: number; fz: number; neighbors?: GNode[]; links?: GLink[] };
@@ -288,13 +275,22 @@ export function BrainPanel3D({ state }: { state: BrainState | null }) {
     highlightLinks.current.has(link) ? "rgba(255,255,255,0.5)" : link.color
   , [hoverNode]);
 
-  const nodeLabel = useCallback((node: any) =>
-    `<div style="background:rgba(0,0,0,0.85);padding:8px 12px;border-radius:8px;font-size:13px;color:${node.color};border:1px solid ${node.color}50">
+  const nodeLabel = useCallback((node: any) => {
+    const isConceptNeuron = node.type === "neuron" && node.regionId === "concept";
+    let statusLine = "";
+    if (isConceptNeuron) {
+      statusLine = node.activity >= 0.9
+        ? `<br/><span style="color:#fbbf24;font-size:11px;font-weight:bold">⚡ Gerade aktiv</span>`
+        : `<br/><span style="color:#666;font-size:11px">💤 Inaktiv (Erinnerung)</span>`;
+    } else if (node.activity > 0) {
+      statusLine = `<br/><span style="color:#6ee7b7;font-size:11px">Aktivitaet: ${(node.activity * 100).toFixed(0)}%</span>`;
+    }
+    return `<div style="background:rgba(0,0,0,0.85);padding:8px 12px;border-radius:8px;font-size:13px;color:${node.color};border:1px solid ${node.color}50">
       <b>${node.label}</b><br/>
-      <span style="color:#aaa;font-size:11px">${node.desc}</span>
-      ${node.activity > 0 ? `<br/><span style="color:#6ee7b7;font-size:11px">Aktivitaet: ${(node.activity * 100).toFixed(0)}%</span>` : ""}
-    </div>`
-  , []);
+      <span style="color:#aaa;font-size:11px">${node.desc || ""}</span>
+      ${statusLine}
+    </div>`;
+  }, []);
 
   if (!state) {
     return <div className="h-full flex items-center justify-center text-gray-500">Waiting for brain state...</div>;

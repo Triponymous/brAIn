@@ -141,6 +141,11 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     from bridge.episode_log import EpisodeLogger
     episode_logger = EpisodeLogger(checkpoint.parent / "episodes.db")
 
+    # BrainInterpreter — consciousness layer (must be created before proactive/chat)
+    from bridge.interpreter import BrainInterpreter
+    interpreter = BrainInterpreter(brain, episode_logger)
+    brain._interpreter = interpreter  # accessible from chat endpoint + proactive
+
     exporter = BrainStateExporter(brain)
     grant_store = GrantStore(checkpoint.parent / "grants.sqlite")
     tool_registry = ToolRegistry(brain, exporter, grant_store)
@@ -198,13 +203,20 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     proactive = ProactiveEngine(brain, exporter, pusher, router=llm_router)
     proactive_task = asyncio.create_task(proactive.run(check_interval=10.0))
 
+    # Interpreter tick loop — updates state detector + personality at 1 Hz
+    async def interpreter_tick_loop():
+        while True:
+            interpreter.tick()
+            await asyncio.sleep(1.0)
+    interpreter_task = asyncio.create_task(interpreter_tick_loop())
+
     # Run uvicorn in the same loop
     config = uvicorn.Config(app, host="127.0.0.1", port=args.port, log_level="info", ws="wsproto")
     server = uvicorn.Server(config)
     try:
         await server.serve()
     finally:
-        for t in (sensor_task, tick_task, push_task, persist_task, proactive_task):
+        for t in (sensor_task, tick_task, push_task, persist_task, proactive_task, interpreter_task):
             t.cancel()
         adapter.stop()
         # Final save

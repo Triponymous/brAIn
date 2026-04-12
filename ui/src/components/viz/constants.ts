@@ -27,6 +27,7 @@ export function sensorPosition(offset: number): [number, number, number] {
 export const SYNAPSE_PIPELINE: [string, string][] = [
   ["sensory", "concept"],
   ["concept", "wm"],
+  ["wm", "concept"],  // feedback: WM biases concept recognition with temporal context
 ];
 
 export type ZoomLevel = "macro" | "meso" | "micro";

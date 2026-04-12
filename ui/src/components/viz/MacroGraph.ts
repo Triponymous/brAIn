@@ -19,7 +19,11 @@ export type MacroState = {
 const _conceptPeaks = new Map<number, number>();
 
 const MAX_SPIKES: Record<string, number> = {
-  sensory: 200, concept: 1000, wm: 100,
+  // Realistic maximums for activity display scaling.
+  // Sensory: 200 neurons but distributed encoding means max ~50-60 fire at once.
+  // Concept: 1000 neurons with WTA k=3, but accumulator can spike higher.
+  // WM: 100 neurons with recurrent self-excitation, typically 10-30 active.
+  sensory: 60, concept: 200, wm: 40,
 };
 
 export function buildMacroGraph(state: MacroState): VizGraph {
@@ -110,15 +114,18 @@ export function buildMacroGraph(state: MacroState): VizGraph {
     for (let idx = 0; idx < Math.min(clusters.length, 15); idx++) {
       const c = clusters[idx];
       const isActive = c.id === currentCluster;
-      // Activity based on how often this cluster has been seen (relative to most-seen)
+      // relativeSize = historical frequency (for node SIZE only)
       const relativeSize = c.count / maxCount;
-      const activity = isActive ? 1.0 : relativeSize * 0.6;
+      // activity = CURRENT activation state (is this pattern happening RIGHT NOW?)
+      // Active cluster = 1.0, inactive = very dim (0.08) — they're memories, not active patterns
+      const activity = isActive ? 1.0 : 0.08;
       const angle = ((c.id * 137.5) % 360) * (Math.PI / 180);
       const radius = 30 + (idx % 4) * 12;
 
+      const statusStr = isActive ? "⚡ AKTIV" : "💤 inaktiv";
       const displayLabel = c.label
-        ? `${c.label} (${c.count}x)${isActive ? " ●" : ""}`
-        : `Muster #${c.id} (${c.count}x)${isActive ? " ●" : ""}`;
+        ? `${c.label} (${c.count}x) ${statusStr}`
+        : `Muster #${c.id} (${c.count}x) ${statusStr}`;
 
       nodes.push({
         id: `cl_${c.id}`,
@@ -126,7 +133,7 @@ export function buildMacroGraph(state: MacroState): VizGraph {
         regionId: "concept",
         label: displayLabel,
         // Active = bright gold, labeled = medium gold, unknown = dim
-        color: isActive ? "#fbbf24" : c.label ? `rgba(251,191,36,${0.3 + relativeSize * 0.5})` : "#fbbf2430",
+        color: isActive ? "#fbbf24" : c.label ? `rgba(251,191,36,${0.15 + relativeSize * 0.25})` : "#fbbf2418",
         // Size scales with count — frequently seen clusters are bigger
         val: isActive ? 4 + relativeSize * 3 : 1.5 + relativeSize * 3,
         activity,

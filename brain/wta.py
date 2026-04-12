@@ -61,7 +61,7 @@ class WTALayer:
         # This pushes them apart → they specialize for different patterns.
         # Shape: [num_neurons, num_neurons], diagonal = 0 (no self-inhibition)
         self.lateral_weights = torch.zeros(num_neurons, num_neurons)
-        self._lateral_rate = 0.0005  # slow lateral learning — don't rotate within-pattern
+        self._lateral_rate = 0.003  # lateral learning — specialization in ~700 ticks
 
     def step(self, input_current: torch.Tensor, dt: float = 1.0) -> torch.Tensor:
         # Lateral inhibition: subtract weighted sum of other neurons' membrane
@@ -112,7 +112,7 @@ class WTALayer:
             # Increase lateral weights where neurons co-fired
             self.lateral_weights = self.lateral_weights + self._lateral_rate * co_fire
             # Slow decay to prevent runaway inhibition
-            self.lateral_weights = self.lateral_weights * 0.9999
+            self.lateral_weights = self.lateral_weights * 0.999  # half-life ~700 ticks
             # Clamp to [0, 1]
             self.lateral_weights = self.lateral_weights.clamp(0, 1.0)
 

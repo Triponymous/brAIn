@@ -261,8 +261,8 @@ def run_soak_test(total_ticks: int) -> bool:
         print(f"  FAILED: tick mismatch\n")
     else:
         # Also verify a synapse survived
-        w_orig = brain.synapses["sensory_feature"].weights
-        w_loaded = brain2.synapses["sensory_feature"].weights
+        w_orig = brain.synapses["sensory_concept"].weights
+        w_loaded = brain2.synapses["sensory_concept"].weights
         diff = float((w_orig - w_loaded).abs().max().item())
         if diff > 1e-5:
             failures.append(f"  Weight drift after load: max_diff={diff}")

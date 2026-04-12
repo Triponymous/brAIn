@@ -6,15 +6,13 @@ from bridge.exporter import BrainStateExporter
 
 
 def test_exporter_construction():
-    brain = Brain(num_sensory=8, num_feature=4, num_association=8, num_concept=4,
-                  num_wm=4, num_motor=4, num_meta=2)
+    brain = Brain(num_sensory=8, num_concept=4, num_wm=4)
     exporter = BrainStateExporter(brain)
     assert exporter.brain is brain
 
 
 def test_snapshot_has_required_keys():
-    brain = Brain(num_sensory=8, num_feature=4, num_association=8, num_concept=4,
-                  num_wm=4, num_motor=4, num_meta=2)
+    brain = Brain(num_sensory=8, num_concept=4, num_wm=4)
     torch.manual_seed(0)
     for _ in range(10):
         brain.tick(torch.rand(8) * 3.0)
@@ -28,8 +26,7 @@ def test_snapshot_has_required_keys():
 
 
 def test_snapshot_active_concepts_is_list():
-    brain = Brain(num_sensory=8, num_feature=4, num_association=8, num_concept=4,
-                  num_wm=4, num_motor=4, num_meta=2)
+    brain = Brain(num_sensory=8, num_concept=4, num_wm=4)
     torch.manual_seed(0)
     for _ in range(50):
         brain.tick(torch.rand(8) * 3.0)
@@ -42,8 +39,7 @@ def test_snapshot_active_concepts_is_list():
 
 
 def test_snapshot_modulators_match_brain():
-    brain = Brain(num_sensory=8, num_feature=4, num_association=8, num_concept=4,
-                  num_wm=4, num_motor=4, num_meta=2)
+    brain = Brain(num_sensory=8, num_concept=4, num_wm=4)
     brain.modulators.inject("DA", 0.5)
     exporter = BrainStateExporter(brain)
     snap = exporter.snapshot()
@@ -51,8 +47,7 @@ def test_snapshot_modulators_match_brain():
 
 
 def test_snapshot_with_labels():
-    brain = Brain(num_sensory=8, num_feature=4, num_association=8, num_concept=4,
-                  num_wm=4, num_motor=4, num_meta=2)
+    brain = Brain(num_sensory=8, num_concept=4, num_wm=4)
     exporter = BrainStateExporter(brain)
     exporter.set_label(0, "tippen")
     snap = exporter.snapshot()

@@ -1,13 +1,13 @@
 {
-  "timestamp": 1775989155.5097191,
+  "timestamp": 1776003741.796959,
   "results": [
     {
       "name": "stress_detection",
-      "pass": true,
+      "pass": false,
       "ne_calm": 0.0,
-      "ne_stress": 0.05005001666666556,
-      "sht_calm": 0.04898382813114354,
-      "sht_stress": 0.0
+      "ne_stress": 4.871323558768833e-17,
+      "sht_calm": 0.047555896528556824,
+      "sht_stress": 0.04810643462307508
     },
     {
       "name": "flow_protection",
@@ -15,8 +15,8 @@
       "modulators": {
         "DA": 0.006015012499994641,
         "NE": 0.0,
-        "ACh": 0.02767367301812508,
-        "5HT": 0.050025004166666075
+        "ACh": 0.026277704128514438,
+        "5HT": 0.048674625173859995
       }
     },
     {
@@ -34,6 +34,6 @@
       "pass": true
     }
   ],
-  "passed": 5,
+  "passed": 4,
   "total": 5
 }

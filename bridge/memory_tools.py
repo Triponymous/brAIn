@@ -41,15 +41,16 @@ class MemoryTools:
     def recall_associations(self, concept_id: int) -> list[dict]:
         """Find concepts that are strongly connected to the given concept.
 
-        Reads the association->concept synapse weights to find which other
-        concept neurons share strong incoming connections with concept_id.
+        Uses the expansion→concept synapse weights: concepts with similar
+        weight profiles respond to similar sensory patterns.
         """
-        syn = self.brain.synapses.get("association_concept")
+        syn = self.brain.synapses.get("sensory_concept")
         if syn is None:
             return []
-        weights = syn.weights  # shape (num_concept, num_association)
-        target_weights = weights[concept_id]  # shape (num_association,)
-        # Cosine similarity between this concept's weight vector and all others
+        weights = syn.weights  # shape (num_concept, num_expansion)
+        if concept_id >= weights.shape[0]:
+            return []
+        target_weights = weights[concept_id]
         norms = torch.norm(weights, dim=1)
         target_norm = torch.norm(target_weights)
         if target_norm < 1e-8:

@@ -44,10 +44,23 @@ export function nodeColor(
 
 /** Rich HTML tooltip for node hover. */
 export function nodeTooltip(node: VizNode): string {
-  const actPct = (node.activity * 100).toFixed(0);
+  // For concept neurons: show active/inactive status instead of misleading percentage
+  const isConceptNeuron = node.type === "neuron" && node.regionId === "concept";
+  let statusLine = "";
+  if (isConceptNeuron) {
+    if (node.activity >= 0.9) {
+      statusLine = `<br/><span style="color:#fbbf24;font-size:11px;font-weight:bold">⚡ Gerade aktiv</span>`;
+    } else {
+      statusLine = `<br/><span style="color:#666;font-size:11px">💤 Inaktiv (Erinnerung)</span>`;
+    }
+  } else if (node.activity > 0) {
+    const actPct = (node.activity * 100).toFixed(0);
+    statusLine = `<br/><span style="color:#6ee7b7;font-size:11px">Aktivitaet: ${actPct}%</span>`;
+  }
+
   return `<div style="background:rgba(0,0,0,0.85);padding:8px 12px;border-radius:8px;font-size:13px;color:${node.color};border:1px solid ${node.color}50">
     <b>${node.label}</b>
     ${node.regionId ? `<br/><span style="color:#888;font-size:11px">${node.regionId}</span>` : ""}
-    ${node.activity > 0 ? `<br/><span style="color:#6ee7b7;font-size:11px">Aktivitaet: ${actPct}%</span>` : ""}
+    ${statusLine}
   </div>`;
 }

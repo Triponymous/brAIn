@@ -71,21 +71,13 @@ def _blob_to_tensor(b: bytes) -> torch.Tensor:
 def _brain_config(brain: Brain) -> dict[str, Any]:
     return {
         "num_sensory": brain.regions["sensory"].num_neurons,
-        "num_feature": brain.regions["feature"].num_neurons,
-        "num_association": brain.regions["association"].num_neurons,
         "num_concept": brain.regions["concept"].num_neurons,
         "num_wm": brain.regions["wm"].num_neurons,
-        "num_motor": brain.regions["motor"].num_neurons,
-        "num_meta": brain.regions["meta"].num_neurons,
         "concept_k": brain.regions["concept"].k,
-        # Numerical / learning kwargs — sourced from a representative region/synapse.
-        # All regions share tau_mem/threshold; all STDP synapses share a_plus/a_minus.
         "tau_mem": brain.regions["sensory"].tau_mem,
         "threshold": brain.regions["sensory"].threshold,
-        "a_plus": brain.synapses["sensory_feature"].a_plus,
-        "a_minus": brain.synapses["sensory_feature"].a_minus,
-        # w_init / w_init_std only affect __init__; the saved weight tensors
-        # already capture the full state, so reload value is irrelevant.
+        "a_plus": brain.synapses["sensory_concept"].a_plus,
+        "a_minus": brain.synapses["sensory_concept"].a_minus,
         "w_init": 0.0,
         "w_init_std": 0.0,
     }
@@ -155,12 +147,20 @@ def save_brain(brain: Brain, path: Path) -> None:
         # ConceptTracker clusters (stable concept IDs + labels)
         if hasattr(brain, 'concept_tracker'):
             ct = brain.concept_tracker
-            for i in range(len(ct.centroids)):
+            for cid in sorted(ct._clusters):
+                c = ct._clusters[cid]
                 conn.execute(
                     "INSERT INTO concept_tracker(cluster_id, centroid, label, count, last_seen) VALUES (?, ?, ?, ?, ?)",
-                    (i, _tensor_to_blob(ct.centroids[i]), ct.cluster_labels[i],
-                     ct.cluster_counts[i], ct.cluster_last_seen[i]),
+                    (cid, _tensor_to_blob(c.centroid), c.label, c.count, c.last_seen),
                 )
+
+        # Personality state (from BrainInterpreter)
+        if hasattr(brain, '_interpreter') and brain._interpreter:
+            conn.execute(
+                "INSERT OR REPLACE INTO meta(key, value) VALUES ('personality', ?)",
+                (json.dumps(brain._interpreter.save_personality()),),
+            )
+
         conn.commit()
     finally:
         conn.close()
@@ -183,20 +183,24 @@ def load_brain(path: Path) -> Brain:
         for name, level in conn.execute("SELECT name, level FROM modulators"):
             brain.modulators._levels[name] = level
 
-        # Regions
+        # Regions — skip regions that no longer exist (Feature, Association, Motor, Meta)
         for name, membrane_blob, last_spikes_blob in conn.execute(
             "SELECT name, membrane, last_spikes FROM region_state"
         ):
-            region = brain.regions[name]
+            region = brain.regions.get(name)
+            if region is None:
+                continue  # old checkpoint has regions we removed
             region.membrane = _blob_to_tensor(membrane_blob)
             if last_spikes_blob is not None and hasattr(region, "last_spikes"):
                 region.last_spikes = _blob_to_tensor(last_spikes_blob)
 
-        # Synapses
+        # Synapses — skip synapses that no longer exist
         for name, weights_blob, apre_blob, apost_blob in conn.execute(
             "SELECT name, weights, apre, apost FROM synapse_state"
         ):
-            syn = brain.synapses[name]
+            syn = brain.synapses.get(name)
+            if syn is None:
+                continue  # old checkpoint has synapses we removed
             syn.weights = _blob_to_tensor(weights_blob)
             syn.apre = _blob_to_tensor(apre_blob)
             syn.apost = _blob_to_tensor(apost_blob)
@@ -223,22 +227,57 @@ def load_brain(path: Path) -> Brain:
 
         # ConceptTracker clusters (may not exist in older checkpoints)
         try:
+            from brain.concept_tracker import _Cluster
             rows = conn.execute(
                 "SELECT cluster_id, centroid, label, count, last_seen FROM concept_tracker ORDER BY cluster_id"
             ).fetchall()
             if rows and hasattr(brain, 'concept_tracker'):
                 ct = brain.concept_tracker
-                ct.centroids = []
-                ct.cluster_labels = []
-                ct.cluster_counts = []
-                ct.cluster_last_seen = []
+                ct._clusters = {}
                 for cluster_id, centroid_blob, label, count, last_seen in rows:
-                    ct.centroids.append(_blob_to_tensor(centroid_blob))
-                    ct.cluster_labels.append(label)
-                    ct.cluster_counts.append(count)
-                    ct.cluster_last_seen.append(last_seen)
+                    ct._clusters[cluster_id] = _Cluster(
+                        centroid=_blob_to_tensor(centroid_blob),
+                        label=label,
+                        count=count,
+                        last_seen=last_seen,
+                        protected=label is not None,
+                    )
+                ct._next_id = max(ct._clusters.keys(), default=-1) + 1
         except sqlite3.OperationalError:
             pass  # Old checkpoint — use empty tracker
+
+        # Personality state (will be loaded by BrainInterpreter later)
+        try:
+            row = conn.execute("SELECT value FROM meta WHERE key='personality'").fetchone()
+            if row:
+                brain._personality_state = json.loads(row[0])
+        except (sqlite3.OperationalError, Exception):
+            pass
+
+        # ── Post-load sanity checks ──
+        # WM synapses may be saturated from old checkpoints (pre-scaling fix).
+        # If mean weight > 0.7, reset to fresh initialization.
+        for syn_name in ("concept_wm", "wm_concept"):
+            syn = brain.synapses.get(syn_name)
+            if syn is not None:
+                mean_w = float(syn.weights.mean().item())
+                if mean_w > 0.7:
+                    print(f"[persistence] {syn_name} saturated (mean={mean_w:.3f}), resetting to fresh weights")
+                    import torch
+                    shape = syn.weights.shape
+                    if syn_name == "wm_concept":
+                        syn.weights = torch.clamp(
+                            torch.randn(shape) * 0.05 + 0.1,
+                            syn.w_min, syn.w_max,
+                        )
+                    else:
+                        syn.weights = torch.clamp(
+                            torch.randn(shape) * 0.15 + 0.3,
+                            syn.w_min, syn.w_max,
+                        )
+                    syn._target_w_sum = syn.weights.sum(dim=1, keepdim=True).mean().reshape(1)
+                    syn.apre = torch.zeros(syn.num_pre)
+                    syn.apost = torch.zeros(syn.num_post)
 
         return brain
     finally:

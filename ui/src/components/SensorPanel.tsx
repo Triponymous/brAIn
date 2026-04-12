@@ -104,19 +104,22 @@ export function SensorPanel({ state }: { state: BrainState | null }) {
       {/* Spike Pipeline */}
       <div className="bg-gray-900 rounded p-2 space-y-1">
         <div className="text-gray-500 text-[10px]">Spike Pipeline</div>
-        {(["sensory", "concept"] as const).map((name) => {
-          const count = spikes[name] ?? 0;
-          const max = name === "concept" ? 200 : 200;
+        {([
+          { name: "sensory", label: "Sensorik", max: 60, color: "bg-emerald-500" },
+          { name: "concept", label: "Konzept", max: 200, color: "bg-yellow-500" },
+          { name: "wm", label: "Gedaechtnis", max: 40, color: "bg-blue-500" },
+        ] as const).map((r) => {
+          const count = spikes[r.name] ?? 0;
           return (
-            <div key={name}>
+            <div key={r.name}>
               <div className="flex justify-between text-gray-400">
-                <span className="capitalize">{name}</span>
+                <span>{r.label}</span>
                 <span className="text-gray-200">{count}</span>
               </div>
               <div className="w-full bg-gray-800 rounded-full h-1.5 mt-0.5">
                 <div
-                  className="bg-emerald-500 h-1.5 rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, (count / max) * 100)}%` }}
+                  className={`${r.color} h-1.5 rounded-full transition-all duration-300`}
+                  style={{ width: `${Math.min(100, (count / r.max) * 100)}%` }}
                 />
               </div>
             </div>

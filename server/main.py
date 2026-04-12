@@ -185,9 +185,8 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter:
                 "concepts": tracker_snap,  # stable cluster IDs!
                 "spike_counts": {
                     "sensory": int(brain._last_sensory_spikes) if hasattr(brain, '_last_sensory_spikes') else 0,
-                    "feature": int(brain._last_feature_spikes) if hasattr(brain, '_last_feature_spikes') else 0,
-                    "association": int(brain._last_association_spikes) if hasattr(brain, '_last_association_spikes') else 0,
                     "concept": int(brain._last_concept_spikes) if hasattr(brain, '_last_concept_spikes') else 0,
+                    "wm": int(brain._last_wm_spikes) if hasattr(brain, '_last_wm_spikes') else 0,
                 },
             }
 

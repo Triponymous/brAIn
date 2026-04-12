@@ -28,8 +28,13 @@ export function ChatPanel() {
   }, [messages]);
 
   // Listen for proactive notifications from the pet
+  // Dedup: notifications with the same tick are duplicates (multiple WS connections)
   useEffect(() => {
+    let lastNotifTick = 0;
     return onNotification((notif) => {
+      const tick = notif.tick ?? 0;
+      if (tick === lastNotifTick && tick > 0) return; // duplicate
+      lastNotifTick = tick;
       setMessages((prev) => [
         ...prev,
         {

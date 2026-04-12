@@ -1,0 +1,687 @@
+{
+  "test": "ablation_study",
+  "timestamp": 1776028661.9753668,
+  "seeds": [
+    42,
+    123,
+    456
+  ],
+  "ticks_per_scenario": 5000,
+  "pause_ticks": 2000,
+  "scenarios": [
+    "typing_vscode",
+    "zoom_call",
+    "music_spotify",
+    "idle_away"
+  ],
+  "conditions": {
+    "Baseline": {
+      "avg_distinct_groups": 1.67,
+      "avg_overlap": 27.78,
+      "avg_pairwise": {
+        "typing_vscode_vs_zoom_call": 44.44,
+        "typing_vscode_vs_music_spotify": 55.56,
+        "typing_vscode_vs_idle_away": 0.0,
+        "zoom_call_vs_music_spotify": 66.67,
+        "zoom_call_vs_idle_away": 0.0,
+        "music_spotify_vs_idle_away": 0.0
+      },
+      "per_seed": [
+        {
+          "seed": 42,
+          "distinct_groups": 2,
+          "avg_overlap": 22.22,
+          "scenario_top3": {
+            "typing_vscode": [
+              112,
+              75,
+              195
+            ],
+            "zoom_call": [
+              75,
+              194,
+              115
+            ],
+            "music_spotify": [
+              112,
+              194,
+              115
+            ],
+            "idle_away": [
+              98,
+              35,
+              117
+            ]
+          }
+        },
+        {
+          "seed": 123,
+          "distinct_groups": 2,
+          "avg_overlap": 22.22,
+          "scenario_top3": {
+            "typing_vscode": [
+              186,
+              11,
+              191
+            ],
+            "zoom_call": [
+              73,
+              18,
+              11
+            ],
+            "music_spotify": [
+              73,
+              11,
+              23
+            ],
+            "idle_away": [
+              123,
+              85,
+              86
+            ]
+          }
+        },
+        {
+          "seed": 456,
+          "distinct_groups": 1,
+          "avg_overlap": 38.89,
+          "scenario_top3": {
+            "typing_vscode": [
+              8,
+              3,
+              172
+            ],
+            "zoom_call": [
+              113,
+              3,
+              172
+            ],
+            "music_spotify": [
+              8,
+              3,
+              172
+            ],
+            "idle_away": [
+              26,
+              92,
+              165
+            ]
+          }
+        }
+      ]
+    },
+    "No IP": {
+      "avg_distinct_groups": 4.0,
+      "avg_overlap": 7.41,
+      "avg_pairwise": {
+        "typing_vscode_vs_zoom_call": 11.11,
+        "typing_vscode_vs_music_spotify": 11.11,
+        "typing_vscode_vs_idle_away": 11.11,
+        "zoom_call_vs_music_spotify": 11.11,
+        "zoom_call_vs_idle_away": 0.0,
+        "music_spotify_vs_idle_away": 0.0
+      },
+      "per_seed": [
+        {
+          "seed": 42,
+          "distinct_groups": 4,
+          "avg_overlap": 5.56,
+          "scenario_top3": {
+            "typing_vscode": [
+              112,
+              115,
+              75
+            ],
+            "zoom_call": [
+              106,
+              123,
+              124
+            ],
+            "music_spotify": [
+              112,
+              76,
+              136
+            ],
+            "idle_away": [
+              25,
+              122,
+              132
+            ]
+          }
+        },
+        {
+          "seed": 123,
+          "distinct_groups": 4,
+          "avg_overlap": 11.11,
+          "scenario_top3": {
+            "typing_vscode": [
+              186,
+              18,
+              191
+            ],
+            "zoom_call": [
+              196,
+              133,
+              86
+            ],
+            "music_spotify": [
+              129,
+              98,
+              196
+            ],
+            "idle_away": [
+              73,
+              178,
+              191
+            ]
+          }
+        },
+        {
+          "seed": 456,
+          "distinct_groups": 4,
+          "avg_overlap": 5.56,
+          "scenario_top3": {
+            "typing_vscode": [
+              8,
+              3,
+              172
+            ],
+            "zoom_call": [
+              172,
+              76,
+              66
+            ],
+            "music_spotify": [
+              148,
+              94,
+              191
+            ],
+            "idle_away": [
+              113,
+              122,
+              179
+            ]
+          }
+        }
+      ]
+    },
+    "No BCM": {
+      "avg_distinct_groups": 1.33,
+      "avg_overlap": 27.78,
+      "avg_pairwise": {
+        "typing_vscode_vs_zoom_call": 55.56,
+        "typing_vscode_vs_music_spotify": 66.67,
+        "typing_vscode_vs_idle_away": 0.0,
+        "zoom_call_vs_music_spotify": 44.44,
+        "zoom_call_vs_idle_away": 0.0,
+        "music_spotify_vs_idle_away": 0.0
+      },
+      "per_seed": [
+        {
+          "seed": 42,
+          "distinct_groups": 2,
+          "avg_overlap": 22.22,
+          "scenario_top3": {
+            "typing_vscode": [
+              112,
+              75,
+              195
+            ],
+            "zoom_call": [
+              112,
+              129,
+              143
+            ],
+            "music_spotify": [
+              112,
+              75,
+              115
+            ],
+            "idle_away": [
+              89,
+              35,
+              22
+            ]
+          }
+        },
+        {
+          "seed": 123,
+          "distinct_groups": 1,
+          "avg_overlap": 33.33,
+          "scenario_top3": {
+            "typing_vscode": [
+              186,
+              18,
+              11
+            ],
+            "zoom_call": [
+              186,
+              73,
+              18
+            ],
+            "music_spotify": [
+              73,
+              18,
+              11
+            ],
+            "idle_away": [
+              89,
+              12,
+              159
+            ]
+          }
+        },
+        {
+          "seed": 456,
+          "distinct_groups": 1,
+          "avg_overlap": 27.78,
+          "scenario_top3": {
+            "typing_vscode": [
+              8,
+              3,
+              86
+            ],
+            "zoom_call": [
+              8,
+              3,
+              147
+            ],
+            "music_spotify": [
+              3,
+              148,
+              86
+            ],
+            "idle_away": [
+              73,
+              114,
+              70
+            ]
+          }
+        }
+      ]
+    },
+    "No Lateral": {
+      "avg_distinct_groups": 1.67,
+      "avg_overlap": 27.78,
+      "avg_pairwise": {
+        "typing_vscode_vs_zoom_call": 44.44,
+        "typing_vscode_vs_music_spotify": 55.56,
+        "typing_vscode_vs_idle_away": 0.0,
+        "zoom_call_vs_music_spotify": 66.67,
+        "zoom_call_vs_idle_away": 0.0,
+        "music_spotify_vs_idle_away": 0.0
+      },
+      "per_seed": [
+        {
+          "seed": 42,
+          "distinct_groups": 2,
+          "avg_overlap": 22.22,
+          "scenario_top3": {
+            "typing_vscode": [
+              112,
+              75,
+              195
+            ],
+            "zoom_call": [
+              75,
+              194,
+              115
+            ],
+            "music_spotify": [
+              112,
+              194,
+              115
+            ],
+            "idle_away": [
+              98,
+              35,
+              117
+            ]
+          }
+        },
+        {
+          "seed": 123,
+          "distinct_groups": 2,
+          "avg_overlap": 22.22,
+          "scenario_top3": {
+            "typing_vscode": [
+              186,
+              11,
+              191
+            ],
+            "zoom_call": [
+              73,
+              18,
+              11
+            ],
+            "music_spotify": [
+              73,
+              11,
+              23
+            ],
+            "idle_away": [
+              123,
+              85,
+              86
+            ]
+          }
+        },
+        {
+          "seed": 456,
+          "distinct_groups": 1,
+          "avg_overlap": 38.89,
+          "scenario_top3": {
+            "typing_vscode": [
+              8,
+              3,
+              172
+            ],
+            "zoom_call": [
+              113,
+              3,
+              172
+            ],
+            "music_spotify": [
+              8,
+              3,
+              172
+            ],
+            "idle_away": [
+              26,
+              92,
+              165
+            ]
+          }
+        }
+      ]
+    },
+    "No Modulators": {
+      "avg_distinct_groups": 1.33,
+      "avg_overlap": 22.22,
+      "avg_pairwise": {
+        "typing_vscode_vs_zoom_call": 44.44,
+        "typing_vscode_vs_music_spotify": 0.0,
+        "typing_vscode_vs_idle_away": 0.0,
+        "zoom_call_vs_music_spotify": 11.11,
+        "zoom_call_vs_idle_away": 11.11,
+        "music_spotify_vs_idle_away": 66.67
+      },
+      "per_seed": [
+        {
+          "seed": 42,
+          "distinct_groups": 0,
+          "avg_overlap": 27.78,
+          "scenario_top3": {
+            "typing_vscode": [
+              75,
+              115,
+              36
+            ],
+            "zoom_call": [
+              75,
+              115,
+              36
+            ],
+            "music_spotify": [
+              76,
+              95,
+              23
+            ],
+            "idle_away": [
+              23,
+              20,
+              95
+            ]
+          }
+        },
+        {
+          "seed": 123,
+          "distinct_groups": 2,
+          "avg_overlap": 16.67,
+          "scenario_top3": {
+            "typing_vscode": [
+              17,
+              19,
+              100
+            ],
+            "zoom_call": [
+              152,
+              2,
+              55
+            ],
+            "music_spotify": [
+              120,
+              2,
+              123
+            ],
+            "idle_away": [
+              120,
+              123,
+              125
+            ]
+          }
+        },
+        {
+          "seed": 456,
+          "distinct_groups": 2,
+          "avg_overlap": 22.22,
+          "scenario_top3": {
+            "typing_vscode": [
+              164,
+              133,
+              183
+            ],
+            "zoom_call": [
+              164,
+              44,
+              165
+            ],
+            "music_spotify": [
+              8,
+              115,
+              126
+            ],
+            "idle_away": [
+              8,
+              44,
+              126
+            ]
+          }
+        }
+      ]
+    },
+    "No WM": {
+      "avg_distinct_groups": 2.67,
+      "avg_overlap": 20.37,
+      "avg_pairwise": {
+        "typing_vscode_vs_zoom_call": 44.44,
+        "typing_vscode_vs_music_spotify": 33.33,
+        "typing_vscode_vs_idle_away": 0.0,
+        "zoom_call_vs_music_spotify": 44.44,
+        "zoom_call_vs_idle_away": 0.0,
+        "music_spotify_vs_idle_away": 0.0
+      },
+      "per_seed": [
+        {
+          "seed": 42,
+          "distinct_groups": 4,
+          "avg_overlap": 16.67,
+          "scenario_top3": {
+            "typing_vscode": [
+              75,
+              115,
+              143
+            ],
+            "zoom_call": [
+              112,
+              195,
+              143
+            ],
+            "music_spotify": [
+              129,
+              115,
+              195
+            ],
+            "idle_away": [
+              35,
+              132,
+              87
+            ]
+          }
+        },
+        {
+          "seed": 123,
+          "distinct_groups": 2,
+          "avg_overlap": 22.22,
+          "scenario_top3": {
+            "typing_vscode": [
+              186,
+              18,
+              11
+            ],
+            "zoom_call": [
+              186,
+              11,
+              23
+            ],
+            "music_spotify": [
+              73,
+              11,
+              191
+            ],
+            "idle_away": [
+              89,
+              74,
+              85
+            ]
+          }
+        },
+        {
+          "seed": 456,
+          "distinct_groups": 2,
+          "avg_overlap": 22.22,
+          "scenario_top3": {
+            "typing_vscode": [
+              8,
+              3,
+              172
+            ],
+            "zoom_call": [
+              8,
+              147,
+              148
+            ],
+            "music_spotify": [
+              148,
+              147,
+              172
+            ],
+            "idle_away": [
+              115,
+              43,
+              70
+            ]
+          }
+        }
+      ]
+    },
+    "No Expansion": {
+      "avg_distinct_groups": 4.0,
+      "avg_overlap": 0.0,
+      "avg_pairwise": {
+        "typing_vscode_vs_zoom_call": 0.0,
+        "typing_vscode_vs_music_spotify": 0.0,
+        "typing_vscode_vs_idle_away": 0.0,
+        "zoom_call_vs_music_spotify": 0.0,
+        "zoom_call_vs_idle_away": 0.0,
+        "music_spotify_vs_idle_away": 0.0
+      },
+      "per_seed": [
+        {
+          "seed": 42,
+          "distinct_groups": 4,
+          "avg_overlap": 0.0,
+          "scenario_top3": {
+            "typing_vscode": [
+              120,
+              75,
+              155
+            ],
+            "zoom_call": [
+              160,
+              62,
+              95
+            ],
+            "music_spotify": [
+              137,
+              124,
+              197
+            ],
+            "idle_away": [
+              1,
+              27,
+              17
+            ]
+          }
+        },
+        {
+          "seed": 123,
+          "distinct_groups": 4,
+          "avg_overlap": 0.0,
+          "scenario_top3": {
+            "typing_vscode": [
+              136,
+              177,
+              170
+            ],
+            "zoom_call": [
+              160,
+              105,
+              36
+            ],
+            "music_spotify": [
+              192,
+              89,
+              182
+            ],
+            "idle_away": [
+              16,
+              42,
+              94
+            ]
+          }
+        },
+        {
+          "seed": 456,
+          "distinct_groups": 4,
+          "avg_overlap": 0.0,
+          "scenario_top3": {
+            "typing_vscode": [
+              34,
+              172,
+              130
+            ],
+            "zoom_call": [
+              24,
+              113,
+              4
+            ],
+            "music_spotify": [
+              73,
+              188,
+              101
+            ],
+            "idle_away": [
+              158,
+              3,
+              30
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "baseline_distinct": 1.67,
+  "baseline_overlap": 27.78,
+  "total_time_seconds": 312.2
+}

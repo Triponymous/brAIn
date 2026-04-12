@@ -53,7 +53,7 @@ PATTERNS = {
 REPLAY_COUNT = 20           # play each pattern 20 times
 TICKS_PER_REPLAY = 500      # each replay = 500 ticks (5 seconds — realistic exposure)
 PAUSE_TICKS = 500           # 500 ticks pause (5 seconds)
-WARMUP_TICKS = 100000       # 100K ticks warmup (lots of alternating training)
+WARMUP_TICKS = 10000        # 10K ticks warmup (enough to form clusters, not enough to over-blend centroids)
 
 
 def run_replay_test(pattern_name: str, brain: Brain, use_tracker: bool = True) -> dict:

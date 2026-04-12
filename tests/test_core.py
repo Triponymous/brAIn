@@ -1,13 +1,10 @@
 """Brain core composition tests.
 
 The Brain class wires together:
-- Sensory (LIF, large input layer)
-- Feature (LIF, smaller, learns features via STDP)
-- Association (LIF, cross-modal binding)
-- Concept (WTA, sparse, winner-take-all)
-- Working Memory (WMLayer, recurrent persistence)
-- Motor (LIF, output, learned via R-STDP)
-- Meta (LIF, exposes modulator state to the rest of the brain)
+- Sensory (LIF, 200, encodes raw input to spikes)
+- Expansion (fixed random, 500, pattern separation)
+- Concept (WTA, 1000, sparse winner-take-all with STDP)
+- Working Memory (WMLayer, 100, recurrent persistence with feedback)
 - Modulators (DA, NE, ACh, 5HT)
 
 The Brain exposes:
@@ -23,38 +20,45 @@ from brain.core import Brain
 
 def test_brain_construction_default_sizes():
     brain = Brain()
-    # All 7 regions present
-    for name in ["sensory", "feature", "association", "concept", "wm", "motor", "meta"]:
+    for name in ["sensory", "concept", "wm"]:
         assert name in brain.regions, f"Missing region: {name}"
-    # Modulators present
+    # Removed regions should NOT exist
+    for name in ["feature", "association", "motor", "meta"]:
+        assert name not in brain.regions, f"Removed region still present: {name}"
     assert brain.modulators is not None
-    # Tick count starts at 0
     assert brain.tick_count == 0
 
 
 def test_brain_construction_custom_sizes():
     brain = Brain(
         num_sensory=20,
-        num_feature=10,
-        num_association=15,
         num_concept=5,
         num_wm=5,
-        num_motor=5,
-        num_meta=3,
     )
     assert brain.regions["sensory"].num_neurons == 20
-    assert brain.regions["feature"].num_neurons == 10
-    assert brain.regions["association"].num_neurons == 15
     assert brain.regions["concept"].num_neurons == 5
     assert brain.regions["wm"].num_neurons == 5
-    assert brain.regions["motor"].num_neurons == 5
-    assert brain.regions["meta"].num_neurons == 3
+
+
+def test_brain_construction_legacy_params():
+    """Legacy params from old config.json are accepted but ignored."""
+    brain = Brain(
+        num_sensory=20,
+        num_concept=5,
+        num_wm=5,
+        num_feature=10,       # legacy — ignored
+        num_association=15,   # legacy — ignored
+        num_motor=5,          # legacy — ignored
+        num_meta=3,           # legacy — ignored
+    )
+    assert "feature" not in brain.regions
+    assert brain.regions["sensory"].num_neurons == 20
 
 
 def test_brain_tick_returns_spike_dict():
     brain = Brain(num_sensory=4)
     out = brain.tick(input_current=torch.zeros(4))
-    for name in ["sensory", "feature", "association", "concept", "wm", "motor"]:
+    for name in ["sensory", "concept", "wm"]:
         assert name in out, f"Missing spike output for {name}"
         assert isinstance(out[name], torch.Tensor)
     assert brain.tick_count == 1
@@ -62,7 +66,7 @@ def test_brain_tick_returns_spike_dict():
 
 def test_brain_tick_propagates_input():
     """Strong input should produce some sensory spikes within a few ticks."""
-    brain = Brain(num_sensory=4, num_feature=2)
+    brain = Brain(num_sensory=4)
     total_sensory_spikes = 0
     for _ in range(10):
         out = brain.tick(input_current=torch.tensor([3.0, 3.0, 3.0, 3.0]))
@@ -87,3 +91,17 @@ def test_brain_modulators_decay_each_tick():
         brain.tick(input_current=torch.zeros(4))
     final = brain.modulators.level("DA")
     assert final < initial, f"DA did not decay: {initial} -> {final}"
+
+
+def test_brain_synapses_exist():
+    """All expected synapses present, no dead ones."""
+    brain = Brain(num_sensory=4)
+    expected = {"sensory_concept", "concept_wm", "wm_concept"}
+    assert set(brain.synapses.keys()) == expected
+
+
+def test_wm_feedback_exists():
+    """WM → Concept feedback synapse should exist and have correct dimensions."""
+    brain = Brain(num_sensory=4, num_concept=10, num_wm=5)
+    syn = brain.synapses["wm_concept"]
+    assert syn.weights.shape == (10, 5)  # (num_concept, num_wm)

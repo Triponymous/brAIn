@@ -147,8 +147,69 @@ class ProactiveEngine:
         except asyncio.CancelledError:
             return
 
+    def _sensor_context(self) -> str:
+        """Build a short sensor description for grounding proactive messages."""
+        sd = getattr(self.brain, '_last_sensor_display', {})
+        parts = []
+        app = sd.get("app")
+        if app:
+            parts.append(f"App: {app}")
+        keys = sd.get("keys", 0)
+        mouse = sd.get("mouse", 0)
+        if keys > 10:
+            parts.append("Tastatur sehr aktiv")
+        elif keys > 2:
+            parts.append("Tastatur aktiv")
+        else:
+            parts.append("Tastatur still")
+        if mouse > 20:
+            parts.append("Maus sehr aktiv")
+        elif mouse > 3:
+            parts.append("Maus bewegt sich")
+        mic = sd.get("mic_rms", 0)
+        if mic > 0.003:
+            parts.append("Mikrofon: deutliche Geraeusche")
+        elif mic > 0.001:
+            parts.append("Mikrofon: leise Geraeusche")
+        idle = sd.get("idle", 0)
+        if idle > 30:
+            parts.append(f"Idle seit {int(idle)}s")
+        return ", ".join(parts) if parts else "keine Sensordaten"
+
     def _check(self) -> dict[str, str] | None:
         mods = self.brain.modulators.snapshot()
+        sensor_ctx = self._sensor_context()
+
+        # ── BrainInterpreter-based triggers (higher-level than raw SNN) ──
+        interpreter = getattr(self.brain, '_interpreter', None)
+        if interpreter:
+            states = interpreter.state_detector.detect()
+            if states["flow"] and states["flow_duration_min"] > 60:
+                return {
+                    "category": "flow",
+                    "context": f"Du bist seit {states['flow_duration_min']}min im Flow in {states['flow_app']} — laeuft bei dir!",
+                }
+            if states["needs_break"]:
+                return {
+                    "category": "break",
+                    "context": f"Hey Leon, du arbeitest seit {states['active_minutes']:.0f} Minuten ohne Pause. Kurz durchatmen?",
+                }
+            if states["meeting"] and not getattr(self, '_meeting_announced', False):
+                self._meeting_announced = True
+                return {
+                    "category": "meeting",
+                    "context": f"Ich seh {sensor_ctx} — bist du in einem Call?",
+                }
+            elif not states.get("meeting"):
+                self._meeting_announced = False
+
+            anomalies = interpreter.anomaly.check(
+                getattr(self.brain, '_last_sensor_display', {}))
+            if anomalies:
+                return {
+                    "category": "anomaly",
+                    "context": anomalies[0]["description"],
+                }
 
         # 0. ConceptTracker transition — the BEST trigger for proactive messages
         transition = self.brain.concept_tracker.get_transition()
@@ -157,23 +218,23 @@ class ProactiveEngine:
                 # New pattern the pet has never seen before!
                 return {
                     "category": "new_pattern",
-                    "context": f"Neues Muster entdeckt (Muster #{transition['to_cluster']}). "
-                               f"Das habe ich noch nie gesehen.",
+                    "context": f"Hmm, das ist neu — {sensor_ctx}. "
+                               f"Das kenn ich noch nicht. Was machst du da, Leon?",
                 }
             elif transition["to_label"]:
                 # Switched to a known pattern
+                from_str = f"'{transition['from_label']}'" if transition['from_label'] else "was anderem"
                 return {
                     "category": "pattern_switch",
-                    "context": f"Wechsel erkannt: jetzt '{transition['to_label']}' "
-                               f"(vorher: {transition['from_label'] or 'unbekannt'}).",
+                    "context": f"Ah, du wechselst von {from_str} zu '{transition['to_label']}'. "
+                               f"Ich seh {sensor_ctx}.",
                 }
             elif transition["from_label"] and not transition["to_label"]:
                 # Left a known pattern for an unknown one
                 return {
                     "category": "unknown_pattern",
-                    "context": f"Leon hat aufgehoert mit '{transition['from_label']}'. "
-                               f"Jetzt passiert etwas Neues (Muster #{transition['to_cluster']}). "
-                               f"Was machst du, Leon?",
+                    "context": f"Du hast aufgehoert mit '{transition['from_label']}' — "
+                               f"jetzt seh ich {sensor_ctx}. Was kommt jetzt, Leon?",
                 }
 
         # 1. Unknown pattern active for a while — ask what Leon is doing
@@ -194,7 +255,8 @@ class ProactiveEngine:
                 self._asked_about.add(current)
                 return {
                     "category": "ask_label",
-                    "context": f"Muster #{current} ist seit ein paar Minuten aktiv und hat noch keinen Namen. Was machst du gerade, Leon?",
+                    "context": f"Hey Leon — ich seh seit ein paar Minuten {sensor_ctx}. "
+                               f"Das ist ein Muster das ich noch nicht kenne. Wie soll ich das nennen?",
                 }
         else:
             # Reset tracking when pattern changes
@@ -208,14 +270,24 @@ class ProactiveEngine:
         if da > 0.05 or ne > 0.08:
             return {
                 "category": "novelty",
-                "context": "Ich spuere dass sich gerade etwas veraendert hat. Was ist passiert, Leon?",
+                "context": f"Whoa — gerade hat sich was veraendert! Ich seh {sensor_ctx}. Was ist los?",
             }
 
         # 3. Stress detection
         if ne > 0.08 and sht < 0.01:
+            sd = getattr(self.brain, '_last_sensor_display', {})
+            app = sd.get("app", "")
+            keys = sd.get("keys", 0)
+            switch_rate = sd.get("switch_rate", 0)
+            stress_detail = []
+            if switch_rate and switch_rate > 3:
+                stress_detail.append("du wechselst viel zwischen Apps")
+            if keys > 20:
+                stress_detail.append("tippst wie verrueckt")
+            detail = " und ".join(stress_detail) if stress_detail else "es fuehlt sich hektisch an"
             return {
                 "category": "stress",
-                "context": "Du wirkst gerade etwas gestresst. Alles okay?",
+                "context": f"Leon, {detail}. Ist alles okay bei dir?",
             }
 
         return None

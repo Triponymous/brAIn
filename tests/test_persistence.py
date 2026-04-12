@@ -17,8 +17,7 @@ from brain.persistence import save_brain, load_brain
 
 
 def test_save_load_round_trip_default():
-    brain = Brain(num_sensory=8, num_feature=4, num_association=8, num_concept=4,
-                  num_wm=4, num_motor=4, num_meta=2)
+    brain = Brain(num_sensory=8, num_concept=4, num_wm=4)
     # Run a few ticks to populate non-zero state
     torch.manual_seed(123)
     for _ in range(20):
@@ -51,8 +50,7 @@ def test_save_load_round_trip_default():
 def test_save_load_then_tick_matches_unsaved():
     """Brain saved, loaded, then ticked once should match the original ticked once."""
     torch.manual_seed(7)
-    brain = Brain(num_sensory=8, num_feature=4, num_association=8, num_concept=4,
-                  num_wm=4, num_motor=4, num_meta=2)
+    brain = Brain(num_sensory=8, num_concept=4, num_wm=4)
     for _ in range(10):
         brain.tick(torch.rand(8) * 2.0)
 

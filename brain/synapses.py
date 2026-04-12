@@ -131,20 +131,21 @@ class STDPSynapse:
         # Floor of 0.01 keeps a tiny signal flowing so learning can revive.
         self.weights = torch.clamp(self.weights, max(self.w_min, 0.01), self.w_max)
 
-        # ── Weight Normalization (Diehl & Cook 2015) ──
-        # Normalize per POST-neuron: each post-neuron's total incoming
-        # weight (column sum in their notation, row sum in ours since
-        # our weight matrix is [post, pre]) stays at target.
-        #
-        # KEY: This preserves RELATIVE weight differences within a row
-        # (some inputs stronger than others = selectivity) while preventing
-        # the total from exploding or collapsing.
-        # Weight normalization: DISABLED.
-        # Row-sum normalization makes all concept neurons receive identical
-        # total input → WTA winner is random. Without normalization, STDP
-        # creates genuine input-strength differences between neurons.
-        # The w_floor (0.01) + 100:1 potentiation:depression ratio prevents
-        # weight collapse without normalization.
+        # ── Per-row Weight Normalization ──
+        # DISABLED for sensory→concept (BCM + 100:1 ratio handles stability).
+        # ENABLED for WM synapses (_synaptic_scaling=True) where weights
+        # would otherwise ALL saturate to max over millions of ticks.
+        # Normalization preserves RELATIVE differences (selectivity) while
+        # keeping total incoming weight per post-neuron stable.
+        if self._synaptic_scaling:
+            interval = getattr(self, '_scaling_interval', 1000)
+            self._scaling_tick_counter += 1
+            if self._scaling_tick_counter >= interval:
+                self._scaling_tick_counter = 0
+                row_sums = self.weights.sum(dim=1, keepdim=True)
+                scale = self._target_w_sum / (row_sums + 1e-8)
+                self.weights = self.weights * scale
+                self.weights = torch.clamp(self.weights, max(self.w_min, 0.01), self.w_max)
 
 
 class RSTDPSynapse(STDPSynapse):
