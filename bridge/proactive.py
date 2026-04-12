@@ -38,7 +38,6 @@ class ProactiveEngine:
         self.exporter = exporter
         self.pusher = pusher
         self.router = router
-        self._seen_concepts: set[int] = set()
         self._last_notification = 0.0
         self._last_idle_warning = 0.0
 
@@ -177,24 +176,7 @@ class ProactiveEngine:
                                f"Was machst du, Leon?",
                 }
 
-        accum = self.brain.concept_spike_accum
-        max_val = float(accum.max().item())
-
-        # 1. New concept emerged (old method — kept as fallback)
-        active_ids = (accum > max_val * 0.3).nonzero(as_tuple=True)[0].tolist() if max_val > 0.01 else []
-        new_concepts = [cid for cid in active_ids if cid not in self._seen_concepts]
-        for cid in active_ids:
-            self._seen_concepts.add(cid)
-
-        if new_concepts and len(self._seen_concepts) > 3:
-            profile = self.exporter.get_concept_profile(new_concepts[0])
-            suggested = profile.get("suggested_label") or f"Concept #{new_concepts[0]}"
-            return {
-                "category": "new_concept",
-                "context": f"Neues Muster entdeckt: {suggested}. Insgesamt {len(self._seen_concepts)} Konzepte bekannt.",
-            }
-
-        # 2. Unknown pattern active for a while — ask what Leon is doing
+        # 1. Unknown pattern active for a while — ask what Leon is doing
         tracker = self.brain.concept_tracker.snapshot()
         current = tracker.get("current_cluster", -1)
         current_label = tracker.get("current_label")
@@ -235,15 +217,5 @@ class ProactiveEngine:
                 "category": "stress",
                 "context": f"Anzeichen von Stress erkannt. NE={ne:.2f}, 5HT={sht:.2f}.",
             }
-
-        # 4. Very active labeled concept
-        labels = self.exporter.all_labels()
-        for cid in active_ids[:5]:
-            if cid in labels and float(accum[cid].item()) > max_val * 0.8:
-                label = labels[cid]
-                return {
-                    "category": "activity",
-                    "context": f"Konzept '{label}' (#{cid}) ist gerade sehr aktiv.",
-                }
 
         return None
