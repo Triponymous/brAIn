@@ -211,43 +211,61 @@ class Brain:
         # 2. Modulator decay
         self.modulators.tick(dt)
 
-        # 3. Sensory
-        sensory = self.regions["sensory"]
-        sensory_spikes = sensory.step(input_current, dt=dt)
+        # ═══ NEUROMODULATION OF SNN DYNAMICS ═══
+        # Modulators don't just go to the LLM — they CHANGE how the SNN processes.
+        # This is the core insight: emotions filter perception and drive learning.
+        da = self.modulators.level("DA")
+        ne = self.modulators.level("NE")
+        ach = self.modulators.level("ACh")
+        sht = self.modulators.level("5HT")
 
-        # 4. EXPANSION LAYER (Cerebellar Granule Cell model)
-        # Random sparse projection separates overlapping sensory patterns
-        # into distinct sparse codes. No learning — fixed random weights.
-        #
-        # CRITICAL: mask out shared-baseline neurons (time-tonic 148-155,
-        # baseline-idle 100, baseline-mic 144) that are identical across
-        # all patterns. Only discriminating neurons go through expansion.
+        # 3. Sensory — NE modulates sensitivity
+        # High NE → lower sensory threshold → more neurons fire → hypervigilant
+        # Low NE → normal threshold → calm perception
+        sensory = self.regions["sensory"]
+        ne_threshold_mod = 1.0 - ne * 2.0  # NE=0.1 → threshold * 0.8 (more sensitive)
+        original_threshold = sensory.threshold
+        sensory.threshold = max(0.3, original_threshold * ne_threshold_mod)
+        sensory_spikes = sensory.step(input_current, dt=dt)
+        sensory.threshold = original_threshold  # restore
+
+        # 4. EXPANSION LAYER — 5HT modulates pattern breadth
+        # High 5HT → higher expansion threshold → fewer expansion neurons fire
+        #   → broader pattern matching → more content/calm (familiar = good)
+        # Low 5HT → lower threshold → more neurons fire → more distinctions
+        #   → restless, everything feels different
         discriminating_spikes = sensory_spikes.clone()
         n = len(discriminating_spikes)
-        # Mask out shared-baseline neurons (only if full 200-dim encoding)
         if n >= 164:
-            discriminating_spikes[148:156] = 0  # time-tonic
-            discriminating_spikes[100] = 0      # idle baseline
-            discriminating_spikes[144] = 0      # mic RMS baseline
-            discriminating_spikes[160:164] = 0  # activity level
+            discriminating_spikes[148:156] = 0  # time-tonic (masked for expansion only)
+            discriminating_spikes[100] = 0
+            discriminating_spikes[144] = 0
+            discriminating_spikes[160:164] = 0
 
+        sht_threshold_mod = 1.0 + sht * 5.0  # 5HT=0.05 → threshold * 1.25
         expansion_input = self._expansion_weights @ discriminating_spikes
-        expansion_spikes = (expansion_input >= self._expansion_threshold).float()
+        expansion_spikes = (expansion_input >= self._expansion_threshold * sht_threshold_mod).float()
 
-        # 5. Feature (fixed pass-through for visualization)
+        # 5. Feature (pass-through)
         feature = self.regions["feature"]
         sf = self.synapses["sensory_feature"]
         feature_input = sf.forward(sensory_spikes)
         feature_spikes = feature.step(feature_input, dt=dt)
 
-        # 6. Association (fixed pass-through for visualization)
+        # 6. Association (pass-through)
         association = self.regions["association"]
         fa = self.synapses["feature_association"]
         association_input = fa.forward(feature_spikes)
         association_spikes = association.step(association_input, dt=dt)
 
-        # 7. Concept (WTA) — learns from EXPANSION layer (separated patterns!)
+        # 7. Concept (WTA) — ACh modulates lateral inhibition strength
+        # High ACh → stronger lateral inhibition → sharper competition
+        #   → more focused, fewer winners, clearer concept separation
+        # Low ACh → weaker inhibition → more neurons fire → diffuse attention
         concept = self.regions["concept"]
+        if hasattr(concept, '_lateral_rate'):
+            concept._lateral_rate = 0.0005 * (1.0 + ach * 10.0)  # ACh=0.05 → 1.5x inhibition
+
         sc = self.synapses["sensory_concept"]
         concept_input = sc.forward(expansion_spikes)
         concept_spikes = concept.step(concept_input, dt=dt)
@@ -424,16 +442,23 @@ class Brain:
         motor_spikes = motor.step(motor_input, dt=dt)
 
         # 9. STDP update — ONLY on sensory→concept (the learning synapse)
-        # Feature/Association synapses are fixed (no learning).
-        # This is the Diehl & Cook architecture proven to work.
-        ach = self.modulators.level("ACh")
-        modulation = 1.0 + ach
-        sc.update(expansion_spikes, concept_spikes, dt=dt, modulation=modulation)
+        # 9. STDP — THREE-FACTOR LEARNING RULE (pre × post × neuromodulator)
+        # DA: controls LEARNING SPEED. High DA = learn fast (novel/rewarding).
+        #     Low DA = learn slow (boring/familiar). This is the reward signal.
+        # ACh: controls SELECTIVITY. High ACh = sharpen existing knowledge.
+        #     Low ACh = open to new patterns.
+        # Together: DA * ACh = the learning modulation factor.
+        # This is NOT prompt engineering — this changes the actual STDP weight updates.
+        da_now = self.modulators.level("DA")
+        ach_now = self.modulators.level("ACh")
+        # Three-factor: base rate 1.0 + DA boost (novelty drives learning)
+        #                            + ACh boost (attention amplifies learning)
+        learning_modulation = 1.0 + da_now * 5.0 + ach_now * 3.0
+        sc.update(expansion_spikes, concept_spikes, dt=dt, modulation=learning_modulation)
         cw.update(concept_spikes, wm_spikes, dt=dt, modulation=0.5)
 
-        # 10. R-STDP update for motor (gated by DA = reward proxy)
-        da = self.modulators.level("DA")
-        cm.update(concept_spikes, motor_spikes, dt=dt, reward=da)
+        # 10. R-STDP for motor — DA is the reward signal
+        cm.update(concept_spikes, motor_spikes, dt=dt, reward=da_now)
 
         # 11. Track spike counts + vectors for dashboard (Meso visualization)
         self._last_sensory_spikes = sensory_spikes.sum().item()
