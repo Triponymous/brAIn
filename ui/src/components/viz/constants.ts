@@ -2,13 +2,9 @@
 // Central definitions for the 3D brain visualization.
 
 export const REGION_DEFS = [
-  { id: "sensory",     label: "Sensorik",         color: "#6ee7b7", neurons: 200, target: [-120, -120,   0] as [number,number,number] },
-  { id: "feature",     label: "Mustererkennung",   color: "#34d399", neurons: 200, target: [ -60,  -60,   0] as [number,number,number] },
-  { id: "association", label: "Verknuepfung",      color: "#a78bfa", neurons: 500, target: [   0,    0,   0] as [number,number,number] },
-  { id: "concept",     label: "Konzeptbildung",    color: "#fbbf24", neurons: 200, target: [  60,   60,   0] as [number,number,number] },
-  { id: "wm",          label: "Gedaechtnis",       color: "#60a5fa", neurons: 100, target: [  60,    0, -40] as [number,number,number] },
-  { id: "motor",       label: "Motorik",           color: "#f87171", neurons:  50, target: [ 120,  100,   0] as [number,number,number] },
-  { id: "meta",        label: "Meta",              color: "#9ca3af", neurons:  10, target: [   0,  150,   0] as [number,number,number] },
+  { id: "sensory",     label: "Sensorik",         color: "#6ee7b7", neurons: 200, target: [-100,  -80,   0] as [number,number,number] },
+  { id: "concept",     label: "Konzeptbildung",    color: "#fbbf24", neurons: 1000, target: [  60,   60,   0] as [number,number,number] },
+  { id: "wm",          label: "Gedaechtnis",       color: "#60a5fa", neurons: 100, target: [ 100,    0, -30] as [number,number,number] },
 ] as const;
 
 export type RegionId = (typeof REGION_DEFS)[number]["id"];
@@ -29,11 +25,8 @@ export function sensorPosition(offset: number): [number, number, number] {
 
 /** Information-flow edges between regions */
 export const SYNAPSE_PIPELINE: [string, string][] = [
-  ["sensory", "feature"],
-  ["feature", "association"],
-  ["association", "concept"],
+  ["sensory", "concept"],
   ["concept", "wm"],
-  ["concept", "motor"],
 ];
 
 export type ZoomLevel = "macro" | "meso" | "micro";

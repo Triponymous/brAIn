@@ -19,8 +19,7 @@ export type MacroState = {
 const _conceptPeaks = new Map<number, number>();
 
 const MAX_SPIKES: Record<string, number> = {
-  sensory: 200, feature: 200, association: 500, concept: 200,
-  wm: 100, motor: 50, meta: 10,
+  sensory: 200, concept: 1000, wm: 100,
 };
 
 export function buildMacroGraph(state: MacroState): VizGraph {
@@ -60,9 +59,8 @@ export function buildMacroGraph(state: MacroState): VizGraph {
     });
   }
 
-  // Region nodes — only show actively used regions prominently
-  // Sensory + Concept are the main pipeline; others are dimmed
-  const activeRegions = new Set(["sensory", "concept"]);
+  // Region nodes — all are active (we removed the unused ones)
+  const activeRegions = new Set(["sensory", "concept", "wm"]);
 
   for (const r of REGION_DEFS) {
     const raw = spikes[r.id] ?? 0;

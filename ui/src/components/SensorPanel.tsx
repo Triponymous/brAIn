@@ -6,7 +6,7 @@ type ExtendedState = BrainState & {
     background_apps?: string[]; app_count?: number; app_switched?: boolean;
     switch_rate?: number;
   };
-  spike_counts?: { sensory?: number; feature?: number; association?: number; concept?: number };
+  spike_counts?: { sensory?: number; concept?: number };
 };
 
 export function SensorPanel({ state }: { state: BrainState | null }) {
@@ -104,7 +104,7 @@ export function SensorPanel({ state }: { state: BrainState | null }) {
       {/* Spike Pipeline */}
       <div className="bg-gray-900 rounded p-2 space-y-1">
         <div className="text-gray-500 text-[10px]">Spike Pipeline</div>
-        {(["sensory", "feature", "association", "concept"] as const).map((name) => {
+        {(["sensory", "concept"] as const).map((name) => {
           const count = spikes[name] ?? 0;
           const max = name === "concept" ? 200 : 200;
           return (
