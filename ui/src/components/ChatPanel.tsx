@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { onNotification } from "../lib/ws";
 
 type Message = {
   role: "user" | "assistant";
@@ -25,6 +26,21 @@ export function ChatPanel() {
   useEffect(() => {
     localStorage.setItem("brain_chat", JSON.stringify(messages.slice(-50)));
   }, [messages]);
+
+  // Listen for proactive notifications from the pet
+  useEffect(() => {
+    return onNotification((notif) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: `💭 ${notif.message}`,
+          timestamp: Date.now(),
+          backend: "proaktiv",
+        },
+      ]);
+    });
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

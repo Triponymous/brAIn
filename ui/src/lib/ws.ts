@@ -16,25 +16,37 @@ export type BrainState = {
 };
 
 type Listener = (state: BrainState) => void;
+type NotificationListener = (msg: { message: string; category: string; tick: number }) => void;
 
 let ws: WebSocket | null = null;
 let listeners: Set<Listener> = new Set();
+let notificationListeners: Set<NotificationListener> = new Set();
 let latestState: BrainState | null = null;
 
 export function connectWS() {
-  // Connect directly to daemon (bypass Vite proxy which has ECONNRESET issues)
   const url = `ws://localhost:8765/ws`;
   ws = new WebSocket(url);
   ws.onmessage = (ev) => {
     try {
-      const state: BrainState = JSON.parse(ev.data);
-      latestState = state;
-      listeners.forEach((fn) => fn(state));
+      const data = JSON.parse(ev.data);
+      // Proactive notifications have a "type" field
+      if (data.type === "notification") {
+        notificationListeners.forEach((fn) => fn(data));
+        return;
+      }
+      // Regular brain state updates
+      latestState = data as BrainState;
+      listeners.forEach((fn) => fn(latestState!));
     } catch {}
   };
   ws.onclose = () => {
     setTimeout(connectWS, 2000);
   };
+}
+
+export function onNotification(fn: NotificationListener): () => void {
+  notificationListeners.add(fn);
+  return () => notificationListeners.delete(fn);
 }
 
 export function subscribe(fn: Listener): () => void {

@@ -197,10 +197,35 @@ class ProactiveEngine:
                 "context": f"Neues Muster entdeckt: {suggested}. Insgesamt {len(self._seen_concepts)} Konzepte bekannt.",
             }
 
-        # 2. High novelty (DA or NE spiked)
+        # 2. Unknown pattern active for a while — ask what Leon is doing
+        tracker = self.brain.concept_tracker.snapshot()
+        current = tracker.get("current_cluster", -1)
+        current_label = tracker.get("current_label")
+        if current >= 0 and not current_label:
+            # How long has this unlabeled cluster been active?
+            if not hasattr(self, '_unlabeled_active_since'):
+                self._unlabeled_active_since = {}
+            if current not in self._unlabeled_active_since:
+                self._unlabeled_active_since[current] = self.brain.tick_count
+            ticks_active = self.brain.tick_count - self._unlabeled_active_since[current]
+            # Ask after 2 minutes of the SAME unlabeled pattern (12000 ticks)
+            if ticks_active > 12000 and current not in getattr(self, '_asked_about', set()):
+                if not hasattr(self, '_asked_about'):
+                    self._asked_about = set()
+                self._asked_about.add(current)
+                return {
+                    "category": "ask_label",
+                    "context": f"Muster #{current} ist seit ein paar Minuten aktiv und hat noch keinen Namen. Was machst du gerade, Leon?",
+                }
+        else:
+            # Reset tracking when pattern changes
+            if hasattr(self, '_unlabeled_active_since'):
+                self._unlabeled_active_since = {}
+
+        # 3. High novelty (DA or NE spiked) — lowered thresholds
         da = mods.get("DA", 0)
         ne = mods.get("NE", 0)
-        if da > 0.15 or ne > 0.2:
+        if da > 0.05 or ne > 0.08:
             return {
                 "category": "novelty",
                 "context": f"Etwas Unerwartetes passiert. Dopamin={da:.2f}, Noradrenalin={ne:.2f}.",
