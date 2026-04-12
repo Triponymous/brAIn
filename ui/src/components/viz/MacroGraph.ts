@@ -60,15 +60,21 @@ export function buildMacroGraph(state: MacroState): VizGraph {
     });
   }
 
-  // Region nodes — semi-fixed along information flow
+  // Region nodes — only show actively used regions prominently
+  // Sensory + Concept are the main pipeline; others are dimmed
+  const activeRegions = new Set(["sensory", "concept"]);
+
   for (const r of REGION_DEFS) {
     const raw = spikes[r.id] ?? 0;
     const maxS = MAX_SPIKES[r.id] ?? 100;
     const activity = Math.min(1, raw / maxS);
+    const isActive = activeRegions.has(r.id) || raw > 0;
     nodes.push({
       id: `r_${r.id}`, type: "region", regionId: r.id,
-      label: r.label, color: r.color,
-      val: 12 + activity * 10, activity,
+      label: r.label,
+      color: isActive ? r.color : r.color + "30",
+      val: isActive ? 12 + activity * 10 : 5,
+      activity: isActive ? activity : 0.1,
       fx: r.target[0], fy: r.target[1], fz: r.target[2],
     });
   }

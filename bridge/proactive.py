@@ -201,21 +201,21 @@ class ProactiveEngine:
             if hasattr(self, '_unlabeled_active_since'):
                 self._unlabeled_active_since = {}
 
-        # 3. High novelty (DA or NE spiked) — lowered thresholds
+        # 2. High novelty — something changed suddenly
         da = mods.get("DA", 0)
         ne = mods.get("NE", 0)
+        sht = mods.get("5HT", 0)
         if da > 0.05 or ne > 0.08:
             return {
                 "category": "novelty",
-                "context": f"Etwas Unerwartetes passiert. Dopamin={da:.2f}, Noradrenalin={ne:.2f}.",
+                "context": "Ich spuere dass sich gerade etwas veraendert hat. Was ist passiert, Leon?",
             }
 
-        # 3. Stress detection (high NE + low 5HT sustained)
-        sht = mods.get("5HT", 0)
+        # 3. Stress detection
         if ne > 0.08 and sht < 0.01:
             return {
                 "category": "stress",
-                "context": f"Anzeichen von Stress erkannt. NE={ne:.2f}, 5HT={sht:.2f}.",
+                "context": "Du wirkst gerade etwas gestresst. Alles okay?",
             }
 
         return None
