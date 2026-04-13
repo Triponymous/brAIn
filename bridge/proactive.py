@@ -307,13 +307,13 @@ class ProactiveEngine:
         tracker = self.brain.concept_tracker.snapshot()
         current = tracker.get("current_cluster", -1)
         current_label = tracker.get("current_label")
+        if not hasattr(self, '_unlabeled_active_since'):
+            self._unlabeled_active_since = {}
         if current >= 0 and not current_label:
-            if not hasattr(self, '_unlabeled_active_since'):
-                self._unlabeled_active_since = {}
             if current not in self._unlabeled_active_since:
                 self._unlabeled_active_since[current] = self.brain.tick_count
             ticks_active = self.brain.tick_count - self._unlabeled_active_since[current]
-            if ticks_active > 12000 and current not in getattr(self, '_asked_about', set()):
+            if ticks_active > 6000 and current not in getattr(self, '_asked_about', set()):
                 if not hasattr(self, '_asked_about'):
                     self._asked_about = set()
                 self._asked_about.add(current)
@@ -329,10 +329,8 @@ class ProactiveEngine:
                     "context": f"Ich beobachte seit ein paar Minuten: {sensor_ctx}. "
                                f"Soll ich das '{suggested}' nennen?",
                 }
-        else:
-            # Reset tracking when pattern changes
-            if hasattr(self, '_unlabeled_active_since'):
-                self._unlabeled_active_since = {}
+        # Don't reset ALL timers — only clean up clusters that no longer exist
+        # This prevents the timer from resetting when switching between labeled/unlabeled
 
         # 2. High novelty — something changed suddenly
         da = mods.get("DA", 0)
