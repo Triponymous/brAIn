@@ -255,9 +255,9 @@ def load_brain(path: Path) -> Brain:
             pass
 
         # ── Post-load sanity checks ──
-        # WM synapses may be saturated from old checkpoints (pre-scaling fix).
+        # Synapses may be saturated from old checkpoints (pre-scaling fix).
         # If mean weight > 0.7, reset to fresh initialization.
-        for syn_name in ("concept_wm", "wm_concept"):
+        for syn_name in ("sensory_concept", "concept_wm", "wm_concept"):
             syn = brain.synapses.get(syn_name)
             if syn is not None:
                 mean_w = float(syn.weights.mean().item())

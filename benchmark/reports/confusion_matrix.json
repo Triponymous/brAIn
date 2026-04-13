@@ -1,0 +1,87 @@
+{
+  "test": "confusion_matrix",
+  "timestamp": 1776102144.515881,
+  "warmup_ticks": 20000,
+  "test_ticks_per_scenario": 5000,
+  "repeats": 3,
+  "sample_interval": 50,
+  "confusion_matrix": {
+    "typing_vscode": {
+      "cluster_0": 300,
+      "cluster_1": 0,
+      "cluster_2": 0
+    },
+    "zoom_call": {
+      "cluster_0": 0,
+      "cluster_1": 300,
+      "cluster_2": 0
+    },
+    "music_spotify": {
+      "cluster_0": 0,
+      "cluster_1": 0,
+      "cluster_2": 300
+    },
+    "idle_away": {
+      "cluster_0": 0,
+      "cluster_1": 300,
+      "cluster_2": 0
+    }
+  },
+  "scenario_dominant_cluster": {
+    "typing_vscode": 0,
+    "zoom_call": 1,
+    "music_spotify": 2,
+    "idle_away": 1
+  },
+  "cluster_ids": [
+    0,
+    1,
+    2
+  ],
+  "per_class": {
+    "typing_vscode": {
+      "dominant_cluster": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 300,
+      "fp": 0,
+      "fn": 0,
+      "samples": 300
+    },
+    "zoom_call": {
+      "dominant_cluster": 1,
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.6667,
+      "tp": 300,
+      "fp": 300,
+      "fn": 0,
+      "samples": 300
+    },
+    "music_spotify": {
+      "dominant_cluster": 2,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 300,
+      "fp": 0,
+      "fn": 0,
+      "samples": 300
+    },
+    "idle_away": {
+      "dominant_cluster": 1,
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.6667,
+      "tp": 300,
+      "fp": 300,
+      "fn": 0,
+      "samples": 300
+    }
+  },
+  "overall_accuracy": 1.0,
+  "macro_f1": 0.8334,
+  "distinct_clusters": 3,
+  "overall_pass": true
+}

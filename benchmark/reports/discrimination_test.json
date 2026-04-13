@@ -1,83 +1,83 @@
 {
   "test": "discrimination",
-  "timestamp": 1776028409.488984,
+  "timestamp": 1776102861.729675,
   "scenario_concepts": {
     "typing_vscode": [
       [
-        68,
-        189,
-        38
+        83,
+        142,
+        47
+      ],
+      [
+        96,
+        43,
+        126
       ],
       [
         8,
-        194,
-        77
-      ],
-      [
-        41,
-        186,
-        91
+        35,
+        163
       ]
     ],
     "zoom_call": [
       [
-        33,
-        124,
-        189
+        47,
+        39,
+        143
       ],
       [
-        194,
-        98,
-        20
+        160,
+        195,
+        101
       ],
       [
-        114,
-        188,
-        102
+        177,
+        62,
+        71
       ]
     ],
     "music_spotify": [
       [
-        124,
-        38,
-        68
+        145,
+        4,
+        36
       ],
       [
-        98,
-        3,
-        20
+        129,
+        35,
+        163
       ],
       [
-        34,
-        44,
-        87
+        112,
+        121,
+        141
       ]
     ],
     "idle_away": [
       [
-        105,
-        4,
-        101
+        90,
+        51,
+        173
       ],
       [
-        98,
-        3,
-        20
+        25,
+        90,
+        38
       ],
       [
-        178,
-        171,
-        63
+        183,
+        158,
+        119
       ]
     ]
   },
   "confusion": {
-    "typing_vscode_vs_zoom_call": 22.222222222222218,
-    "typing_vscode_vs_music_spotify": 22.222222222222218,
+    "typing_vscode_vs_zoom_call": 11.111111111111109,
+    "typing_vscode_vs_music_spotify": 0.0,
     "typing_vscode_vs_idle_away": 0.0,
-    "zoom_call_vs_music_spotify": 33.33333333333333,
-    "zoom_call_vs_idle_away": 22.222222222222218,
-    "music_spotify_vs_idle_away": 33.333333333333336
+    "zoom_call_vs_music_spotify": 0.0,
+    "zoom_call_vs_idle_away": 0.0,
+    "music_spotify_vs_idle_away": 0.0
   },
   "distinct_groups": 4,
   "overall_pass": true

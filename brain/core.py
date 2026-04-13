@@ -54,8 +54,8 @@ class Brain:
         concept_k: int | None = None,
         tau_mem: float = 100.0,
         threshold: float = 1.0,
-        a_plus: float = 0.05,
-        a_minus: float = 0.0005,
+        a_plus: float = 0.03,      # potentiation rate (30:1 ratio — balances learning vs saturation)
+        a_minus: float = 0.001,    # depression rate (stronger than before to counter potentiation)
         w_init: float = 0.3,
         w_init_std: float = 0.15,
         # Legacy params — accepted but ignored (backward compat with config.json)
@@ -95,8 +95,12 @@ class Brain:
             return syn
 
         # ── Synapses ──
-        # expansion→concept: THE main learning synapse (STDP + BCM, 100:1 ratio)
+        # expansion→concept: THE main learning synapse (STDP + BCM, 20:1 ratio)
+        # Synaptic scaling enabled: normalizes per-row weight sums every 500 ticks
+        # to prevent saturation (59.7% weights at max without scaling).
         sensory_concept = _make_stdp(num_expansion, num_concept)
+        sensory_concept._synaptic_scaling = True
+        sensory_concept._scaling_interval = 2000  # normalize every 2000 ticks (20s) — less aggressive
 
         # concept→wm: BALANCED ratio (10:1, not 100:1!) + synaptic scaling.
         # Without this, all weights saturate to max over millions of ticks

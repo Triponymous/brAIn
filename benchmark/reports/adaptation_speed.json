@@ -1,0 +1,61 @@
+{
+  "test": "adaptation_speed",
+  "timestamp": 1776102165.443826,
+  "target_ticks": 5000,
+  "check_interval": 100,
+  "stability_window": 5,
+  "warmup_ticks": 100000,
+  "fresh_brain": {
+    "typing_vscode": {
+      "scenario": "typing_vscode",
+      "ticks_to_stable": 500,
+      "final_cluster_id": 0,
+      "passed": true
+    },
+    "zoom_call": {
+      "scenario": "zoom_call",
+      "ticks_to_stable": 500,
+      "final_cluster_id": 0,
+      "passed": true
+    },
+    "music_spotify": {
+      "scenario": "music_spotify",
+      "ticks_to_stable": 500,
+      "final_cluster_id": 0,
+      "passed": true
+    },
+    "idle_away": {
+      "scenario": "idle_away",
+      "ticks_to_stable": 500,
+      "final_cluster_id": 0,
+      "passed": true
+    }
+  },
+  "pretrained_brain": {
+    "typing_vscode": {
+      "scenario": "typing_vscode",
+      "ticks_to_stable": 500,
+      "final_cluster_id": 0,
+      "passed": true
+    },
+    "zoom_call": {
+      "scenario": "zoom_call",
+      "ticks_to_stable": 500,
+      "final_cluster_id": 1,
+      "passed": true
+    },
+    "music_spotify": {
+      "scenario": "music_spotify",
+      "ticks_to_stable": 500,
+      "final_cluster_id": 2,
+      "passed": true
+    },
+    "idle_away": {
+      "scenario": "idle_away",
+      "ticks_to_stable": 500,
+      "final_cluster_id": 3,
+      "passed": true
+    }
+  },
+  "overall_pass": true
+}

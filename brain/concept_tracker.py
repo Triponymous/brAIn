@@ -52,7 +52,7 @@ class ConceptTracker:
         input_dim: int = 200,  # sensory dim — NOT expansion. Tracker uses full sensory spikes.
         similarity_threshold: float = 0.25,
         max_clusters: int = 15,
-        snapshot_interval: int = 200,
+        snapshot_interval: int = 50,  # every 50 ticks (0.5s) — fast display updates
         # Legacy name accepted for backward compat with old checkpoints
         expansion_dim: int | None = None,
     ) -> None:
@@ -146,10 +146,11 @@ class ConceptTracker:
     def _assign_cluster(self, signature: torch.Tensor, tick_count: int) -> None:
         """Assign the signature to the best matching cluster, or create new."""
         active_neurons = int(signature.sum().item())
-        if active_neurons < 3:
-            self._current_cluster = -1
+        if active_neurons < 2:
+            # Too sparse — but keep current cluster sticky (don't reset to -1)
+            # Only go to -1 if we've NEVER had a cluster
             self._last_debug = {"reason": "too_few_neurons", "active": active_neurons}
-            return  # too few active neurons, skip
+            return  # keep _current_cluster as-is (sticky)
 
         best_sim = 0.0
         best_id = -1
