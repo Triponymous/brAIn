@@ -128,6 +128,16 @@ class ProactiveEngine:
             while True:
                 await asyncio.sleep(check_interval)
 
+                # Poll SCP events for additional triggers
+                scp_server = getattr(self.brain, '_scp_server', None)
+                if scp_server:
+                    events = scp_server.poll_events()
+                    for event in events:
+                        # SCP events can also trigger notifications
+                        if event.get("method") == "brain.label_needed":
+                            # Already handled by _select_topic, skip
+                            pass
+
                 if not self._should_speak():
                     continue
 

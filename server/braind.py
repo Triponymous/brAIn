@@ -151,17 +151,19 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     narrator = SNNNarrator(brain)
     brain._snn_narrator = narrator
 
-    # SCP: Compact State + Model Adapter + Feedback Channel
-    from bridge.scp import CompactState
-    from bridge.model_adapter import ModelAdapter
-    from bridge.feedback import FeedbackChannel
+    # SCP v2: formal protocol for SNN-LLM communication
+    from bridge.scp_server import BrainServer
+    from bridge.scp_client import SCPClient
 
-    compact = CompactState(brain)
-    brain._compact_state = compact
-    model_adapter = ModelAdapter()
-    brain._model_adapter = model_adapter
-    feedback_channel = FeedbackChannel(brain)
-    brain._feedback = feedback_channel
+    scp_server = BrainServer(brain)
+    brain._scp_server = scp_server
+
+    # Detect model type from config
+    from server.config import get
+    local_model = get("llm", "local_model", "qwen2.5:14b-instruct")
+    model_type = SCPClient.detect_model_type(local_model)
+    scp_client = SCPClient(scp_server, model_type=model_type)
+    brain._scp_client = scp_client
 
     exporter = BrainStateExporter(brain)
     grant_store = GrantStore(checkpoint.parent / "grants.sqlite")
@@ -225,6 +227,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     async def interpreter_tick_loop():
         while True:
             interpreter.tick()
+            scp_server.tick()  # check for events (pattern changes, etc.)
             await asyncio.sleep(1.0)
     interpreter_task = asyncio.create_task(interpreter_tick_loop())
 

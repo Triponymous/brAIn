@@ -22,9 +22,6 @@ from bridge.exporter import BrainStateExporter
 from bridge.memory_tools import MemoryTools
 from bridge.llm_router import HybridLLMRouter
 from bridge.emotional_prompt import build_emotional_prompt, detect_emotional_state
-from bridge.scp import CompactState
-from bridge.model_adapter import ModelAdapter
-from bridge.feedback import FeedbackChannel
 
 
 _SYSTEM_PROMPT_TEMPLATE = """ABSOLUTE REGELN (niemals brechen):
@@ -261,10 +258,21 @@ def build_chat_router(
                 recent_context_lines.append("ICH MUSS darauf eingehen! Das ist WICHTIGER als meine Sinne!")
                 recent_context_lines.append("")
 
-        # SCP: Feedback — user is talking -> inject engagement signal
-        feedback = getattr(brain, '_feedback', None)
-        if feedback:
-            feedback.on_user_message(req.message)
+        # SCP v2: build prompt via protocol
+        scp_client = getattr(brain, '_scp_client', None)
+
+        if scp_client:
+            # Send engagement feedback
+            scp_client.send_feedback("engage")
+
+            # Build the system prompt via SCP protocol
+            system_prompt = scp_client.build_prompt(
+                user_message=req.message,
+                history=req.history,
+            )
+        else:
+            # Fallback: minimal prompt without SCP
+            system_prompt = "Du bist ein kleines Wesen auf Leons Mac. Antworte kurz und natuerlich."
 
         # Smart labeling: works with proactive label suggestions
         # The proactive engine suggests labels like "Coding mit Hintergrundmusik"
@@ -293,44 +301,18 @@ def build_chat_router(
                 brain.concept_tracker.set_label(cluster_id, suggested)
                 print(f"[label] cluster {cluster_id} <- '{suggested}' (user confirmed suggestion)")
                 proactive._pending_label_suggestion = None
-                if feedback:
-                    feedback.on_label_confirmed()
+                if scp_client:
+                    scp_client.send_feedback("reward")
             elif alt_label and len(alt_label) >= 3:
                 final = alt_label[0].upper() + alt_label[1:]
                 brain.concept_tracker.set_label(cluster_id, final)
                 print(f"[label] cluster {cluster_id} <- '{final}' (user provided alternative)")
                 proactive._pending_label_suggestion = None
-                if feedback:
-                    feedback.on_label_corrected()
+                if scp_client:
+                    scp_client.send_feedback("correct")
             elif not is_confirm:
                 # User is talking about something else — clear pending
                 proactive._pending_label_suggestion = None
-
-        # SCP: Compact State (6-line structured brain representation)
-        compact = getattr(brain, '_compact_state', None)
-        state_str = compact.render() if compact else "KEINE DATEN"
-
-        # SCP: Emotional personality from SNN trend
-        interpreter = getattr(brain, '_interpreter', None)
-        emotional_trend = None
-        if interpreter and hasattr(interpreter, 'state_detector'):
-            emotional_trend = interpreter.state_detector.emotional_trend()
-        _, emotion_config = detect_emotional_state(mods, trend=emotional_trend)
-        personality = emotion_config["personality"]
-
-        # SCP: Recent context
-        recent = ""
-        if recent_context_lines:
-            recent = "\n".join(recent_context_lines)
-
-        # SCP: Model-specific prompt via adapter
-        adapter = getattr(brain, '_model_adapter', None)
-        if adapter:
-            cfg = router._get_config()
-            model_type = adapter.detect_model_type(cfg["local_model"])
-            system_prompt = adapter.render(state_str, personality, model_type, recent)
-        else:
-            system_prompt = f"{personality}\n\n{state_str}"
 
         import datetime
         system_prompt += f"\n(Zeitpunkt: {datetime.datetime.now().strftime('%H:%M:%S')})"
