@@ -8,7 +8,8 @@ def test_curious_state():
 
 
 def test_alert_state():
-    mods = {"DA": 0.02, "NE": 0.10, "ACh": 0.03, "5HT": 0.01}
+    # NE peak high but 5HT not low enough for stress → alert
+    mods = {"DA": 0.02, "NE": 0.06, "ACh": 0.01, "5HT": 0.02}
     name, state = detect_emotional_state(mods)
     assert name == "alert"
 

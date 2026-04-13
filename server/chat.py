@@ -312,12 +312,18 @@ def build_chat_router(
         if snn_narrative:
             understanding += "\n=== WAS MEIN GEHIRN DENKT ===\n" + snn_narrative
 
+        # Get emotional TREND from last 3 minutes (not just current snapshot)
+        emotional_trend = None
+        if interpreter and hasattr(interpreter, 'state_detector'):
+            emotional_trend = interpreter.state_detector.emotional_trend(window_seconds=180)
+
         system_prompt = build_emotional_prompt(
             modulators=mods,
             sensor_display="\n".join(sensor_lines),
             concepts="\n".join(concept_lines),
             interpreter_block=understanding,
             recent_context="\n".join(recent_context_lines) if recent_context_lines else "",
+            trend=emotional_trend,
         )
 
         import datetime

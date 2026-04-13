@@ -68,7 +68,9 @@ class StateDetector:
             "mic_rms": sd.get("mic_rms", 0),
             "idle": sd.get("idle", 0),
             "switch_rate": sd.get("switch_rate", 0),
+            "da": mods.get("DA", 0),
             "ne": mods.get("NE", 0),
+            "ach": mods.get("ACh", 0),
             "sht": mods.get("5HT", 0),
         }
         self._history.append(snap)
@@ -153,6 +155,54 @@ class StateDetector:
             "needs_break": needs_break,
             "active_minutes": round(active_min, 1),
         }
+
+    def emotional_trend(self, window_seconds: int = 180) -> dict[str, float]:
+        """Analyze modulator TRENDS over the last N seconds.
+
+        Returns averaged + peak modulator values. This is what the
+        EmotionalPromptEngine should use instead of the instantaneous snapshot,
+        because modulators decay in 2-10 seconds but emotional context
+        persists for minutes.
+
+        Example: NE spiked 30 seconds ago due to a sudden noise.
+        Current NE = 0.001 (decayed). But trend_peak_NE = 0.12 (it WAS high).
+        The pet should still be slightly alert, not fully calm.
+        """
+        if not self._history:
+            return {"avg_DA": 0, "avg_NE": 0, "avg_ACh": 0, "avg_5HT": 0,
+                    "peak_DA": 0, "peak_NE": 0, "peak_ACh": 0, "peak_5HT": 0,
+                    "recent_DA": 0, "recent_NE": 0, "recent_ACh": 0, "recent_5HT": 0}
+
+        window = list(self._history)[-window_seconds:]
+        if not window:
+            window = list(self._history)
+
+        # Average over window
+        avg = {
+            "avg_DA": sum(s.get("da", 0) for s in window) / len(window),
+            "avg_NE": sum(s.get("ne", 0) for s in window) / len(window),
+            "avg_ACh": sum(s.get("ach", 0) for s in window) / len(window),
+            "avg_5HT": sum(s.get("sht", 0) for s in window) / len(window),
+        }
+
+        # Peak in window (captures spikes that have since decayed)
+        peaks = {
+            "peak_DA": max(s.get("da", 0) for s in window),
+            "peak_NE": max(s.get("ne", 0) for s in window),
+            "peak_ACh": max(s.get("ach", 0) for s in window),
+            "peak_5HT": max(s.get("sht", 0) for s in window),
+        }
+
+        # Recent (last 30s) — what's happening NOW vs the trend
+        recent_window = window[-30:] if len(window) > 30 else window
+        recent = {
+            "recent_DA": sum(s.get("da", 0) for s in recent_window) / len(recent_window),
+            "recent_NE": sum(s.get("ne", 0) for s in recent_window) / len(recent_window),
+            "recent_ACh": sum(s.get("ach", 0) for s in recent_window) / len(recent_window),
+            "recent_5HT": sum(s.get("sht", 0) for s in recent_window) / len(recent_window),
+        }
+
+        return {**avg, **peaks, **recent}
 
     def _empty(self) -> dict[str, Any]:
         """Return default state when no history is available."""
