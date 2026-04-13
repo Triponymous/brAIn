@@ -21,7 +21,10 @@ from brain.core import Brain
 from bridge.exporter import BrainStateExporter
 from bridge.memory_tools import MemoryTools
 from bridge.llm_router import HybridLLMRouter
-from bridge.emotional_prompt import build_emotional_prompt
+from bridge.emotional_prompt import build_emotional_prompt, detect_emotional_state
+from bridge.scp import CompactState
+from bridge.model_adapter import ModelAdapter
+from bridge.feedback import FeedbackChannel
 
 
 _SYSTEM_PROMPT_TEMPLATE = """ABSOLUTE REGELN (niemals brechen):
@@ -258,6 +261,11 @@ def build_chat_router(
                 recent_context_lines.append("ICH MUSS darauf eingehen! Das ist WICHTIGER als meine Sinne!")
                 recent_context_lines.append("")
 
+        # SCP: Feedback — user is talking -> inject engagement signal
+        feedback = getattr(brain, '_feedback', None)
+        if feedback:
+            feedback.on_user_message(req.message)
+
         # Smart labeling: works with proactive label suggestions
         # The proactive engine suggests labels like "Coding mit Hintergrundmusik"
         # User can confirm ("ja", "passt") or provide alternative ("nenn es X")
@@ -285,46 +293,44 @@ def build_chat_router(
                 brain.concept_tracker.set_label(cluster_id, suggested)
                 print(f"[label] cluster {cluster_id} <- '{suggested}' (user confirmed suggestion)")
                 proactive._pending_label_suggestion = None
+                if feedback:
+                    feedback.on_label_confirmed()
             elif alt_label and len(alt_label) >= 3:
                 final = alt_label[0].upper() + alt_label[1:]
                 brain.concept_tracker.set_label(cluster_id, final)
                 print(f"[label] cluster {cluster_id} <- '{final}' (user provided alternative)")
                 proactive._pending_label_suggestion = None
+                if feedback:
+                    feedback.on_label_corrected()
             elif not is_confirm:
                 # User is talking about something else — clear pending
                 proactive._pending_label_suggestion = None
 
-        # BrainInterpreter: deep understanding for LLM
+        # SCP: Compact State (6-line structured brain representation)
+        compact = getattr(brain, '_compact_state', None)
+        state_str = compact.render() if compact else "KEINE DATEN"
+
+        # SCP: Emotional personality from SNN trend
         interpreter = getattr(brain, '_interpreter', None)
-        interpreter_block = ""
-        if interpreter:
-            interpreter_block = interpreter.format_for_prompt()
-
-        # SNNNarrator: translate brain internals into natural language
-        narrator = getattr(brain, '_snn_narrator', None)
-        snn_narrative = narrator.narrate_full_state() if narrator else ""
-
-        # Combine interpreter block + SNN narrative into a single
-        # "understanding" section for the emotional prompt engine
-        understanding = ""
-        if interpreter_block:
-            understanding += interpreter_block + "\n"
-        if snn_narrative:
-            understanding += "\n=== WAS MEIN GEHIRN DENKT ===\n" + snn_narrative
-
-        # Get emotional TREND from last 3 minutes (not just current snapshot)
         emotional_trend = None
         if interpreter and hasattr(interpreter, 'state_detector'):
-            emotional_trend = interpreter.state_detector.emotional_trend(window_seconds=180)
+            emotional_trend = interpreter.state_detector.emotional_trend()
+        _, emotion_config = detect_emotional_state(mods, trend=emotional_trend)
+        personality = emotion_config["personality"]
 
-        system_prompt = build_emotional_prompt(
-            modulators=mods,
-            sensor_display="\n".join(sensor_lines),
-            concepts="\n".join(concept_lines),
-            interpreter_block=understanding,
-            recent_context="\n".join(recent_context_lines) if recent_context_lines else "",
-            trend=emotional_trend,
-        )
+        # SCP: Recent context
+        recent = ""
+        if recent_context_lines:
+            recent = "\n".join(recent_context_lines)
+
+        # SCP: Model-specific prompt via adapter
+        adapter = getattr(brain, '_model_adapter', None)
+        if adapter:
+            cfg = router._get_config()
+            model_type = adapter.detect_model_type(cfg["local_model"])
+            system_prompt = adapter.render(state_str, personality, model_type, recent)
+        else:
+            system_prompt = f"{personality}\n\n{state_str}"
 
         import datetime
         system_prompt += f"\n(Zeitpunkt: {datetime.datetime.now().strftime('%H:%M:%S')})"

@@ -151,6 +151,18 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     narrator = SNNNarrator(brain)
     brain._snn_narrator = narrator
 
+    # SCP: Compact State + Model Adapter + Feedback Channel
+    from bridge.scp import CompactState
+    from bridge.model_adapter import ModelAdapter
+    from bridge.feedback import FeedbackChannel
+
+    compact = CompactState(brain)
+    brain._compact_state = compact
+    adapter = ModelAdapter()
+    brain._model_adapter = adapter
+    feedback_channel = FeedbackChannel(brain)
+    brain._feedback = feedback_channel
+
     exporter = BrainStateExporter(brain)
     grant_store = GrantStore(checkpoint.parent / "grants.sqlite")
     tool_registry = ToolRegistry(brain, exporter, grant_store)
