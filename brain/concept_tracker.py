@@ -50,8 +50,8 @@ class ConceptTracker:
     def __init__(
         self,
         input_dim: int = 200,  # sensory dim — NOT expansion. Tracker uses full sensory spikes.
-        similarity_threshold: float = 0.40,  # higher = fewer, broader clusters (0.25 was too granular)
-        max_clusters: int = 8,              # fewer clusters = more meaningful patterns
+        similarity_threshold: float = 0.35,  # balanced: distinct behaviors separate, minor changes merge
+        max_clusters: int = 5,              # 5 meaningful patterns: coding, browsing, meeting, idle, other
         snapshot_interval: int = 50,
         # Legacy name accepted for backward compat with old checkpoints
         expansion_dim: int | None = None,

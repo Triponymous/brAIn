@@ -226,24 +226,31 @@ class Brain:
         concept_input = sc.forward(expansion_spikes) + wm_feedback * 0.3  # WM bias is subtle
         concept_spikes = concept.step(concept_input, dt=dt)
 
-        # 7. ConceptTracker: uses ACTIVITY-FOCUSED sensory spikes for clustering.
-        # Masks out features that change without the user's BEHAVIOR changing:
-        # - App identity (0-39): switching Chrome↔Claude Code is NOT a new activity
-        # - Background apps (40-59): irrelevant for what the user IS DOING
-        # - Time-tonic (148-155): same activity at different times = same cluster
-        # - Activity-level (160-163): redundant with keystroke/mouse bins
-        # - Idle baseline (100), mic RMS summary (144): noise
-        # KEEPS: keystroke bins+rhythm (60-79), mouse bins+rhythm (80-99),
-        #        idle bins (101-107), pause type (108-111), mic mel (112-143)
-        # → Clusters represent BEHAVIOR (typing, clicking, listening, idle)
-        #   not CONTEXT (which app, what time)
+        # 7. ConceptTracker: clusters BEHAVIORAL patterns.
+        # Masking strategy: remove volatile/noisy signals, keep stable behavioral ones.
+        #
+        # KEEP (stable behavioral signals):
+        #   0-39   foreground app (5 neurons, identifies WHAT app)
+        #   60-79  keystroke bins + rhythm (typing behavior)
+        #   80-99  mouse bins + rhythm (clicking behavior)
+        #   101-107 idle bins (away/present)
+        #   108-111 pause type (micro/thinking/break/away)
+        #   145-147 mic RMS bins (loud/quiet — simple loudness)
+        #
+        # MASK (volatile/noisy signals):
+        #   40-59  background apps (change constantly, not behavioral)
+        #   100    idle baseline (always on)
+        #   112-143 mic mel-spectrogram (32 dims! music on/off flips 20+ neurons)
+        #   144    mic RMS summary (redundant with 145-147)
+        #   148-155 time-tonic (same behavior at different times = same cluster)
+        #   156-159 app switch rate (transient, not stable)
+        #   160-163 activity level (redundant with keystroke/mouse bins)
         tracker_spikes = sensory_spikes.clone()
         if len(tracker_spikes) >= 164:
-            tracker_spikes[0:60] = 0      # mask app identity + background apps
+            tracker_spikes[40:60] = 0     # background apps
             tracker_spikes[100] = 0       # idle baseline
-            tracker_spikes[144] = 0       # mic RMS summary
-            tracker_spikes[148:156] = 0   # time-tonic
-            tracker_spikes[160:164] = 0   # activity-level
+            tracker_spikes[112:145] = 0   # mic mel-spectrogram (too granular!)
+            tracker_spikes[148:164] = 0   # time-tonic + switch rate + activity level
         self.concept_tracker.tick(tracker_spikes, self.tick_count)
 
         # Accumulate concept spikes for visualization
