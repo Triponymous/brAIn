@@ -201,6 +201,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     # Proactive notifications — pet speaks up when something interesting happens
     from bridge.proactive import ProactiveEngine
     proactive = ProactiveEngine(brain, exporter, pusher, router=llm_router)
+    brain._proactive_engine = proactive  # accessible from chat endpoint for label suggestions
     proactive_task = asyncio.create_task(proactive.run(check_interval=10.0))
 
     # Interpreter tick loop — updates state detector + personality at 1 Hz

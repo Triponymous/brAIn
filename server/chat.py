@@ -257,43 +257,41 @@ def build_chat_router(
                 recent_context_lines.append("ICH MUSS darauf eingehen! Das ist WICHTIGER als meine Sinne!")
                 recent_context_lines.append("")
 
-        # Auto-label: ONLY if Leon is describing what HE is currently doing at the Mac.
-        # Must match activity keywords AND not be about something else (other PC, past, etc.)
-        if current >= 0 and not current_label and req.message and len(req.message) > 10:
+        # Smart labeling: works with proactive label suggestions
+        # The proactive engine suggests labels like "Coding mit Hintergrundmusik"
+        # User can confirm ("ja", "passt") or provide alternative ("nenn es X")
+        proactive = getattr(brain, '_proactive_engine', None)
+        pending = getattr(proactive, '_pending_label_suggestion', None) if proactive else None
+
+        if pending and req.message:
             msg_lower = req.message.lower().strip()
+            cluster_id = pending.get("cluster_id")
+            suggested = pending.get("suggestion", "")
 
-            # SKIP auto-label if Leon is talking about something ELSE:
-            skip_words = ["anderen pc", "anderer pc", "anderem pc", "neben mir",
-                         "gestern", "morgen", "vorhin", "frueher", "spaeter",
-                         "nicht am mac", "weg vom", "war gerade"]
-            should_skip = any(w in msg_lower for w in skip_words)
+            # User confirms the suggestion
+            confirm_words = ["ja", "passt", "genau", "ok", "jap", "yes", "klar", "mach", "gut", "stimmt", "jo"]
+            is_confirm = any(msg_lower.startswith(w) for w in confirm_words) or msg_lower in confirm_words
 
-            if not should_skip:
-                # Extract first sentence as label candidate
-                for sep in [".", "!", ","]:
-                    if sep in msg_lower:
-                        msg_lower = msg_lower[:msg_lower.index(sep)]
-                        break
-                label_text = msg_lower[:50].strip()
+            # User provides alternative: "nenn es X", "lieber X", "nein, X"
+            alt_prefixes = ["nenn", "lieber", "nein,", "nee,", "ne,", "besser"]
+            alt_label = None
+            for prefix in alt_prefixes:
+                if msg_lower.startswith(prefix):
+                    alt_label = msg_lower[len(prefix):].strip().strip(",").strip()
+                    break
 
-                # Quality checks
-                activity_words = [
-                    "arbeite", "wechsl", "tippe", "browse", "code", "schreib",
-                    "spiel", "hör", "musik", "lese", "chat", "sprach", "rede",
-                    "work", "type", "browse", "code", "writ", "play", "listen",
-                    "music", "read", "chat", "talk", "watch", "edit", "switch",
-                ]
-                is_activity = any(w in label_text for w in activity_words)
-                is_question = label_text.endswith("?")
-                is_greeting = any(label_text.startswith(g) for g in ["hi", "hallo", "hey", "moin", "na", "."])
-                is_long_enough = len(label_text) >= 5
-
-                if is_activity and not is_question and not is_greeting and is_long_enough:
-                    # Capitalize first letter for clean label
-                    final_label = req.message[:50].strip()
-                    final_label = final_label[0].upper() + final_label[1:] if final_label else final_label
-                    brain.concept_tracker.set_label(current, final_label)
-                    print(f"[auto-label] cluster {current} <- '{final_label}'")
+            if is_confirm and suggested:
+                brain.concept_tracker.set_label(cluster_id, suggested)
+                print(f"[label] cluster {cluster_id} <- '{suggested}' (user confirmed suggestion)")
+                proactive._pending_label_suggestion = None
+            elif alt_label and len(alt_label) >= 3:
+                final = alt_label[0].upper() + alt_label[1:]
+                brain.concept_tracker.set_label(cluster_id, final)
+                print(f"[label] cluster {cluster_id} <- '{final}' (user provided alternative)")
+                proactive._pending_label_suggestion = None
+            elif not is_confirm:
+                # User is talking about something else — clear pending
+                proactive._pending_label_suggestion = None
 
         # BrainInterpreter: deep understanding for LLM
         interpreter = getattr(brain, '_interpreter', None)

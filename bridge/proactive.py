@@ -147,6 +147,60 @@ class ProactiveEngine:
         except asyncio.CancelledError:
             return
 
+    def _suggest_label(self, sd: dict) -> str:
+        """Generate a smart label suggestion from current sensor data."""
+        app = sd.get("app", "").strip()
+        keys = sd.get("keys", 0)
+        mic = sd.get("mic_rms", 0)
+        idle = sd.get("idle", 0)
+        mouse = sd.get("mouse", 0)
+
+        parts = []
+
+        # App-based component
+        app_lower = app.lower() if app else ""
+        if "code" in app_lower or "claude" in app_lower or "terminal" in app_lower:
+            parts.append("Coding")
+        elif "chrome" in app_lower or "safari" in app_lower or "firefox" in app_lower:
+            parts.append("Browsing")
+        elif "zoom" in app_lower or "teams" in app_lower or "meet" in app_lower:
+            parts.append("Meeting")
+        elif "slack" in app_lower or "discord" in app_lower:
+            parts.append("Chat")
+        elif "spotify" in app_lower or "music" in app_lower:
+            parts.append("Musik hoeren")
+        elif app:
+            parts.append(f"In {app}")
+
+        # Activity component
+        if keys > 15:
+            parts.append("mit viel Tippen")
+        elif keys > 3:
+            parts.append("mit Tippen")
+        elif idle > 60:
+            parts.append("Pause")
+        elif mouse > 10:
+            parts.append("mit Maus")
+
+        # Audio component
+        if mic > 0.015:
+            if "Meeting" not in parts and "Chat" not in parts:
+                parts.append("mit Geraueschen")
+        elif mic > 0.005:
+            if "Meeting" not in parts:
+                parts.append("mit Hintergrundmusik")
+
+        if not parts:
+            return "Unbekannte Aktivitaet"
+
+        # Combine: "Coding mit viel Tippen und Hintergrundmusik"
+        if len(parts) == 1:
+            return parts[0]
+        elif len(parts) == 2:
+            return f"{parts[0]} {parts[1]}"
+        else:
+            return f"{parts[0]} {parts[1]} und {parts[2]}"
+
     def _sensor_context(self) -> str:
         """Build a short sensor description for grounding proactive messages."""
         sd = getattr(self.brain, '_last_sensor_display', {})
@@ -215,11 +269,17 @@ class ProactiveEngine:
         transition = self.brain.concept_tracker.get_transition()
         if transition:
             if transition["is_new"]:
-                # New pattern the pet has never seen before!
+                # New pattern — suggest a label right away
+                sd = getattr(self.brain, '_last_sensor_display', {})
+                suggested = self._suggest_label(sd)
+                self._pending_label_suggestion = {
+                    "cluster_id": transition["to_cluster"],
+                    "suggestion": suggested,
+                }
                 return {
                     "category": "new_pattern",
-                    "context": f"Hmm, das ist neu — {sensor_ctx}. "
-                               f"Das kenn ich noch nicht. Was machst du da, Leon?",
+                    "context": f"Neues Muster! Ich sehe {sensor_ctx}. "
+                               f"Soll ich das '{suggested}' nennen?",
                 }
             elif transition["to_label"]:
                 # Switched to a known pattern
@@ -230,33 +290,44 @@ class ProactiveEngine:
                                f"Ich seh {sensor_ctx}.",
                 }
             elif transition["from_label"] and not transition["to_label"]:
-                # Left a known pattern for an unknown one
+                # Left a known pattern for an unknown one — suggest label
+                sd = getattr(self.brain, '_last_sensor_display', {})
+                suggested = self._suggest_label(sd)
+                self._pending_label_suggestion = {
+                    "cluster_id": transition["to_cluster"],
+                    "suggestion": suggested,
+                }
                 return {
                     "category": "unknown_pattern",
                     "context": f"Du hast aufgehoert mit '{transition['from_label']}' — "
-                               f"jetzt seh ich {sensor_ctx}. Was kommt jetzt, Leon?",
+                               f"jetzt sieht es nach '{suggested}' aus. Passt das?",
                 }
 
-        # 1. Unknown pattern active for a while — ask what Leon is doing
+        # 1. Unknown pattern active for a while — SUGGEST a smart label
         tracker = self.brain.concept_tracker.snapshot()
         current = tracker.get("current_cluster", -1)
         current_label = tracker.get("current_label")
         if current >= 0 and not current_label:
-            # How long has this unlabeled cluster been active?
             if not hasattr(self, '_unlabeled_active_since'):
                 self._unlabeled_active_since = {}
             if current not in self._unlabeled_active_since:
                 self._unlabeled_active_since[current] = self.brain.tick_count
             ticks_active = self.brain.tick_count - self._unlabeled_active_since[current]
-            # Ask after 2 minutes of the SAME unlabeled pattern (12000 ticks)
             if ticks_active > 12000 and current not in getattr(self, '_asked_about', set()):
                 if not hasattr(self, '_asked_about'):
                     self._asked_about = set()
                 self._asked_about.add(current)
+
+                # Generate smart label from sensor data
+                suggested = self._suggest_label(sd)
+                self._pending_label_suggestion = {
+                    "cluster_id": current,
+                    "suggestion": suggested,
+                }
                 return {
                     "category": "ask_label",
-                    "context": f"Hey Leon — ich seh seit ein paar Minuten {sensor_ctx}. "
-                               f"Das ist ein Muster das ich noch nicht kenne. Wie soll ich das nennen?",
+                    "context": f"Ich beobachte seit ein paar Minuten: {sensor_ctx}. "
+                               f"Soll ich das '{suggested}' nennen?",
                 }
         else:
             # Reset tracking when pattern changes
