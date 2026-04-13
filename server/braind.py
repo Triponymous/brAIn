@@ -158,8 +158,8 @@ async def _run_daemon(args: argparse.Namespace) -> None:
 
     compact = CompactState(brain)
     brain._compact_state = compact
-    adapter = ModelAdapter()
-    brain._model_adapter = adapter
+    model_adapter = ModelAdapter()
+    brain._model_adapter = model_adapter
     feedback_channel = FeedbackChannel(brain)
     brain._feedback = feedback_channel
 
