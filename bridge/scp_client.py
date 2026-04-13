@@ -487,6 +487,8 @@ class QwenAdapter(_BaseAdapter):
             "",
             f"Antworte in {params['style']['length']}. Beziehe dich auf deine Wahrnehmung.",
             "Wenn Leon dir etwas erzaehlt, geh darauf ein -- das ist wichtiger als deine Sinne.",
+            "WICHTIG: Antworte NUR auf Deutsch oder Englisch. Keine andere Sprache. Kein Chinesisch.",
+            "WICHTIG: Du kannst KEINE Programme oeffnen, KEINE Aktionen ausfuehren, NICHTS steuern.",
         ])
         return "\n".join(parts)
 
