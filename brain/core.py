@@ -226,12 +226,24 @@ class Brain:
         concept_input = sc.forward(expansion_spikes) + wm_feedback * 0.3  # WM bias is subtle
         concept_spikes = concept.step(concept_input, dt=dt)
 
-        # 7. ConceptTracker: uses MASKED sensory spikes for better discrimination.
-        # Same masking as expansion layer — removes time-tonic and activity-level
-        # neurons that are SHARED across all patterns and inflate Jaccard similarity.
-        # Keeps: app identity, keystroke/mouse bins+rhythm, idle, mic mel+rms
-        # Removes: time-tonic (148-155), activity-level (160-163), idle baseline (100), mic RMS summary (144)
-        tracker_spikes = discriminating_spikes.clone()
+        # 7. ConceptTracker: uses ACTIVITY-FOCUSED sensory spikes for clustering.
+        # Masks out features that change without the user's BEHAVIOR changing:
+        # - App identity (0-39): switching Chrome↔Claude Code is NOT a new activity
+        # - Background apps (40-59): irrelevant for what the user IS DOING
+        # - Time-tonic (148-155): same activity at different times = same cluster
+        # - Activity-level (160-163): redundant with keystroke/mouse bins
+        # - Idle baseline (100), mic RMS summary (144): noise
+        # KEEPS: keystroke bins+rhythm (60-79), mouse bins+rhythm (80-99),
+        #        idle bins (101-107), pause type (108-111), mic mel (112-143)
+        # → Clusters represent BEHAVIOR (typing, clicking, listening, idle)
+        #   not CONTEXT (which app, what time)
+        tracker_spikes = sensory_spikes.clone()
+        if len(tracker_spikes) >= 164:
+            tracker_spikes[0:60] = 0      # mask app identity + background apps
+            tracker_spikes[100] = 0       # idle baseline
+            tracker_spikes[144] = 0       # mic RMS summary
+            tracker_spikes[148:156] = 0   # time-tonic
+            tracker_spikes[160:164] = 0   # activity-level
         self.concept_tracker.tick(tracker_spikes, self.tick_count)
 
         # Accumulate concept spikes for visualization

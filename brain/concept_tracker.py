@@ -50,9 +50,9 @@ class ConceptTracker:
     def __init__(
         self,
         input_dim: int = 200,  # sensory dim — NOT expansion. Tracker uses full sensory spikes.
-        similarity_threshold: float = 0.25,
-        max_clusters: int = 15,
-        snapshot_interval: int = 50,  # every 50 ticks (0.5s) — fast display updates
+        similarity_threshold: float = 0.40,  # higher = fewer, broader clusters (0.25 was too granular)
+        max_clusters: int = 8,              # fewer clusters = more meaningful patterns
+        snapshot_interval: int = 50,
         # Legacy name accepted for backward compat with old checkpoints
         expansion_dim: int | None = None,
     ) -> None:
@@ -234,7 +234,7 @@ class ConceptTracker:
                     ci = self._clusters[cid_i]
                     cj = self._clusters[cid_j]
                     sim = self._jaccard_sim(ci.centroid, cj.centroid)
-                    if sim > 0.7:  # very similar → merge
+                    if sim > 0.5:  # similar enough → merge (prevents cluster explosion)
                         # Keep the one with more observations
                         if ci.count >= cj.count:
                             keep_id, drop_id = cid_i, cid_j
