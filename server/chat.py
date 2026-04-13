@@ -21,6 +21,7 @@ from brain.core import Brain
 from bridge.exporter import BrainStateExporter
 from bridge.memory_tools import MemoryTools
 from bridge.llm_router import HybridLLMRouter
+from bridge.emotional_prompt import build_emotional_prompt
 
 
 _SYSTEM_PROMPT_TEMPLATE = """ABSOLUTE REGELN (niemals brechen):
@@ -299,24 +300,25 @@ def build_chat_router(
         if interpreter:
             interpreter_block = interpreter.format_for_prompt()
 
-        system_prompt = _SYSTEM_PROMPT_TEMPLATE.format(
-            sensor_display="\n".join(sensor_lines),
-            tick_count=brain.tick_count,
-            sleep_mode="JA — ich schlafe gerade" if brain.sleep_mode else "Nein — ich bin wach",
-            da=mods.get("DA", 0),
-            ne=mods.get("NE", 0),
-            ach=mods.get("ACh", 0),
-            sht=mods.get("5HT", 0),
-            concepts="\n".join(concept_lines) + "\n\n" + interpreter_block,
-        )
+        # SNNNarrator: translate brain internals into natural language
+        narrator = getattr(brain, '_snn_narrator', None)
+        snn_narrative = narrator.narrate_full_state() if narrator else ""
 
-        # Inject recent conversation context BEFORE the system prompt rules
-        # so the LLM sees it prominently
-        if recent_context_lines:
-            system_prompt = system_prompt.replace(
-                "=== SO ANTWORTE ICH ===",
-                "\n".join(recent_context_lines) + "\n=== SO ANTWORTE ICH ==="
-            )
+        # Combine interpreter block + SNN narrative into a single
+        # "understanding" section for the emotional prompt engine
+        understanding = ""
+        if interpreter_block:
+            understanding += interpreter_block + "\n"
+        if snn_narrative:
+            understanding += "\n=== WAS MEIN GEHIRN DENKT ===\n" + snn_narrative
+
+        system_prompt = build_emotional_prompt(
+            modulators=mods,
+            sensor_display="\n".join(sensor_lines),
+            concepts="\n".join(concept_lines),
+            interpreter_block=understanding,
+            recent_context="\n".join(recent_context_lines) if recent_context_lines else "",
+        )
 
         import datetime
         system_prompt += f"\n(Zeitpunkt: {datetime.datetime.now().strftime('%H:%M:%S')})"

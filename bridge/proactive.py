@@ -134,8 +134,9 @@ class ProactiveEngine:
                 notification = self._check()
                 if notification:
                     now = time.time()
-                    # Minimum 3 minutes between notifications (not 30s)
-                    if now - self._last_notification >= 180:
+                    # SNN-driven cooldown: modulators control pacing
+                    dynamic_min = max(30.0, self._dynamic_interval())
+                    if now - self._last_notification >= dynamic_min:
                         self._last_notification = now
                         # Use the context directly — LLM makes it worse
                         await self.pusher.broadcast({
@@ -230,95 +231,132 @@ class ProactiveEngine:
             parts.append(f"Idle seit {int(idle)}s")
         return ", ".join(parts) if parts else "keine Sensordaten"
 
-    def _check(self) -> dict[str, str] | None:
-        mods = self.brain.modulators.snapshot()
-        sensor_ctx = self._sensor_context()
+    # ── SNN-driven speech gating ──────────────────────────────────
 
-        # ── BrainInterpreter-based triggers (higher-level than raw SNN) ──
+    def _compute_speech_drive(self, mods: dict[str, float]) -> float:
+        """SNN-computed urge to speak.  0 = silent, 1 = must speak NOW.
+
+        Replaces hardcoded thresholds with a continuous signal derived
+        from modulator dynamics:
+        - DA  (dopamine)       → novelty / something new to comment on
+        - NE  (norepinephrine) → arousal / something changed, react
+        - ACh (acetylcholine)  → attention / more articulate observations
+        """
+        da = mods.get("DA", 0)
+        ne = mods.get("NE", 0)
+        ach = mods.get("ACh", 0)
+
+        novelty_drive = min(1.0, da * 10.0)
+        urgency_drive = min(1.0, ne * 8.0)
+        attention_boost = 1.0 + ach * 5.0
+
+        drive = (novelty_drive * 0.4 + urgency_drive * 0.6) * attention_boost
+        return min(1.0, drive)
+
+    def _check(self) -> dict[str, str] | None:
+        """Decide whether and what to say — gated by SNN speech drive.
+
+        The modulators DRIVE the decision to speak:
+        - High DA  → speak about novelty
+        - High NE  → warn about changes
+        - Low everything → stay quiet
+        """
+        mods = self.brain.modulators.snapshot()
+
+        speech_drive = self._compute_speech_drive(mods)
+        if speech_drive < 0.3:
+            return None  # SNN says: nothing interesting
+
         interpreter = getattr(self.brain, '_interpreter', None)
+        return self._select_topic(mods, interpreter, speech_drive)
+
+    def _select_topic(
+        self,
+        mods: dict[str, float],
+        interpreter: Any,
+        drive: float,
+    ) -> dict[str, str] | None:
+        """Select WHAT to say based on current brain state.
+
+        Priority order (highest first):
+          1. stress      — user needs support
+          2. flow        — acknowledge deep work (once per session)
+          3. break       — remind user to rest
+          4. label_suggestion — suggest name for unknown pattern
+          5. anomaly     — something unusual vs. habit
+          6. transition  — pattern switch
+        """
+        sensor_ctx = self._sensor_context()
+        sd = getattr(self.brain, '_last_sensor_display', {})
+
+        # ── Priority 1: Stress detected ──────────────────────────
         if interpreter:
             states = interpreter.state_detector.detect()
-            if states["flow"] and states["flow_duration_min"] > 60:
+            if states["stress"]:
+                stress_detail = []
+                switch_rate = sd.get("switch_rate", 0)
+                keys = sd.get("keys", 0)
+                if switch_rate and switch_rate > 3:
+                    stress_detail.append("du wechselst viel zwischen Apps")
+                if keys > 20:
+                    stress_detail.append("tippst wie verrueckt")
+                detail = (
+                    " und ".join(stress_detail)
+                    if stress_detail
+                    else "es fuehlt sich hektisch an"
+                )
                 return {
-                    "category": "flow",
-                    "context": f"Du bist seit {states['flow_duration_min']}min im Flow in {states['flow_app']} — laeuft bei dir!",
+                    "category": "stress",
+                    "context": f"Leon, {detail}. Ist alles okay bei dir?",
                 }
+
+            # ── Priority 2: Flow acknowledgment (once per flow session) ──
+            if states["flow"] and states["flow_duration_min"] > 30:
+                if not getattr(self, '_flow_acknowledged', False):
+                    self._flow_acknowledged = True
+                    return {
+                        "category": "flow",
+                        "context": (
+                            f"Du bist seit {states['flow_duration_min']}min "
+                            f"im Flow in {states['flow_app']} — laeuft bei dir!"
+                        ),
+                    }
+            elif not states.get("flow"):
+                self._flow_acknowledged = False
+
+            # ── Priority 3: Break reminder ───────────────────────
             if states["needs_break"]:
                 return {
                     "category": "break",
-                    "context": f"Hey Leon, du arbeitest seit {states['active_minutes']:.0f} Minuten ohne Pause. Kurz durchatmen?",
-                }
-            if states["meeting"] and not getattr(self, '_meeting_announced', False):
-                self._meeting_announced = True
-                return {
-                    "category": "meeting",
-                    "context": f"Ich seh {sensor_ctx} — bist du in einem Call?",
-                }
-            elif not states.get("meeting"):
-                self._meeting_announced = False
-
-            anomalies = interpreter.anomaly.check(
-                getattr(self.brain, '_last_sensor_display', {}))
-            if anomalies:
-                return {
-                    "category": "anomaly",
-                    "context": anomalies[0]["description"],
+                    "context": (
+                        f"Hey Leon, du arbeitest seit "
+                        f"{states['active_minutes']:.0f} Minuten ohne Pause. "
+                        f"Kurz durchatmen?"
+                    ),
                 }
 
-        # 0. ConceptTracker transition — the BEST trigger for proactive messages
-        transition = self.brain.concept_tracker.get_transition()
-        if transition:
-            if transition["is_new"]:
-                # New pattern — suggest a label right away
-                sd = getattr(self.brain, '_last_sensor_display', {})
-                suggested = self._suggest_label(sd)
-                self._pending_label_suggestion = {
-                    "cluster_id": transition["to_cluster"],
-                    "suggestion": suggested,
-                }
-                return {
-                    "category": "new_pattern",
-                    "context": f"Neues Muster! Ich sehe {sensor_ctx}. "
-                               f"Soll ich das '{suggested}' nennen?",
-                }
-            elif transition["to_label"]:
-                # Switched to a known pattern
-                from_str = f"'{transition['from_label']}'" if transition['from_label'] else "was anderem"
-                return {
-                    "category": "pattern_switch",
-                    "context": f"Ah, du wechselst von {from_str} zu '{transition['to_label']}'. "
-                               f"Ich seh {sensor_ctx}.",
-                }
-            elif transition["from_label"] and not transition["to_label"]:
-                # Left a known pattern for an unknown one — suggest label
-                sd = getattr(self.brain, '_last_sensor_display', {})
-                suggested = self._suggest_label(sd)
-                self._pending_label_suggestion = {
-                    "cluster_id": transition["to_cluster"],
-                    "suggestion": suggested,
-                }
-                return {
-                    "category": "unknown_pattern",
-                    "context": f"Du hast aufgehoert mit '{transition['from_label']}' — "
-                               f"jetzt sieht es nach '{suggested}' aus. Passt das?",
-                }
-
-        # 1. Unknown pattern active for a while — SUGGEST a smart label
+        # ── Priority 4: Unknown pattern → suggest label ──────────
         tracker = self.brain.concept_tracker.snapshot()
         current = tracker.get("current_cluster", -1)
         current_label = tracker.get("current_label")
-        if not hasattr(self, '_unlabeled_active_since'):
-            self._unlabeled_active_since = {}
+
         if current >= 0 and not current_label:
+            # Track how long an unlabeled cluster has been active
+            if not hasattr(self, '_unlabeled_active_since'):
+                self._unlabeled_active_since = {}
             if current not in self._unlabeled_active_since:
                 self._unlabeled_active_since[current] = self.brain.tick_count
-            ticks_active = self.brain.tick_count - self._unlabeled_active_since[current]
-            if ticks_active > 6000 and current not in getattr(self, '_asked_about', set()):
+            ticks_active = (
+                self.brain.tick_count - self._unlabeled_active_since[current]
+            )
+            # After ~100 seconds (6000 ticks @ 60 Hz) of unlabeled activity
+            if ticks_active > 6000 and current not in getattr(
+                self, '_asked_about', set()
+            ):
                 if not hasattr(self, '_asked_about'):
                     self._asked_about = set()
                 self._asked_about.add(current)
 
-                # Generate smart label from sensor data
                 suggested = self._suggest_label(sd)
                 self._pending_label_suggestion = {
                     "cluster_id": current,
@@ -326,37 +364,62 @@ class ProactiveEngine:
                 }
                 return {
                     "category": "ask_label",
-                    "context": f"Ich beobachte seit ein paar Minuten: {sensor_ctx}. "
-                               f"Soll ich das '{suggested}' nennen?",
+                    "context": (
+                        f"Ich sehe {sensor_ctx} — "
+                        f"soll ich das '{suggested}' nennen?"
+                    ),
                 }
-        # Don't reset ALL timers — only clean up clusters that no longer exist
-        # This prevents the timer from resetting when switching between labeled/unlabeled
 
-        # 2. High novelty — something changed suddenly
-        da = mods.get("DA", 0)
-        ne = mods.get("NE", 0)
-        sht = mods.get("5HT", 0)
-        if da > 0.05 or ne > 0.08:
-            return {
-                "category": "novelty",
-                "context": f"Whoa — gerade hat sich was veraendert! Ich seh {sensor_ctx}. Was ist los?",
-            }
+        # ── Priority 5: Anomaly vs. habit ────────────────────────
+        if interpreter:
+            anomalies = interpreter.anomaly.check(sd)
+            if anomalies:
+                return {
+                    "category": "anomaly",
+                    "context": anomalies[0]["description"],
+                }
 
-        # 3. Stress detection
-        if ne > 0.08 and sht < 0.01:
-            sd = getattr(self.brain, '_last_sensor_display', {})
-            app = sd.get("app", "")
-            keys = sd.get("keys", 0)
-            switch_rate = sd.get("switch_rate", 0)
-            stress_detail = []
-            if switch_rate and switch_rate > 3:
-                stress_detail.append("du wechselst viel zwischen Apps")
-            if keys > 20:
-                stress_detail.append("tippst wie verrueckt")
-            detail = " und ".join(stress_detail) if stress_detail else "es fuehlt sich hektisch an"
-            return {
-                "category": "stress",
-                "context": f"Leon, {detail}. Ist alles okay bei dir?",
-            }
+        # ── Priority 6: Pattern transition (known→known) ─────────
+        transition = self.brain.concept_tracker.get_transition()
+        if transition:
+            if transition["is_new"]:
+                suggested = self._suggest_label(sd)
+                self._pending_label_suggestion = {
+                    "cluster_id": transition["to_cluster"],
+                    "suggestion": suggested,
+                }
+                return {
+                    "category": "new_pattern",
+                    "context": (
+                        f"Neues Muster! Ich sehe {sensor_ctx}. "
+                        f"Soll ich das '{suggested}' nennen?"
+                    ),
+                }
+            elif transition["to_label"]:
+                from_str = (
+                    f"'{transition['from_label']}'"
+                    if transition.get("from_label")
+                    else "was anderem"
+                )
+                return {
+                    "category": "pattern_switch",
+                    "context": (
+                        f"Ah, du wechselst von {from_str} "
+                        f"zu '{transition['to_label']}'. Ich seh {sensor_ctx}."
+                    ),
+                }
+            elif transition.get("from_label") and not transition.get("to_label"):
+                suggested = self._suggest_label(sd)
+                self._pending_label_suggestion = {
+                    "cluster_id": transition["to_cluster"],
+                    "suggestion": suggested,
+                }
+                return {
+                    "category": "unknown_pattern",
+                    "context": (
+                        f"Du hast aufgehoert mit '{transition['from_label']}' — "
+                        f"jetzt sieht es nach '{suggested}' aus. Passt das?"
+                    ),
+                }
 
-        return None
+        return None  # Nothing worth saying

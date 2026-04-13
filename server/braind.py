@@ -146,6 +146,11 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     interpreter = BrainInterpreter(brain, episode_logger)
     brain._interpreter = interpreter  # accessible from chat endpoint + proactive
 
+    # SNNNarrator — translates brain internals into natural language for the LLM
+    from bridge.snn_narrator import SNNNarrator
+    narrator = SNNNarrator(brain)
+    brain._snn_narrator = narrator
+
     exporter = BrainStateExporter(brain)
     grant_store = GrantStore(checkpoint.parent / "grants.sqlite")
     tool_registry = ToolRegistry(brain, exporter, grant_store)
