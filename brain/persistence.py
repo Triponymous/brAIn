@@ -254,31 +254,11 @@ def load_brain(path: Path) -> Brain:
         except (sqlite3.OperationalError, Exception):
             pass
 
-        # ── Post-load sanity checks ──
-        # Synapses may be saturated from old checkpoints (pre-scaling fix).
-        # If mean weight > 0.7, reset to fresh initialization.
-        for syn_name in ("sensory_concept", "concept_wm", "wm_concept"):
-            syn = brain.synapses.get(syn_name)
-            if syn is not None:
-                mean_w = float(syn.weights.mean().item())
-                if mean_w > 0.7:
-                    print(f"[persistence] {syn_name} saturated (mean={mean_w:.3f}), resetting to fresh weights")
-                    import torch
-                    shape = syn.weights.shape
-                    if syn_name == "wm_concept":
-                        syn.weights = torch.clamp(
-                            torch.randn(shape) * 0.05 + 0.1,
-                            syn.w_min, syn.w_max,
-                        )
-                    else:
-                        syn.weights = torch.clamp(
-                            torch.randn(shape) * 0.15 + 0.3,
-                            syn.w_min, syn.w_max,
-                        )
-                    syn._target_w_sum = syn.weights.sum(dim=1, keepdim=True).mean().reshape(1)
-                    syn.apre = torch.zeros(syn.num_pre)
-                    syn.apost = torch.zeros(syn.num_post)
-
+        # NB: a loaded brain reloads FAITHFULLY. Learned weights ARE the
+        # personality, so we deliberately do NOT reset "saturated" synapses on
+        # load — that silently erases the very thing persistence exists to keep.
+        # Runaway saturation is bounded during operation by synaptic scaling,
+        # not by a destructive load-time reset.
         return brain
     finally:
         conn.close()
