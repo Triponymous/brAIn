@@ -28,7 +28,7 @@ The tick() method:
 5. WM feedback → concept input (temporal context)
 6. Step concept WTA (ACh modulates inhibition)
 7. ConceptTracker clustering
-8. Novelty/arousal detection → modulator injection
+8. Emergent modulator driver (DA/NE/ACh/5HT from prediction error)
 9. Step WM (receives concept spikes, recurrent self-excitation)
 10. STDP updates (three-factor: pre × post × DA+ACh)
 11. Increment tick_count
@@ -146,6 +146,24 @@ class Brain:
         }
 
         self.modulators = Modulators()
+        # ═══ EMERGENT-MODULATOR GAINS — the ONLY tuning surface ═══
+        # All DERIVED from measured prediction_error per regime via the steady-state
+        # law L* = inject / (1 - exp(-1/tau)) + the classifier bands — NOT by analogy
+        # to the old scripted increments. See
+        # docs/plans/2026-06-04-phase1-driver-v2-calibrated.md §2.
+        self._r_fast = 0.1        # pe_fast EMA rate  (~10-tick memory)
+        self._r_slow = 0.02       # pe_slow EMA rate  (~50-tick memory)
+        self._k_ne = 0.0035       # surprise        -> NE   (arousal)
+        self._k_da = 0.022        # progress*prec.  -> DA   (reward; noisy-TV-safe)
+        self._k_ach = 0.03        # progress*prec.  -> ACh  (attention ON NOVELTY)
+        self._k_unc = 2000.0      # expected-uncertainty penalty (noise exclusion)
+        self._k_5ht = 7.1e-5      # relative calm   -> 5HT  (contentment)
+        self._k_calm_s = 200.0    # 5HT surprise sensitivity
+        self._k_calm_v = 2000.0   # 5HT variance sensitivity
+        self._ne_cap = 0.3        # NE level-cap rail (bounds steady-state level)
+        self._da_cap = 0.3        # DA level-cap rail (bounds level + STDP runaway)
+        self._ach_clamp = 0.0015  # ACh per-tick rail
+        self._sht_setpoint = 0.04 # PHASE-2 SEAM ONLY (interoception). NOT a P1 gate.
         self.tick_count = 0
         self.concept_spike_accum = torch.zeros(num_concept)
         self._spike_decay = 0.95
@@ -259,90 +277,71 @@ class Brain:
         # ═══ NOVELTY & AROUSAL DETECTION ═══
         if not hasattr(self, '_sensory_avg'):
             self._sensory_avg = torch.zeros_like(input_current)
-            self._prev_concept_spikes = torch.zeros(concept.num_neurons)
-            self._novelty_smooth = 0.0
-            self._arousal_smooth = 0.0
-            self._activity_smooth = 0.0
+        if not hasattr(self, '_pe_fast'):
+            # Separate guard: a brain loaded from a pre-driver checkpoint has
+            # _sensory_avg but not the EMAs — init them WITHOUT clobbering the
+            # learned _sensory_avg above.
+            self._pe_fast = 0.0   # fast surprise EMA  (current regime)
+            self._pe_slow = 0.0   # slow surprise EMA  (lags; exposes error-drop)
+            self._pe_var = 0.0    # surprise variance EMA (expected uncertainty)
 
         self._sensory_avg = self._sensory_avg * 0.995 + input_current * 0.005
         prediction_error = float((input_current - self._sensory_avg).abs().mean().item())
-        concept_change = float((concept_spikes - self._prev_concept_spikes).abs().sum().item())
-        self._prev_concept_spikes = concept_spikes.detach().clone()
+        sensory_sum = float(sensory_spikes.sum().item())   # moved up from old injection block
 
-        novelty = prediction_error * 0.5 + concept_change * 0.1
-        self._novelty_smooth = self._novelty_smooth * 0.995 + novelty * 0.005
+        # ═══ EMERGENT MODULATOR DRIVER (active inference / free energy) ═══
+        # Four modulators EMERGE from prediction error — no if-statement emotions.
+        # NE   <- surprise above own baseline            (unexpected uncertainty)
+        # DA   <- learning PROGRESS, precision-gated     (reward; noisy-TV-safe)
+        # ACh  <- learning PROGRESS, precision-gated     (attention ON NOVELTY)
+        # 5HT  <- relative low-surprise (scale-free)     (contentment)
+        # Gains DERIVED from measured pe; see
+        # docs/plans/2026-06-04-phase1-driver-v2-calibrated.md.
+        pe = prediction_error
+        self._pe_fast = self._pe_fast * (1 - self._r_fast) + pe * self._r_fast
+        self._pe_slow = self._pe_slow * (1 - self._r_slow) + pe * self._r_slow
+        self._pe_var = self._pe_var * 0.99 + (pe - self._pe_fast) ** 2 * 0.01
 
-        sensory_sum = float(sensory_spikes.sum().item())
-        self._activity_smooth = self._activity_smooth * 0.99 + sensory_sum * 0.01
+        real_activity = max(0.0, sensory_sum - 8.0)          # ambient floor ~8 spikes
 
-        key_variability = float(input_current[76].item()) if input_current.shape[0] > 76 else 0
-        mouse_variability = float(input_current[96].item()) if input_current.shape[0] > 96 else 0
-        input_variability = (key_variability + mouse_variability) / 2.0
-        self._arousal_smooth = self._arousal_smooth * 0.99 + input_variability * 0.01
+        # precision = inverse expected-uncertainty: the NOISE-EXCLUSION gate shared
+        # by the two learning modulators (DA, ACh). High pe_var (pure noise) -> ~0.
+        precision = 1.0 / (1.0 + self._pe_var * self._k_unc)
 
-        # ═══ MODULATOR INJECTION ═══
-        real_activity = sensory_sum - 8
-        user_present = real_activity > 5
+        # NE: surprise relative to this regime's own baseline (self-calibrating),
+        # with a level-cap rail so sustained surprise can't pin NE -> 1.
+        surprise = max(0.0, pe - self._pe_slow)
+        if self.modulators.level("NE") < self._ne_cap:
+            self.modulators.inject("NE", min(0.02, surprise * self._k_ne))
 
-        if not hasattr(self, '_prev_sensory_sum'):
-            self._prev_sensory_sum = sensory_sum
-            self._activity_history = []
-            self._switch_rate_smooth = 0.0
+        # progress = error dropping = the model is COMPRESSING a new regime.
+        # Precision-gated: noisy-TV pe wobble leaks raw progress, but precision ~0
+        # there excludes it. Familiar-converged and pure-noise both -> ~0.
+        progress = max(0.0, self._pe_slow - self._pe_fast)
+        learning = progress * precision
 
-        sensory_change = abs(sensory_sum - self._prev_sensory_sum)
-        self._prev_sensory_sum = sensory_sum
+        # DA: learning-progress reward, level-cap rail (also bounds STDP rate).
+        if self.modulators.level("DA") < self._da_cap:
+            self.modulators.inject("DA", min(0.02, learning * self._k_da))
 
-        # Stress indicators from encoding neurons
-        n = input_current.shape[0]
-        is_erratic = float(input_current[76].item()) > 2.0 if n > 76 else False
-        is_burst = float(input_current[77].item()) > 0.5 if n > 77 else False
-        is_frantic = float(input_current[159].item()) > 0.5 if n > 159 else False
-        stress_signals = int(is_erratic) + int(is_burst) + int(is_frantic)
+        # ACh: ATTENTION ON NOVELTY (Yu & Dayan 2005: ACh = expected uncertainty).
+        # High while actively learning a structured new regime, falling as it
+        # becomes familiar (then 5HT/content takes over). Same scale-free,
+        # noise-excluding signal as DA — the only one that separates novel from
+        # BOTH familiar and pure noise. Downstream (lateral inhibition, STDP boost)
+        # WANTS ACh high during learning. Gate: an absent pet attends to nothing.
+        if real_activity > 0.0:
+            self.modulators.inject("ACh", min(self._ach_clamp, learning * self._k_ach))
 
-        if self.tick_count % 100 == 0:
-            self._activity_history.append({
-                "activity": real_activity,
-                "stress_signals": stress_signals,
-                "sensory_change": sensory_change,
-            })
-            if len(self._activity_history) > 300:
-                self._activity_history.pop(0)
-
-        sustained_stress = False
-        if len(self._activity_history) >= 120:
-            recent = self._activity_history[-120:]
-            avg_activity = sum(h["activity"] for h in recent) / len(recent)
-            stress_count = sum(1 for h in recent if h["stress_signals"] > 0)
-            stress_pct = stress_count / len(recent)
-            sustained_stress = avg_activity > 12 and stress_pct > 0.3
-
-        if user_present:
-            ach_inject = min(0.0003, real_activity * 0.000008)
-            self.modulators.inject("ACh", ach_inject)
-            self.modulators.inject("DA", 0.00003)
-            if sensory_change < 5 and not sustained_stress:
-                self.modulators.inject("5HT", 0.00005)
-            elif sustained_stress:
-                self.modulators.inject("5HT", -0.00003)
-
-        if sustained_stress:
-            self.modulators.inject("NE", 0.0001)
-            self.modulators.inject("ACh", 0.0001)
-
-        if sensory_change > 8:
-            scale = min(1.0, sensory_change / 30.0)
-            if self.modulators.level("NE") < 0.25:
-                self.modulators.inject("NE", 0.002 * scale)
-            if self.modulators.level("DA") < 0.25:
-                self.modulators.inject("DA", 0.002 * scale)
-            self.modulators.inject("ACh", 0.001 * scale)
-
-        if sensory_change > 20:
-            scale = min(1.0, sensory_change / 40.0)
-            if self.modulators.level("NE") < 0.25:
-                self.modulators.inject("NE", 0.005 * scale)
-            if self.modulators.level("DA") < 0.25:
-                self.modulators.inject("DA", 0.003 * scale)
+        # 5HT: RELATIVE, scale-free contentment — surprise LOW vs own baseline AND
+        # variance low. Steady familiar typing (abs pe high but surprise ~0) -> high
+        # 5HT -> content, even though abs pe >> any setpoint (the v1 absolute-gate
+        # fix). Baseline 5HT = 0 (blank slate): contentment is continuously earned.
+        low_surprise = 1.0 / (1.0 + surprise * self._k_calm_s)
+        low_var = 1.0 / (1.0 + self._pe_var * self._k_calm_v)
+        calm = low_surprise * low_var
+        if real_activity > 0.0:
+            self.modulators.inject("5HT", min(0.0002, calm * self._k_5ht))
 
         # 8. WM — receives concept spikes, recurrent self-excitation holds them
         cw = self.synapses["concept_wm"]
