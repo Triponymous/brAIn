@@ -11,18 +11,33 @@ This is the core of the pet's "personality" — not WHAT it says
 """
 from __future__ import annotations
 import asyncio
+import json
 import logging
 import time
 from typing import TYPE_CHECKING, Any
 
 from brain.core import Brain
 from bridge.exporter import BrainStateExporter
+from bridge.felt_state import FeltStateWatcher
 from server.ws import WSPusher
 
 if TYPE_CHECKING:
     from bridge.llm_router import HybridLLMRouter
 
 log = logging.getLogger(__name__)
+
+
+async def _notify_macos(title: str, message: str) -> None:
+    """Native macOS notification (osascript, no deps). Best-effort; ignores failure
+    (e.g. non-macOS or osascript missing)."""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "osascript", "-e",
+            f"display notification {json.dumps(message)} with title {json.dumps(title)}",
+        )
+        await proc.wait()
+    except Exception:
+        pass
 
 
 class ProactiveEngine:
@@ -40,6 +55,7 @@ class ProactiveEngine:
         self.router = router
         self._last_notification = 0.0
         self._last_idle_warning = 0.0
+        self._felt_watcher = FeltStateWatcher()
 
     def _dynamic_interval(self) -> float:
         """Compute notification interval based on modulator state.
@@ -122,6 +138,20 @@ class ProactiveEngine:
             log.debug("LLM call failed for proactive message, using fallback", exc_info=True)
             return context
 
+    def _check_felt_state(self, now: float) -> str | None:
+        """Observe the recognized felt-state; return an ask-message when it's time
+        to ask Leon to label a sustained UNKNOWN state (active learning), else None."""
+        if self.brain.sleep_mode:
+            return None
+        sig = getattr(self.brain, "_last_signature", None)
+        fs = getattr(self.brain, "felt_state", None)
+        if not sig or fs is None:
+            return None
+        self._felt_watcher.observe(fs.recognize(sig)[0], now)
+        if self._felt_watcher.should_ask(now):
+            return "Dein Zustand hat sich veraendert — was ist gerade los?"
+        return None
+
     async def run(self, check_interval: float = 10.0) -> None:
         """Background loop — check for interesting events."""
         try:
@@ -137,6 +167,15 @@ class ProactiveEngine:
                         if event.get("method") == "brain.label_needed":
                             # Already handled by _select_topic, skip
                             pass
+
+                # Felt-state active-learning: ask Leon to label a sustained unknown state.
+                ask = self._check_felt_state(time.time())
+                if ask:
+                    await self.pusher.broadcast({
+                        "type": "notification", "message": ask,
+                        "category": "label_needed", "tick": self.brain.tick_count,
+                    }, detail_state=None)
+                    await _notify_macos("brAIn — Zustandswechsel", ask)
 
                 if not self._should_speak():
                     continue
