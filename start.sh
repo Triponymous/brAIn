@@ -19,7 +19,7 @@
 
 cd "$(dirname "$0")"
 
-echo "🧠 brAIn Daemon starting..."
+echo "brAIn Daemon starting..."
 echo ""
 
 # Quick permission check
@@ -35,12 +35,12 @@ c2 = Quartz.CGEventSourceCounterForEventType(
 idle2 = Quartz.CGEventSourceSecondsSinceLastEventType(
     Quartz.kCGEventSourceStateHIDSystemState, int(0xFFFFFFFF))
 if idle2 > idle + 0.5 and c1 == c2:
-    print('⚠️  WARNUNG: Input Monitoring Permission fehlt!')
+    print('[WARN] Input Monitoring Permission fehlt!')
     print('   → Systemeinstellungen → Datenschutz & Sicherheit → Eingabeüberwachung')
     print('   → Terminal.app aktivieren, dann dieses Skript neu starten.')
     print('')
 else:
-    print('✅ Input Monitoring: OK')
+    print('[OK] Input Monitoring: OK')
 " 2>/dev/null
 
 # Check mic
@@ -51,12 +51,12 @@ try:
     sd.wait()
     rms = float(np.sqrt(np.mean(audio**2)))
     if rms > 0.0001:
-        print('✅ Mikrofon: OK (RMS={:.4f})'.format(rms))
+        print('[OK] Mikrofon: OK (RMS={:.4f})'.format(rms))
     else:
-        print('⚠️  Mikrofon: RMS=0 — entweder sehr leise oder Permission fehlt')
+        print('[WARN] Mikrofon: RMS=0 — entweder sehr leise oder Permission fehlt')
         print('   → Systemeinstellungen → Datenschutz & Sicherheit → Mikrofon → Terminal.app')
 except Exception as e:
-    print('⚠️  Mikrofon: Fehler — {}'.format(e))
+    print('[WARN] Mikrofon: Fehler — {}'.format(e))
 " 2>/dev/null
 
 echo ""

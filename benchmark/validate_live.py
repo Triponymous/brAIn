@@ -106,11 +106,11 @@ def analyze(entries: list[dict]) -> None:
 
     # Stability score
     if len(cluster_times) <= 3:
-        print(f"\n  STABILITÄT: ✅ GUT ({len(cluster_times)} Cluster)")
+        print(f"\n  STABILITÄT: GUT ({len(cluster_times)} Cluster)")
     elif len(cluster_times) <= 6:
-        print(f"\n  STABILITÄT: ⚠️ OK ({len(cluster_times)} Cluster)")
+        print(f"\n  STABILITÄT: OK ({len(cluster_times)} Cluster)")
     else:
-        print(f"\n  STABILITÄT: ❌ ZU VIELE ({len(cluster_times)} Cluster)")
+        print(f"\n  STABILITÄT: ZU VIELE ({len(cluster_times)} Cluster)")
 
 
 if __name__ == "__main__":

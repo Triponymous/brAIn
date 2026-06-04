@@ -72,15 +72,15 @@ def _check_permissions() -> None:
         # If idle > 300s AND counters didn't change, permission is missing
         # (user was presumably just typing to start this daemon)
         if idle > 120:
-            print("⚠️  INPUT MONITORING: NOT GRANTED")
+            print("[WARN] INPUT MONITORING: NOT GRANTED")
             print("   → Keyboard, mouse, and idle sensors will NOT work!")
             print("   → Fix: System Settings → Privacy & Security → Input Monitoring")
             print("   → Add Terminal.app (or your terminal) and RESTART this daemon")
             print()
         else:
-            print("✅ Input Monitoring: OK")
+            print("[OK] Input Monitoring: OK")
     except ImportError:
-        print("⚠️  Quartz framework not available")
+        print("[WARN] Quartz framework not available")
 
     # 2. Microphone
     try:
@@ -89,20 +89,20 @@ def _check_permissions() -> None:
         sd.wait()
         rms = float((rec ** 2).mean() ** 0.5)
         if rms < 0.0001:
-            print("⚠️  MICROPHONE: May not be granted (RMS=0)")
+            print("[WARN] MICROPHONE: May not be granted (RMS=0)")
             print("   → Fix: System Settings → Privacy & Security → Microphone")
         else:
-            print(f"✅ Microphone: OK (RMS={rms:.6f})")
+            print(f"[OK] Microphone: OK (RMS={rms:.6f})")
     except Exception as e:
-        print(f"⚠️  Microphone: Error ({e})")
+        print(f"[WARN] Microphone: Error ({e})")
 
     # 3. Active app (no permission needed)
     try:
         from AppKit import NSWorkspace
         app = NSWorkspace.sharedWorkspace().frontmostApplication()
-        print(f"✅ Active App: OK (currently: {app.localizedName()})")
+        print(f"[OK] Active App: OK (currently: {app.localizedName()})")
     except Exception:
-        print("⚠️  Active App: NSWorkspace unavailable")
+        print("[WARN] Active App: NSWorkspace unavailable")
 
     print()
 

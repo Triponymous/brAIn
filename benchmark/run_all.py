@@ -52,13 +52,13 @@ def main():
     passed = sum(1 for v in results.values() if v)
 
     for name, passed_test in results.items():
-        print(f"  {'✅' if passed_test else '❌'} {name}")
+        print(f"  [{'PASS' if passed_test else 'FAIL'}] {name}")
 
     print(f"\n  {passed}/{total} PASSED")
     if passed == total:
-        print("  🎉 ALL BENCHMARKS PASS — SNN is validated!")
+        print("  ALL BENCHMARKS PASS — SNN is validated!")
     else:
-        print(f"  ⚠️  {total - passed} FAILED — needs work")
+        print(f"  {total - passed} FAILED — needs work")
 
     report = {"timestamp": time.time(), "results": {k: v for k, v in results.items()}}
     Path("benchmark/reports/summary.json").write_text(json.dumps(report, indent=2))

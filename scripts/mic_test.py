@@ -38,10 +38,10 @@ for i in range(0, len(rec), chunk_size):
 
 print(f"\n  Peak RMS: {max_rms:.6f}")
 if max_rms > 0.01:
-    print("  ✅ MIKROFON FUNKTIONIERT!")
+    print("  MIKROFON FUNKTIONIERT!")
 elif max_rms > 0.001:
-    print("  ⚠️  Mikrofon funktioniert, aber sehr leise.")
+    print("  Mikrofon funktioniert, aber sehr leise.")
 elif max_rms > 0.0001:
-    print("  ⚠️  Minimales Signal — Permission evtl. eingeschraenkt.")
+    print("  Minimales Signal — Permission evtl. eingeschraenkt.")
 else:
-    print("  ❌ KEIN SIGNAL — Mikrofon-Permission fehlt fuer diesen Prozess.")
+    print("  KEIN SIGNAL — Mikrofon-Permission fehlt fuer diesen Prozess.")

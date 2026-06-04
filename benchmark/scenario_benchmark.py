@@ -246,17 +246,17 @@ def run_all():
     print("=" * 60)
 
     for r in results:
-        icon = "✅" if r["pass"] else "❌"
-        print(f"  {icon} {r['name']}")
+        tag = "PASS" if r["pass"] else "FAIL"
+        print(f"  [{tag}] {r['name']}")
 
     passed = sum(1 for r in results if r["pass"])
     total = len(results)
     print(f"\n  {passed}/{total} BESTANDEN")
 
     if passed == total:
-        print("  🎉 ALLE SZENARIEN BESTANDEN!")
+        print("  ALLE SZENARIEN BESTANDEN!")
     else:
-        print(f"  ⚠️ {total - passed} FEHLGESCHLAGEN")
+        print(f"  {total - passed} FEHLGESCHLAGEN")
 
     report = {
         "timestamp": time.time(),
