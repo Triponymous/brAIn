@@ -38,3 +38,20 @@ def test_post_feel_teaches_then_get_recognizes():
     g = c.get("/api/feel").json()
     assert g["recognized"] == "flow"
     assert g["confidence"] > 0.0
+
+
+def test_post_labels_frozen_pending_signature_not_live():
+    """A pending ask (state-change) freezes the anomaly signature; POSTing a label
+    applies to THAT, not the live state Leon is in when he answers."""
+    import time as _t
+    from fastapi import FastAPI
+    brain = Brain(num_sensory=8, num_concept=4, num_wm=4)
+    brain.felt_state = FeltState()
+    anomaly = [0.001, 0.002, 0.003, 0.05, 0.004, 0.005]   # != the stub's live flow signature
+    brain._pending_ask = {"signature": anomaly, "at": _t.time()}
+    app = FastAPI()
+    app.include_router(build_feel_router(brain, _StubDetector()))
+    c = TestClient(app)
+    c.post("/api/feel", json={"label": "pause"})
+    assert brain.felt_state.recognize(anomaly)[0] == "pause"   # labeled the FROZEN moment
+    assert brain._pending_ask is None                          # pending cleared

@@ -32,3 +32,11 @@ def test_silent_during_sleep():
     brain.sleep_mode = True
     assert eng._check_felt_state(0) is None
     assert eng._check_felt_state(60) is None
+
+
+def test_ask_freezes_the_moment():
+    eng, brain = _engine()
+    eng._check_felt_state(0)
+    assert eng._check_felt_state(30) is not None              # fires the ask
+    assert getattr(brain, "_pending_ask", None) is not None   # captured the moment
+    assert brain._pending_ask["signature"] == brain._last_signature

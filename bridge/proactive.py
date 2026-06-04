@@ -139,8 +139,10 @@ class ProactiveEngine:
             return context
 
     def _check_felt_state(self, now: float) -> str | None:
-        """Observe the recognized felt-state; return an ask-message when it's time
-        to ask Leon to label a sustained UNKNOWN state (active learning), else None."""
+        """Observe the recognized felt-state; on a sustained UNKNOWN stretch (active
+        learning) CAPTURE the moment's signature as a pending ask and return the
+        ask-message. The label Leon gives later applies to THIS frozen signature —
+        not whatever he is doing when he gets back to answer."""
         if self.brain.sleep_mode:
             return None
         sig = getattr(self.brain, "_last_signature", None)
@@ -149,7 +151,8 @@ class ProactiveEngine:
             return None
         self._felt_watcher.observe(fs.recognize(sig)[0], now)
         if self._felt_watcher.should_ask(now):
-            return "Dein Zustand hat sich veraendert — was ist gerade los?"
+            self.brain._pending_ask = {"signature": list(sig), "at": now}
+            return "Dein Zustand hatte sich veraendert — was war da los?"
         return None
 
     async def run(self, check_interval: float = 10.0) -> None:
