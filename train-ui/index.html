@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -84,7 +84,7 @@
   <div class="row between">
     <div>
       <h1>brAIn · Felt-State Training</h1>
-      <p class="sub">Bring dem Pet bei, wie sich <em>deine</em> Zustände anfühlen.</p>
+      <p class="sub">Teach the pet how <em>your</em> states feel.</p>
     </div>
     <span id="conn" class="pill"><span class="dot"></span><span id="conn-text">…</span></span>
   </div>
@@ -93,16 +93,16 @@
   <div id="ask-banner" class="surface" style="display:none; margin-top:16px; border:1px solid var(--tt-accent); background:var(--tt-accent-soft)">
     <div class="row between">
       <span class="font-display" id="ask-msg" style="font-weight:700; color:#0f6a91; font-size:15px"></span>
-      <button class="btn btn-secondary" id="ask-dismiss" style="padding:4px 10px; font-size:12px">später</button>
+      <button class="btn btn-secondary" id="ask-dismiss" style="padding:4px 10px; font-size:12px">later</button>
     </div>
-    <p class="hint" style="margin-top:6px; color:#0f6a91">Sag, was da los war — das Pet hat den Moment festgehalten. Dein Label gilt fuer DEN Zustand, nicht den jetzigen. (Begriff unten eintippen + Lernen.)</p>
+    <p class="hint" style="margin-top:6px; color:#0f6a91">Tell it what was going on — the pet captured the moment. Your label applies to THAT state, not the current one. (Type a name below + Learn.)</p>
   </div>
 
   <!-- Daemon control -->
   <div class="surface mt row between">
     <div class="row">
       <span class="section-title" style="margin:0">Daemon</span>
-      <span id="daemon-pill" class="pill"><span class="dot"></span><span id="daemon-text">unbekannt</span></span>
+      <span id="daemon-pill" class="pill"><span class="dot"></span><span id="daemon-text">unknown</span></span>
     </div>
     <div class="row">
       <button id="btn-start" class="btn btn-primary">Start</button>
@@ -113,7 +113,7 @@
   <!-- Felt-state hero -->
   <div class="neu-hero mt">
     <div class="row between">
-      <span class="section-title" style="margin:0">Du wirkst gerade</span>
+      <span class="section-title" style="margin:0">You seem</span>
       <span id="felt-conf" class="pill pill-accent" style="display:none"></span>
     </div>
     <div id="felt-label" class="feltlabel unknown" style="margin-top:10px">—</div>
@@ -122,13 +122,13 @@
 
   <!-- Label / correct -->
   <div class="surface mt">
-    <div class="section-title">Das ist… (aktuellen Zustand labeln/korrigieren)</div>
+    <div class="section-title">This is… (label/correct the current state)</div>
     <div class="label-row" id="known-labels"></div>
     <div class="row" style="margin-top:12px">
-      <input id="new-label" class="input" placeholder="neuer Zustand, z.B. flow" maxlength="32" />
-      <button id="btn-learn" class="btn btn-primary">Lernen</button>
+      <input id="new-label" class="input" placeholder="new state, e.g. flow" maxlength="32" />
+      <button id="btn-learn" class="btn btn-primary">Learn</button>
     </div>
-    <p class="hint">Tipp auf einen Zustand = „ja, das bin ich gerade" (schärft den Prototyp). Neuer Begriff = das Pet legt ihn aus der aktuellen Live-Signatur an. Es lernt <em>dich</em> — überlebt den Neustart.</p>
+    <p class="hint">Tap a state = "yes, that's me right now" (sharpens the prototype). A new name = the pet creates it from the current live signature. It learns <em>you</em> — survives a restart.</p>
   </div>
 </div>
 
@@ -136,7 +136,7 @@
   // The brain daemon (spawned by the control server) listens on 8000.
   const BRAIN = "http://127.0.0.1:8000";
   const WSURL = "ws://127.0.0.1:8000/ws";
-  const MODS = [["DA","Neugier"],["NE","Aufregung"],["ACh","Fokus"],["5HT","Ruhe"]];
+  const MODS = [["DA","Curiosity"],["NE","Arousal"],["ACh","Focus"],["5HT","Calm"]];
   const MOD_MAX = 0.07;
 
   let state = { connected:false, felt:null, modulators:{}, daemon:null };
@@ -186,7 +186,7 @@
   }
 
   function showAsk(msg) {
-    document.getElementById("ask-msg").textContent = msg || "Was ist gerade los?";
+    document.getElementById("ask-msg").textContent = msg || "What's going on right now?";
     document.getElementById("ask-banner").style.display = "block";
     const inp = document.getElementById("new-label");
     if (inp) inp.focus();
@@ -198,13 +198,13 @@
     // connection
     const conn = document.getElementById("conn");
     conn.className = "pill " + (state.connected ? "pill-success" : "");
-    document.getElementById("conn-text").textContent = state.connected ? "verbunden" : "getrennt";
+    document.getElementById("conn-text").textContent = state.connected ? "connected" : "disconnected";
 
     // daemon status
     const running = state.daemon && state.daemon.running;
     const dpill = document.getElementById("daemon-pill");
     dpill.className = "pill " + (running ? "pill-success" : "pill-danger");
-    document.getElementById("daemon-text").textContent = running ? ("läuft · pid " + state.daemon.pid) : "aus";
+    document.getElementById("daemon-text").textContent = running ? ("running · pid " + state.daemon.pid) : "off";
     document.getElementById("btn-start").disabled = !!running;
     document.getElementById("btn-stop").disabled = !running;
 
@@ -216,9 +216,9 @@
       labelEl.textContent = felt.label;
       labelEl.className = "feltlabel";
       confEl.style.display = "inline-flex";
-      confEl.textContent = Math.round((felt.confidence || 0) * 100) + "% sicher";
+      confEl.textContent = Math.round((felt.confidence || 0) * 100) + "% sure";
     } else {
-      labelEl.textContent = state.connected ? "lerne noch…" : "—";
+      labelEl.textContent = state.connected ? "still learning…" : "—";
       labelEl.className = "feltlabel unknown";
       confEl.style.display = "none";
     }
@@ -245,7 +245,7 @@
     if (!labels.length) {
       const empty = document.createElement("span");
       empty.className = "hint"; empty.style.marginTop = "0";
-      empty.textContent = "Noch keine Zustände gelernt. Leg unten den ersten an.";
+      empty.textContent = "No states learned yet. Create the first one below.";
       kl.appendChild(empty);
     }
     for (const lab of labels) {
