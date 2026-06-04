@@ -95,7 +95,11 @@
       <span class="font-display" id="ask-msg" style="font-weight:700; color:#0f6a91; font-size:15px"></span>
       <button class="btn btn-secondary" id="ask-dismiss" style="padding:4px 10px; font-size:12px">later</button>
     </div>
-    <p class="hint" style="margin-top:6px; color:#0f6a91">Tell it what was going on — the pet captured the moment. Your label applies to THAT state, not the current one. (Type a name below + Learn.)</p>
+    <p class="hint" style="margin-top:6px; color:#0f6a91">Name it right here — the pet froze that moment, so your label sticks to THAT state, not the one you're in now.</p>
+    <div class="row" style="margin-top:10px">
+      <input id="ask-label" class="input" placeholder="what was that? e.g. break" maxlength="32" />
+      <button id="ask-learn" class="btn btn-primary">Learn</button>
+    </div>
   </div>
 
   <!-- Daemon control -->
@@ -188,7 +192,7 @@
   function showAsk(msg) {
     document.getElementById("ask-msg").textContent = msg || "What's going on right now?";
     document.getElementById("ask-banner").style.display = "block";
-    const inp = document.getElementById("new-label");
+    const inp = document.getElementById("ask-label");
     if (inp) inp.focus();
   }
   function hideAsk() { document.getElementById("ask-banner").style.display = "none"; }
@@ -261,6 +265,13 @@
   document.getElementById("btn-start").onclick = daemonStart;
   document.getElementById("btn-stop").onclick = daemonStop;
   document.getElementById("ask-dismiss").onclick = hideAsk;
+  document.getElementById("ask-learn").onclick = () => {
+    const inp = document.getElementById("ask-label");
+    teach(inp.value); inp.value = "";
+  };
+  document.getElementById("ask-label").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { teach(e.target.value); e.target.value = ""; }
+  });
   document.getElementById("btn-learn").onclick = () => {
     const inp = document.getElementById("new-label");
     teach(inp.value); inp.value = "";
