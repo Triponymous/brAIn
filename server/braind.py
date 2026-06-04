@@ -172,6 +172,15 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     chat_router = build_chat_router(brain, exporter, tool_registry, llm_router)
     grants_router = build_grants_router(grant_store, refresh_fn=tool_registry.refresh_grants)
 
+    # Felt-state self-model (learned emotional states) + the trend detector that feeds it
+    from bridge.felt_state import FeltState
+    from bridge.state_detector import StateDetector
+    from server.feel import build_feel_router
+    if getattr(brain, "felt_state", None) is None:
+        brain.felt_state = FeltState()
+    state_detector = StateDetector()
+    feel_router = build_feel_router(brain, state_detector)
+
     # Config API
     from server.config import load_config, build_config_router
     load_config()
@@ -182,6 +191,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     app.include_router(chat_router)
     app.include_router(grants_router)
     app.include_router(config_router)
+    app.include_router(feel_router)
 
     # Voice setup
     from bridge.tts import TTSEngine
@@ -214,7 +224,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     await asyncio.sleep(2.0)  # give sensors time to populate the bus
     print(f"Sensor bus keys: {list(adapter.bus.snapshot().keys())}")
     tick_task = asyncio.create_task(brain_tick_loop(brain, adapter, hz=args.tick_hz, exporter=exporter, episode_logger=episode_logger))
-    push_task = asyncio.create_task(push_loop(brain, pusher, exporter=exporter, adapter=adapter))
+    push_task = asyncio.create_task(push_loop(brain, pusher, exporter=exporter, adapter=adapter, detector=state_detector))
     persist_task = asyncio.create_task(persistence_loop(brain, str(checkpoint)))
 
     # Proactive notifications — pet speaks up when something interesting happens

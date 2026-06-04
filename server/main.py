@@ -126,7 +126,7 @@ async def brain_tick_loop(brain: Any, adapter: Any, hz: float = 100.0, exporter:
         return
 
 
-async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter: Any = None) -> None:
+async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter: Any = None, detector: Any = None) -> None:
     """Periodically broadcast brain state to all WS clients."""
     period = 1.0 / pusher.rate_hz
 
@@ -137,6 +137,7 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter:
     _smooth_mouse = 0.0
     _smooth_mic = 0.0
     _decay = 0.85  # exponential smoothing: keeps ~1s of history
+    _felt_tick = 0
 
     try:
         while True:
@@ -189,6 +190,20 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter:
                     "wm": int(brain._last_wm_spikes) if hasattr(brain, '_last_wm_spikes') else 0,
                 },
             }
+
+            # Felt-state: update the trend detector ~1Hz, recognize the learned state,
+            # ride it on the push so the training console shows it live.
+            if detector is not None and getattr(brain, "felt_state", None) is not None:
+                from bridge.felt_state import signature_from_trend
+                _felt_tick += 1
+                if _felt_tick == 1 or _felt_tick % max(1, int(pusher.rate_hz)) == 0:
+                    detector.update(brain)
+                sig = signature_from_trend(detector.emotional_trend())
+                brain._last_signature = sig
+                fname, fconf = brain.felt_state.recognize(sig)
+                base_state["felt"] = {"label": fname, "confidence": fconf,
+                                      "signature": sig,
+                                      "known_labels": brain.felt_state.known_labels()}
 
             # Gather detail data only if clients need it (meso/micro subscriptions)
             detail_state = None
