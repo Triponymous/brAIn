@@ -55,6 +55,11 @@ CREATE TABLE IF NOT EXISTS concept_tracker (
     count INTEGER NOT NULL,
     last_seen INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS felt_states (
+    label TEXT PRIMARY KEY,
+    centroid TEXT NOT NULL,
+    count INTEGER NOT NULL
+);
 """
 
 
@@ -161,6 +166,14 @@ def save_brain(brain: Brain, path: Path) -> None:
                 (json.dumps(brain._interpreter.save_personality()),),
             )
 
+        # FeltState — learned emotional self-model (label -> centroid + count)
+        if getattr(brain, 'felt_state', None) is not None:
+            for label, proto in brain.felt_state.to_dict()["prototypes"].items():
+                conn.execute(
+                    "INSERT INTO felt_states(label, centroid, count) VALUES (?, ?, ?)",
+                    (label, json.dumps(proto["centroid"]), int(proto["count"])),
+                )
+
         conn.commit()
     finally:
         conn.close()
@@ -253,6 +266,17 @@ def load_brain(path: Path) -> Brain:
                 brain._personality_state = json.loads(row[0])
         except (sqlite3.OperationalError, Exception):
             pass
+
+        # FeltState — learned emotional self-model (may be absent in old checkpoints)
+        try:
+            rows = conn.execute("SELECT label, centroid, count FROM felt_states").fetchall()
+            if rows:
+                from bridge.felt_state import FeltState
+                protos = {label: {"centroid": json.loads(cen), "count": int(cnt)}
+                          for label, cen, cnt in rows}
+                brain.felt_state = FeltState.from_dict({"prototypes": protos})
+        except sqlite3.OperationalError:
+            pass  # old checkpoint without felt_states table
 
         # NB: a loaded brain reloads FAITHFULLY. Learned weights ARE the
         # personality, so we deliberately do NOT reset "saturated" synapses on

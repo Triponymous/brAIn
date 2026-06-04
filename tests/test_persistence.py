@@ -79,3 +79,20 @@ def test_save_creates_file():
         save_brain(brain, path)
         assert path.exists()
         assert path.stat().st_size > 0
+
+
+def test_felt_state_round_trip():
+    """The learned emotional self-model survives save/load."""
+    from bridge.felt_state import FeltState
+    brain = Brain(num_sensory=8, num_concept=4, num_wm=4)
+    fs = FeltState()
+    fs.label("flow", [0.028, 0.027, 0.058, 0.035, 0.060, 0.069])
+    brain.felt_state = fs
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "brain.sqlite"
+        save_brain(brain, path)
+        loaded = load_brain(path)
+
+    assert loaded.felt_state.recognize([0.030, 0.025, 0.055, 0.037, 0.058, 0.071])[0] == "flow"
+    assert loaded.felt_state.known_labels() == ["flow"]
