@@ -14,9 +14,11 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 _PIDFILE = Path("checkpoints/braind.pid")
+_CONSOLE = Path(__file__).resolve().parents[1] / "train-ui" / "index.html"
 
 
 class StartRequest(BaseModel):
@@ -75,6 +77,10 @@ def build_control_app(spawn=None, killer=None) -> FastAPI:
                 pass
             _PIDFILE.unlink(missing_ok=True)
         return {"running": False}
+
+    @app.get("/")
+    async def console() -> FileResponse:
+        return FileResponse(_CONSOLE)
 
     return app
 

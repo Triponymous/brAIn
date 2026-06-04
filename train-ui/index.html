@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>brAIn — Felt-State Training</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --tt-bg:#f2f4f8; --tt-surface:#fff; --tt-border:#e5e7eb;
+    --tt-text:#1f2937; --tt-muted:#6b7280; --tt-accent:#1e8ab7; --tt-accent-soft:#d4edf7;
+    --tt-success:#059669; --tt-success-soft:#d1fae5; --tt-danger:#dc2626; --tt-danger-soft:#fee2e2;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; font-family:'Inter',system-ui,sans-serif; color:var(--tt-text);
+    background-color:var(--tt-bg);
+    background-image:
+      radial-gradient(circle at 18% 8%, rgba(30,138,183,.06), transparent 50%),
+      radial-gradient(circle at 88% 92%, rgba(56,178,172,.05), transparent 55%),
+      radial-gradient(circle at 1px 1px, rgba(15,23,42,.035) 1px, transparent 0);
+    background-size:auto,auto,28px 28px; background-attachment:fixed; min-height:100vh;
+  }
+  .page { width:100%; max-width:760px; margin:0 auto; padding:32px 20px 64px; }
+  .font-display { font-family:'Plus Jakarta Sans',sans-serif; }
+  h1 { font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:22px; margin:0; }
+  .sub { color:var(--tt-muted); font-size:13px; margin:4px 0 0; }
+
+  .row { display:flex; align-items:center; gap:10px; }
+  .between { justify-content:space-between; }
+  .mt { margin-top:20px; }
+
+  .surface { background:var(--tt-surface); border:1px solid var(--tt-border); border-radius:16px;
+    box-shadow:0 1px 2px rgb(15 23 42/.04), 0 3px 9px rgb(15 23 42/.035); padding:18px 20px; }
+
+  .neu-hero { background:linear-gradient(145deg,#f5f7fa,#e8ebf0); border-radius:24px; padding:26px;
+    box-shadow:8px 8px 20px rgb(163 177 198/.4), -8px -8px 20px rgb(255 255 255/.8); }
+  .neu-well { background:linear-gradient(145deg,#e8ebf0,#f5f7fa); border-radius:14px; padding:12px 14px;
+    box-shadow:inset 4px 4px 8px rgb(163 177 198/.35), inset -4px -4px 8px rgb(255 255 255/.7); }
+
+  .feltlabel { font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:40px; line-height:1.1;
+    color:var(--tt-text); letter-spacing:-.5px; }
+  .feltlabel.unknown { color:var(--tt-muted); font-size:28px; font-weight:700; }
+  .gauges { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:20px; }
+  .gauge-name { font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--tt-muted); }
+  .gauge-val { font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; margin-top:2px; }
+  .gauge-bar { height:5px; border-radius:9999px; background:rgb(163 177 198/.3); margin-top:8px; overflow:hidden; }
+  .gauge-fill { height:100%; border-radius:9999px; background:var(--tt-accent); transition:width .3s ease; }
+
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:8px 14px;
+    font-size:13px; font-weight:600; border-radius:10px; border:none; cursor:pointer; transition:all .15s ease;
+    font-family:inherit; }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+  .btn-primary { background:linear-gradient(145deg,#3ba8d6,#1670a0); color:#fff;
+    box-shadow:3px 3px 6px rgb(15 90 120/.25), -2px -2px 4px rgb(255 255 255/.5); }
+  .btn-primary:not(:disabled):hover { transform:translateY(-1px); }
+  .btn-secondary { background:linear-gradient(145deg,#f5f7fa,#e8ebf0); color:#1f2937;
+    box-shadow:3px 3px 6px rgb(163 177 198/.4), -3px -3px 6px rgb(255 255 255/.8); }
+  .btn-secondary:not(:disabled):hover { transform:translateY(-1px); }
+  .btn-danger { background:linear-gradient(145deg,#ef5350,#c62828); color:#fff;
+    box-shadow:3px 3px 6px rgb(120 20 20/.22), -2px -2px 4px rgb(255 255 255/.4); }
+
+  .pill { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; font-size:12px; font-weight:600;
+    border-radius:9999px; background:#f3f4f6; color:#4b5563; }
+  .pill-accent { background:var(--tt-accent-soft); color:#0f6a91; }
+  .pill-success { background:var(--tt-success-soft); color:#047857; }
+  .pill-danger { background:var(--tt-danger-soft); color:#991b1b; }
+  .dot { width:8px; height:8px; border-radius:9999px; background:currentColor; }
+
+  .input { flex:1; padding:9px 12px; font-size:14px; font-family:inherit; color:var(--tt-text);
+    background:#fff; border:1px solid var(--tt-border); border-radius:12px; outline:none;
+    box-shadow:inset 2px 2px 4px rgb(163 177 198/.3), inset -2px -2px 4px rgb(255 255 255/.7); }
+  .input:focus { border-color:var(--tt-accent); }
+
+  .label-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+  .section-title { font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:var(--tt-muted);
+    font-weight:600; margin-bottom:4px; }
+  .hint { font-size:12px; color:var(--tt-muted); margin-top:10px; line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="row between">
+    <div>
+      <h1>brAIn · Felt-State Training</h1>
+      <p class="sub">Bring dem Pet bei, wie sich <em>deine</em> Zustände anfühlen.</p>
+    </div>
+    <span id="conn" class="pill"><span class="dot"></span><span id="conn-text">…</span></span>
+  </div>
+
+  <!-- Daemon control -->
+  <div class="surface mt row between">
+    <div class="row">
+      <span class="section-title" style="margin:0">Daemon</span>
+      <span id="daemon-pill" class="pill"><span class="dot"></span><span id="daemon-text">unbekannt</span></span>
+    </div>
+    <div class="row">
+      <button id="btn-start" class="btn btn-primary">Start</button>
+      <button id="btn-stop" class="btn btn-danger">Stop</button>
+    </div>
+  </div>
+
+  <!-- Felt-state hero -->
+  <div class="neu-hero mt">
+    <div class="row between">
+      <span class="section-title" style="margin:0">Du wirkst gerade</span>
+      <span id="felt-conf" class="pill pill-accent" style="display:none"></span>
+    </div>
+    <div id="felt-label" class="feltlabel unknown" style="margin-top:10px">—</div>
+    <div class="gauges" id="gauges"></div>
+  </div>
+
+  <!-- Label / correct -->
+  <div class="surface mt">
+    <div class="section-title">Das ist… (aktuellen Zustand labeln/korrigieren)</div>
+    <div class="label-row" id="known-labels"></div>
+    <div class="row" style="margin-top:12px">
+      <input id="new-label" class="input" placeholder="neuer Zustand, z.B. flow" maxlength="32" />
+      <button id="btn-learn" class="btn btn-primary">Lernen</button>
+    </div>
+    <p class="hint">Tipp auf einen Zustand = „ja, das bin ich gerade" (schärft den Prototyp). Neuer Begriff = das Pet legt ihn aus der aktuellen Live-Signatur an. Es lernt <em>dich</em> — überlebt den Neustart.</p>
+  </div>
+</div>
+
+<script>
+  // The brain daemon (spawned by the control server) listens on 8000.
+  const BRAIN = "http://127.0.0.1:8000";
+  const WSURL = "ws://127.0.0.1:8000/ws";
+  const MODS = [["DA","Neugier"],["NE","Aufregung"],["ACh","Fokus"],["5HT","Ruhe"]];
+  const MOD_MAX = 0.07;
+
+  let state = { connected:false, felt:null, modulators:{}, daemon:null };
+
+  // ---- WebSocket: live brain state (modulators + felt) ----
+  let ws = null;
+  function connectWS() {
+    if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
+    ws = new WebSocket(WSURL);
+    ws.onopen = () => { state.connected = true; render(); };
+    ws.onmessage = (ev) => {
+      try {
+        const d = JSON.parse(ev.data);
+        if (d.type === "notification") return;
+        if (d.modulators) state.modulators = d.modulators;
+        if (d.felt) state.felt = d.felt;
+        render();
+      } catch (_) {}
+    };
+    ws.onclose = () => { state.connected = false; render(); setTimeout(connectWS, 2000); };
+    ws.onerror = () => { try { ws.close(); } catch (_) {} };
+  }
+
+  // ---- Control server (same origin) ----
+  async function daemonStatus() {
+    try {
+      const r = await fetch("/daemon/status");
+      state.daemon = await r.json();
+    } catch (_) { state.daemon = null; }
+    render();
+  }
+  async function daemonStart() { try { await fetch("/daemon/start", {method:"POST", headers:{"Content-Type":"application/json"}, body:"{}"}); } catch(_){} daemonStatus(); }
+  async function daemonStop()  { try { await fetch("/daemon/stop",  {method:"POST"}); } catch(_){} daemonStatus(); }
+
+  // ---- Teach / correct ----
+  async function teach(label) {
+    label = (label || "").trim();
+    if (!label) return;
+    try {
+      await fetch(BRAIN + "/api/feel", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({label})});
+    } catch (_) {}
+    // optimistic: the next /ws push reflects the new label + recognition
+  }
+
+  // ---- Render ----
+  function render() {
+    // connection
+    const conn = document.getElementById("conn");
+    conn.className = "pill " + (state.connected ? "pill-success" : "");
+    document.getElementById("conn-text").textContent = state.connected ? "verbunden" : "getrennt";
+
+    // daemon status
+    const running = state.daemon && state.daemon.running;
+    const dpill = document.getElementById("daemon-pill");
+    dpill.className = "pill " + (running ? "pill-success" : "pill-danger");
+    document.getElementById("daemon-text").textContent = running ? ("läuft · pid " + state.daemon.pid) : "aus";
+    document.getElementById("btn-start").disabled = !!running;
+    document.getElementById("btn-stop").disabled = !running;
+
+    // felt state
+    const felt = state.felt;
+    const labelEl = document.getElementById("felt-label");
+    const confEl = document.getElementById("felt-conf");
+    if (felt && felt.label) {
+      labelEl.textContent = felt.label;
+      labelEl.className = "feltlabel";
+      confEl.style.display = "inline-flex";
+      confEl.textContent = Math.round((felt.confidence || 0) * 100) + "% sicher";
+    } else {
+      labelEl.textContent = state.connected ? "lerne noch…" : "—";
+      labelEl.className = "feltlabel unknown";
+      confEl.style.display = "none";
+    }
+
+    // gauges
+    const g = document.getElementById("gauges");
+    g.innerHTML = "";
+    for (const [key, name] of MODS) {
+      const v = state.modulators[key] || 0;
+      const pct = Math.min(100, (v / MOD_MAX) * 100);
+      const well = document.createElement("div");
+      well.className = "neu-well";
+      well.innerHTML =
+        '<div class="gauge-name">' + name + '</div>' +
+        '<div class="gauge-val">' + v.toFixed(3) + '</div>' +
+        '<div class="gauge-bar"><div class="gauge-fill" style="width:' + pct + '%"></div></div>';
+      g.appendChild(well);
+    }
+
+    // known-label buttons
+    const kl = document.getElementById("known-labels");
+    const labels = (felt && felt.known_labels) || [];
+    kl.innerHTML = "";
+    if (!labels.length) {
+      const empty = document.createElement("span");
+      empty.className = "hint"; empty.style.marginTop = "0";
+      empty.textContent = "Noch keine Zustände gelernt. Leg unten den ersten an.";
+      kl.appendChild(empty);
+    }
+    for (const lab of labels) {
+      const b = document.createElement("button");
+      b.className = "btn btn-secondary";
+      b.textContent = lab;
+      b.onclick = () => teach(lab);
+      kl.appendChild(b);
+    }
+  }
+
+  // ---- Wire up ----
+  document.getElementById("btn-start").onclick = daemonStart;
+  document.getElementById("btn-stop").onclick = daemonStop;
+  document.getElementById("btn-learn").onclick = () => {
+    const inp = document.getElementById("new-label");
+    teach(inp.value); inp.value = "";
+  };
+  document.getElementById("new-label").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { teach(e.target.value); e.target.value = ""; }
+  });
+
+  render();
+  connectWS();
+  daemonStatus();
+  setInterval(daemonStatus, 3000);
+</script>
+</body>
+</html>

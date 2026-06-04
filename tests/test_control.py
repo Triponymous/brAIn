@@ -28,3 +28,11 @@ def test_daemon_lifecycle(monkeypatch, tmp_path):
     assert stopped["running"] is False
     assert killed == [os.getpid()]
     assert c.get("/daemon/status").json()["running"] is False
+
+
+def test_serves_console(tmp_path, monkeypatch):
+    monkeypatch.setattr(control, "_PIDFILE", tmp_path / "braind.pid")
+    c = TestClient(control.build_control_app(spawn=lambda m: 0, killer=lambda p, s: None))
+    r = c.get("/")
+    assert r.status_code == 200
+    assert "Felt-State" in r.text
