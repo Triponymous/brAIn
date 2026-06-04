@@ -149,9 +149,11 @@ class ProactiveEngine:
         fs = getattr(self.brain, "felt_state", None)
         if not sig or fs is None:
             return None
-        self._felt_watcher.observe(fs.recognize(sig)[0], now)
+        c = getattr(self.brain, "_last_concept_cluster", -1)
+        cluster = int(c) if c is not None else -1
+        self._felt_watcher.observe(fs.recognize(sig, cluster)[0], now)
         if self._felt_watcher.should_ask(now):
-            self.brain._pending_ask = {"signature": list(sig), "at": now}
+            self.brain._pending_ask = {"signature": list(sig), "cluster": cluster, "at": now}
             return "Dein Zustand hatte sich veraendert — was war da los?"
         return None
 

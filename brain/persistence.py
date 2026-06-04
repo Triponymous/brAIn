@@ -58,7 +58,8 @@ CREATE TABLE IF NOT EXISTS concept_tracker (
 CREATE TABLE IF NOT EXISTS felt_states (
     label TEXT PRIMARY KEY,
     centroid TEXT NOT NULL,
-    count INTEGER NOT NULL
+    count INTEGER NOT NULL,
+    cluster INTEGER
 );
 """
 
@@ -170,8 +171,8 @@ def save_brain(brain: Brain, path: Path) -> None:
         if getattr(brain, 'felt_state', None) is not None:
             for label, proto in brain.felt_state.to_dict()["prototypes"].items():
                 conn.execute(
-                    "INSERT INTO felt_states(label, centroid, count) VALUES (?, ?, ?)",
-                    (label, json.dumps(proto["centroid"]), int(proto["count"])),
+                    "INSERT INTO felt_states(label, centroid, count, cluster) VALUES (?, ?, ?, ?)",
+                    (label, json.dumps(proto["centroid"]), int(proto["count"]), proto.get("cluster")),
                 )
 
         conn.commit()
@@ -267,14 +268,21 @@ def load_brain(path: Path) -> Brain:
         except (sqlite3.OperationalError, Exception):
             pass
 
-        # FeltState — learned emotional self-model (may be absent in old checkpoints)
+        # FeltState — learned emotional self-model (may be absent in old checkpoints;
+        # the `cluster` column is also absent in pre-behavior-axis checkpoints).
         try:
-            rows = conn.execute("SELECT label, centroid, count FROM felt_states").fetchall()
-            if rows:
-                from bridge.felt_state import FeltState
-                protos = {label: {"centroid": json.loads(cen), "count": int(cnt)}
-                          for label, cen, cnt in rows}
-                brain.felt_state = FeltState.from_dict({"prototypes": protos})
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(felt_states)")}
+            if cols:
+                has_cluster = "cluster" in cols
+                sel = "SELECT label, centroid, count" + (", cluster" if has_cluster else "") + " FROM felt_states"
+                rows = conn.execute(sel).fetchall()
+                if rows:
+                    from bridge.felt_state import FeltState
+                    protos = {}
+                    for r in rows:
+                        protos[r[0]] = {"centroid": json.loads(r[1]), "count": int(r[2]),
+                                        "cluster": (r[3] if has_cluster else None)}
+                    brain.felt_state = FeltState.from_dict({"prototypes": protos})
         except sqlite3.OperationalError:
             pass  # old checkpoint without felt_states table
 

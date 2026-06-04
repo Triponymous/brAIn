@@ -71,6 +71,12 @@ class ConceptTracker:
         self._accum = torch.zeros(self.input_dim)
         self._accum_count = 0
 
+    @property
+    def current_cluster(self) -> int:
+        """The behavioral cluster active right now (-1 = none yet). Read by the
+        felt-state model to add a behavior axis on top of affect."""
+        return self._current_cluster
+
     # ------------------------------------------------------------------
     # Legacy list-style accessors (read-only) for backward compat with
     # persistence, benchmarks, and any code that still indexes by position.

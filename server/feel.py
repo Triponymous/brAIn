@@ -30,10 +30,14 @@ def build_feel_router(brain, detector) -> APIRouter:
             return sig
         return signature_from_trend(detector.emotional_trend())
 
+    def _current_cluster() -> int:
+        c = getattr(brain, "_last_concept_cluster", -1)
+        return int(c) if c is not None else -1
+
     @api.get("/api/feel")
     async def get_feel() -> dict[str, Any]:
         sig = _current_sig()
-        name, conf = brain.felt_state.recognize(sig)
+        name, conf = brain.felt_state.recognize(sig, _current_cluster())
         return {"recognized": name, "confidence": conf,
                 "signature": dict(zip(SIGNATURE_KEYS, sig)),
                 "known_labels": brain.felt_state.known_labels()}
@@ -45,12 +49,15 @@ def build_feel_router(brain, detector) -> APIRouter:
         pending = getattr(brain, "_pending_ask", None)
         if pending and pending.get("signature") and (time.time() - pending["at"]) < _PENDING_TTL:
             sig = pending["signature"]
+            pc = pending.get("cluster")
+            cluster = int(pc) if pc is not None else -1
             brain._pending_ask = None
         else:
             sig = _current_sig()
-        brain.felt_state.label(req.label, sig)
+            cluster = _current_cluster()
+        brain.felt_state.label(req.label, sig, cluster)
         live = _current_sig()
-        name, conf = brain.felt_state.recognize(live)
+        name, conf = brain.felt_state.recognize(live, _current_cluster())
         return {"labeled": req.label, "recognized": name, "confidence": conf,
                 "known_labels": brain.felt_state.known_labels()}
 

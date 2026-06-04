@@ -50,6 +50,33 @@ def test_signature_from_trend_fixed_order():
     assert signature_from_trend(trend) == [0.0, 0.01, 0.02, 0.03, 0.04, 0.05]
 
 
+# ── Behavior axis: concept-cluster joins affect (the signature-widening) ──
+
+def test_same_affect_different_cluster_separates():
+    # Identical affect, different concept-cluster → two distinct states.
+    fs = FeltState()
+    fs.label("coding", FLOW, cluster=1)
+    fs.label("meeting", FLOW, cluster=2)
+    assert fs.recognize(FLOW, cluster=1)[0] == "coding"
+    assert fs.recognize(FLOW, cluster=2)[0] == "meeting"
+
+
+def test_unknown_cluster_falls_back_to_affect():
+    # No current cluster (-1 / None) → no penalty → affect-only (old behavior preserved).
+    fs = FeltState()
+    fs.label("coding", FLOW, cluster=1)
+    assert fs.recognize(FLOW_NEAR, cluster=-1)[0] == "coding"
+    assert fs.recognize(FLOW_NEAR)[0] == "coding"
+
+
+def test_cluster_persists_roundtrip():
+    fs = FeltState()
+    fs.label("coding", FLOW, cluster=1)
+    fs2 = FeltState.from_dict(fs.to_dict())
+    assert fs2.recognize(FLOW, cluster=1)[0] == "coding"
+    assert fs2.recognize(FLOW, cluster=2)[0] is None   # behavior mismatch → not recognized
+
+
 # ── FeltStateWatcher: when to ask for a label (active learning) ──
 
 def test_watcher_silent_while_recognized():

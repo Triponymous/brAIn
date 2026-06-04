@@ -200,7 +200,9 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter:
                     detector.update(brain)
                 sig = signature_from_trend(detector.emotional_trend())
                 brain._last_signature = sig
-                fname, fconf = brain.felt_state.recognize(sig)
+                cluster = brain.concept_tracker.current_cluster if getattr(brain, "concept_tracker", None) is not None else -1
+                brain._last_concept_cluster = cluster
+                fname, fconf = brain.felt_state.recognize(sig, cluster)
                 base_state["felt"] = {"label": fname, "confidence": fconf,
                                       "signature": sig,
                                       "known_labels": brain.felt_state.known_labels()}

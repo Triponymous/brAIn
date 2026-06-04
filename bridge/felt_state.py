@@ -13,6 +13,10 @@ SIGNATURE_KEYS = ("avg_DA", "avg_NE", "avg_ACh", "avg_5HT", "peak_DA", "peak_NE"
 _SCALE = 0.07              # modulators live ~0-0.07 -> normalize each dim to ~[0,1]
 _DEFAULT_THRESHOLD = 0.35  # max normalized distance still counted as "same state"
 _EWMA = 0.3                # weight for sharpening a prototype per correction
+_CLUSTER_PENALTY = 0.4     # behavior axis: a concept-cluster mismatch ADDS this to the
+                           # affect distance (soft, not a hard gate). > threshold so a pure
+                           # cluster mismatch separates two same-affect states; an unknown
+                           # cluster (-1/None) skips it -> graceful affect-only fallback.
 
 
 def signature_from_trend(trend: dict) -> list[float]:
@@ -28,19 +32,25 @@ class FeltState:
         self._prototypes: dict[str, dict] = {}
         self._threshold = threshold
 
-    def label(self, name: str, sig: list[float]) -> None:
+    def label(self, name: str, sig: list[float], cluster: int | None = None) -> None:
         proto = self._prototypes.get(name)
         if proto is None:
-            self._prototypes[name] = {"centroid": list(sig), "count": 1}
+            self._prototypes[name] = {"centroid": list(sig), "count": 1, "cluster": cluster}
         else:
             c = proto["centroid"]
             proto["centroid"] = [o * (1 - _EWMA) + n * _EWMA for o, n in zip(c, sig)]
             proto["count"] += 1
+            if proto.get("cluster") is None and cluster is not None and cluster >= 0:
+                proto["cluster"] = cluster
 
-    def recognize(self, sig: list[float]) -> tuple[str | None, float]:
+    def recognize(self, sig: list[float], cluster: int | None = None) -> tuple[str | None, float]:
         best, best_d = None, float("inf")
         for name, proto in self._prototypes.items():
             d = _distance(sig, proto["centroid"])
+            pc = proto.get("cluster")
+            if (cluster is not None and cluster >= 0
+                    and pc is not None and pc >= 0 and pc != cluster):
+                d += _CLUSTER_PENALTY          # behavior mismatch -> soft separation
             if d < best_d:
                 best, best_d = name, d
         if best is None or best_d > self._threshold:
@@ -57,7 +67,8 @@ class FeltState:
     def from_dict(cls, data: dict) -> "FeltState":
         fs = cls(threshold=data.get("threshold", _DEFAULT_THRESHOLD))
         fs._prototypes = {
-            k: {"centroid": list(v["centroid"]), "count": int(v["count"])}
+            k: {"centroid": list(v["centroid"]), "count": int(v["count"]),
+                "cluster": v.get("cluster")}
             for k, v in data.get("prototypes", {}).items()
         }
         return fs
