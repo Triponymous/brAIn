@@ -61,3 +61,35 @@ class FeltState:
             for k, v in data.get("prototypes", {}).items()
         }
         return fs
+
+
+class FeltStateWatcher:
+    """Decides WHEN to ask Leon to label a state — only on a SUSTAINED unknown
+    stretch, rate-limited. Active learning: query at the moment of uncertainty
+    (a state the pet doesn't recognize), not constantly. Fed the recognized
+    label each tick; pure + testable (timestamps injected, no wall-clock here).
+    """
+
+    def __init__(self, hold_seconds: float = 25.0, cooldown_seconds: float = 180.0) -> None:
+        self._hold = hold_seconds
+        self._cooldown = cooldown_seconds
+        self._unknown_since: float | None = None
+        self._last_ask: float | None = None
+
+    def observe(self, label: str | None, now: float) -> None:
+        if label is None:                      # pet does not recognize the current state
+            if self._unknown_since is None:
+                self._unknown_since = now
+        else:                                  # recognized → not a moment to ask
+            self._unknown_since = None
+
+    def should_ask(self, now: float) -> bool:
+        if self._unknown_since is None:
+            return False
+        if now - self._unknown_since < self._hold:
+            return False
+        if self._last_ask is not None and now - self._last_ask < self._cooldown:
+            return False
+        self._last_ask = now
+        self._unknown_since = None             # don't re-ask about the same stretch immediately
+        return True
