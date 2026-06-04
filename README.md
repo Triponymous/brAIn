@@ -230,8 +230,6 @@ In the console, "Start" launches with real sensors. For a headless or CI run wit
 
 Full sensor mode needs macOS **Input Monitoring** and **Microphone** permissions for your terminal (System Settings → Privacy & Security). The daemon prints a clear diagnostic on startup if a permission is missing.
 
-> **Note for maintainers:** the daemon port isn't fully canonical yet. The control-server path and `train-ui` both use `8000` (braind's argparse default), while the standalone `start.sh` launches `--port 8765` and `config.json` lists `8765`. Pick one and align `start.sh`, `config.json`, and `train-ui/index.html`.
-
 ### Pet face (optional)
 
 ```bash

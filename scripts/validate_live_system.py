@@ -361,7 +361,7 @@ def main() -> int:
         description="End-to-end test against running brAIn daemon",
     )
     parser.add_argument("--host", default="localhost", help="Daemon host (default: localhost)")
-    parser.add_argument("--port", type=int, default=8765, help="Daemon port (default: 8765)")
+    parser.add_argument("--port", type=int, default=8000, help="Daemon port (default: 8000)")
     args = parser.parse_args()
 
     return asyncio.run(run(args.host, args.port))

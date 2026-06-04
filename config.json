@@ -22,7 +22,7 @@
     "mouse_enabled": true
   },
   "daemon": {
-    "port": 8765,
+    "port": 8000,
     "push_hz": 30,
     "save_interval_sec": 60,
     "checkpoint_path": "checkpoints/braind.sqlite"

@@ -26,6 +26,9 @@ logs/
 *.png
 !docs/**/*.png
 
+# Generated benchmark output (regenerate with `python -m benchmark.run_all`)
+benchmark/reports/
+
 # Voice models (large binary files)
 models/
 

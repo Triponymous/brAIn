@@ -48,7 +48,7 @@ if (window.__TAURI__) {
     if (voiceState !== 'idle') return;
     voiceState = 'listening';
     try {
-      const port = window.__BRAIND_PORT || 8765;
+      const port = window.__BRAIND_PORT || 8000;
       const resp = await fetch(`http://localhost:${port}/api/voice-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -75,7 +75,7 @@ let brainState = null;
 let sleepMode = false;
 
 function connectWS() {
-  const port = window.__BRAIND_PORT || 8765;
+  const port = window.__BRAIND_PORT || 8000;
   const ws = new WebSocket(`ws://localhost:${port}/ws`);
   ws.onmessage = (ev) => {
     try {
