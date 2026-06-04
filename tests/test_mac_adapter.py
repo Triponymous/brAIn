@@ -20,7 +20,7 @@ import asyncio
 import math
 import pytest
 import torch
-from adapters.mac_desktop.adapter import MacDesktopAdapter
+from adapters.mac_desktop.adapter import MacDesktopAdapter, _rate_and_rhythm
 
 
 def test_construction_mock_mode():
@@ -205,3 +205,47 @@ def test_encode_activity_level():
     adapter.bus.write("idle", {"seconds": 0.5})
     vec = adapter.encode()
     assert vec[163] > 0  # intense activity
+
+
+# ── Rolling 1-second keystroke/mouse rate (the 100Hz per-tick-drain fix) ──
+
+def test_rate_and_rhythm_per_second_count():
+    """count = events in the last 1s = the per-second rate the encoder expects,
+    NOT the per-tick count (which is ~0-1 at a 100Hz tick loop while typing)."""
+    now = 1000.0
+    times = [now - 0.95 + i * 0.16 for i in range(6)]  # ~6 keys across the last ~0.8s
+    assert _rate_and_rhythm(times, now, window=1.0)["count"] == 6
+
+
+def test_rate_and_rhythm_excludes_old_events():
+    now = 1000.0
+    times = [now - 5.0, now - 3.0, now - 0.5, now - 0.3, now - 0.1]
+    assert _rate_and_rhythm(times, now, window=1.0)["count"] == 3  # only last 1s
+
+
+def test_rate_and_rhythm_steady_low_variability():
+    now = 1000.0
+    times = [now - 1.0 + i * 0.1 for i in range(11)]  # even 100ms gaps
+    assert _rate_and_rhythm(times, now, window=1.0)["variability"] < 0.15
+
+
+def test_rate_and_rhythm_erratic_high_variability():
+    """Bursty/irregular typing -> high variability — the stress signal that was
+    DEAD when the adapter hard-coded variability to 0."""
+    now = 1000.0
+    times = [now - 0.98, now - 0.95, now - 0.93, now - 0.4, now - 0.05]
+    assert _rate_and_rhythm(times, now, window=1.0)["variability"] > 0.5
+
+
+def test_rate_and_rhythm_empty_is_silent():
+    assert _rate_and_rhythm([], 1000.0)["count"] == 0
+
+
+def test_real_typing_fires_steady_not_silence():
+    """End-to-end: a per-second typing rate fires the steady-typing neuron (78)
+    and NOT the silence neuron (79) — the regression the per-tick drain caused."""
+    from adapters.mac_desktop.encoding import encode_snapshot
+    r = _rate_and_rhythm([1000.0 - 1.0 + i * 0.15 for i in range(7)], 1000.0)
+    vec = encode_snapshot({"keystroke_rate": r})
+    assert vec[78] > 0   # steady typing perceived
+    assert vec[79] == 0  # NOT read as silence
