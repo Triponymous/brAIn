@@ -321,14 +321,37 @@ def build_chat_router(
         import datetime
         system_prompt += f"\n(Zeitpunkt: {datetime.datetime.now().strftime('%H:%M:%S')})"
 
-        # Route to LLM (with conversation history for context)
+        defs = tools.tool_definitions()
+        brain_tool_names = [d["name"] for d in defs if d["name"].startswith("brain_")]
+        if brain_tool_names:
+            system_prompt += (
+                "\n\n=== MEIN GEHIRN BEFRAGEN ===\n"
+                "Ich habe Werkzeuge, um mein eigenes Gehirn zu lesen: " + ", ".join(brain_tool_names) + ".\n"
+                "Fragt Leon, wie es mir geht, was frueher war, warum ich mich so fuehle, was er sonst um "
+                "diese Zeit tut oder wann er zuletzt etwas getan hat, rufe ich ZUERST das passende "
+                "Werkzeug auf und antworte dann aus dem Ergebnis. Ich erfinde keine Werte."
+            )
+
+        async def execute(name: str, args: dict[str, Any]) -> Any:
+            if hasattr(tools, "execute_async"):
+                result = await tools.execute_async(name, args)
+            else:
+                result = tools.execute(name, args)
+            if log is not None:  # brain tools take labels and numbers; other tools' args may be content
+                log.record("llm", "tool_call",
+                           {"tool": name, "args": args} if name.startswith("brain_") else {"tool": name},
+                           state=state_of(brain))
+            return result
+
+        # Route to LLM (with conversation history for context); the backend runs the tool loop
         try:
             result = await router.chat(
                 user_message=req.message,
                 system_prompt=system_prompt,
                 brain_state=snap,
-                tools=tools.tool_definitions(),
+                tools=defs,
                 history=req.history,
+                execute=execute,
             )
         except Exception as e:
             import traceback
@@ -339,11 +362,9 @@ def build_chat_router(
                 "tool_results": [],
             }
 
-        # Execute any tool calls
-        tool_results = []
-        for tc in result.get("tool_calls", []):
-            tr = tools.execute(tc["name"], tc.get("args", {}))
-            tool_results.append({"tool": tc["name"], "result": tr})
+        # What the model asked its brain, and what it was told
+        tool_results = [{"tool": c["name"], "args": c.get("args", {}), "result": c.get("result")}
+                        for c in result.get("tool_calls", [])]
 
         return {
             "text": result.get("text", ""),

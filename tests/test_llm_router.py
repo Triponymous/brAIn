@@ -46,7 +46,7 @@ def test_router_construction():
 @pytest.mark.asyncio
 async def test_router_calls_local_for_simple_query():
     router = HybridLLMRouter()
-    with patch.object(router, '_call_ollama', new_callable=AsyncMock, return_value="Ich sehe VSCode.") as mock:
+    with patch.object(router, '_call_ollama', new_callable=AsyncMock, return_value={"text": "Ich sehe VSCode.", "tool_calls": []}) as mock:
         result = await router.chat(
             user_message="was siehst du?",
             system_prompt="Du bist ein Pet.",
@@ -76,3 +76,19 @@ async def test_router_calls_cloud_for_complex_query():
             )
         mock.assert_called_once()
         assert result["backend"].startswith("cloud")
+
+
+@pytest.mark.asyncio
+async def test_router_hands_tools_and_execute_to_the_local_backend():
+    router = HybridLLMRouter()
+
+    async def execute(name, args):
+        return {}
+
+    with patch.object(router, '_call_ollama', new_callable=AsyncMock,
+                      return_value={"text": "ok", "tool_calls": [{"name": "brain_state", "args": {}, "result": {}}]}) as mock:
+        result = await router.chat(user_message="hi", system_prompt="s", brain_state={},
+                                   tools=[{"name": "brain_state"}], execute=execute)
+    assert mock.call_args.kwargs["tools"] == [{"name": "brain_state"}]
+    assert mock.call_args.kwargs["execute"] is execute
+    assert result["tool_calls"][0]["name"] == "brain_state" and result["backend"].startswith("local")

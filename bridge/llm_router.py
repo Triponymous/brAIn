@@ -52,7 +52,11 @@ class HybridLLMRouter:
         brain_state: dict[str, Any],
         tools: list[dict[str, Any]],
         history: list[dict] | None = None,
+        execute=None,
     ) -> dict[str, Any]:
+        """Route to a backend and run its tool loop. `execute(name, args)` is an
+        async callable the backend invokes for every tool the model calls.
+        Returns {"text", "tool_calls": [{name, args, result}], "backend"}."""
         cfg = self._get_config()
         modulators = brain_state.get("modulators", {})
         use_cloud = _should_use_cloud(user_message, modulators, cfg["cloud_enabled"])
@@ -63,32 +67,40 @@ class HybridLLMRouter:
                 system_prompt=system_prompt,
                 user_message=user_message.removeprefix("/cloud").strip(),
                 tools=tools,
+                execute=execute,
             )
-            result["backend"] = f"cloud ({cfg['cloud_model']})"
-            return result
+            backend = f"cloud ({cfg['cloud_model']})"
         else:
-            text = await self._call_ollama(
+            result = await self._call_ollama(
                 model=cfg["local_model"],
                 system_prompt=system_prompt,
                 user_message=user_message,
                 history=history,
+                tools=tools,
+                execute=execute,
             )
-            return {"text": text, "tool_calls": [], "backend": f"local ({cfg['local_model']})"}
+            backend = f"local ({cfg['local_model']})"
+        return {"text": result.get("text", ""), "tool_calls": result.get("tool_calls", []),
+                "backend": backend}
 
-    async def _call_ollama(self, model: str, system_prompt: str, user_message: str, history: list[dict] | None = None) -> str:
+    async def _call_ollama(self, model: str, system_prompt: str, user_message: str,
+                           history: list[dict] | None = None, tools: list[dict] | None = None,
+                           execute=None) -> dict[str, Any]:
         return await ollama_chat(
             model=model,
             system_prompt=system_prompt,
             user_message=user_message,
             history=history,
+            tools=tools,
+            execute=execute,
         )
 
-    async def _call_claude(
-        self, model: str, system_prompt: str, user_message: str, tools: list[dict]
-    ) -> dict[str, Any]:
+    async def _call_claude(self, model: str, system_prompt: str, user_message: str,
+                           tools: list[dict], execute=None) -> dict[str, Any]:
         return await claude_chat(
             model=model,
             system_prompt=system_prompt,
             user_message=user_message,
             tools=tools or None,
+            execute=execute,
         )

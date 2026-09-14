@@ -192,7 +192,11 @@ async def _run_daemon(args: argparse.Namespace) -> None:
 
     exporter = BrainStateExporter(brain)
     grant_store = GrantStore(checkpoint.parent / "grants.sqlite")
-    tool_registry = ToolRegistry(brain, exporter, grant_store)
+    # The brain as tools: what the LLM calls while it reasons (README, The Thesis)
+    from bridge.brain_tools import BrainTools
+    brain_tools = BrainTools(brain, episodes=episode_logger, experience=experience,
+                             interpreter=interpreter, narrator=narrator)
+    tool_registry = ToolRegistry(brain, exporter, grant_store, brain_tools=brain_tools)
     llm_router = HybridLLMRouter()
     chat_router = build_chat_router(brain, exporter, tool_registry, llm_router)
     grants_router = build_grants_router(grant_store, refresh_fn=tool_registry.refresh_grants)

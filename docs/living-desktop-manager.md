@@ -47,8 +47,8 @@ numbers the log produces.
 | Narrator: brain state as prose for the prompt | `bridge/snn_narrator.py`, `emotional_prompt.py` | done — the *thin* interface this plan replaces |
 | Capabilities: wish detection, grants, tools (search, shell, files) | `capabilities/` | skeleton, gated |
 | Always-on: launchd → control server → supervised daemon | `server/control.py`, `scripts/` | done |
-| **Experience log** | `bridge/experience.py`, `server/experience.py` | **done — this step** |
-| Brain as tools for the LLM | — | next |
+| Experience log | `bridge/experience.py`, `server/experience.py` | done |
+| **Brain as tools for the LLM** | `bridge/brain_tools.py`, tool loop in `bridge/llm_local.py` / `llm_cloud.py` | **done — this step** |
 | Learned behaviour policy | — | after that |
 
 ## The experience log
@@ -83,26 +83,29 @@ experiences(id, ts, tick,
   signature change after each kind of pet action. After one week of running,
   that summary is the first real answer to *is it learning me?*
 
-## Next: the brain as tools
+## The brain as tools
 
-Replace the narrated paragraph with tool calls the LLM makes while it
-reasons (local Qwen via Ollama and the cloud model both support tool use;
-the chat endpoint already executes tool calls through `ToolRegistry`).
+The model calls these while it reasons; the backend runs a real loop
+(call, execute, hand the result back, until the model answers — at most
+four rounds, then it is asked to answer with what it has). Both the local
+model via Ollama and the cloud model use it; the chat endpoint tells the
+model the tools exist and logs every call as an experience. `brain_state`
+supersedes the older `current_state` / `query_concepts` / `episode_search`,
+which stay callable but are no longer offered.
 
 | Tool | Returns | Backed by (exists) |
 |---|---|---|
-| `brain.state()` | felt-state + confidence, modulators, prediction-error internals, current cluster, WM occupancy, sleep | `felt_state`, `modulators`, `core.py` driver, `concept_tracker` |
-| `brain.history(since, until, step)` | clusters and modulators over time | `episode_log` |
-| `brain.concept(id)` | label, sensor profile, first seen, times seen, stability | `exporter.get_concept_profile`, `concept_tracker` |
-| `brain.felt(label)` | prototype, count, when it occurs, what precedes/follows | `felt_state`, experience log |
-| `brain.habits()` / `brain.anomalies()` | hourly and weekly profile, deviations | `habit_miner`, `anomaly` |
-| `brain.why(modulator)` | what drove it | `synapse_explainer` |
-| `brain.recall(question)` | episodic search over history | `episode_log` + experience log |
-| `brain.experience(hours)` | what the pet did and how it went | experience log |
+| `brain_state()` | felt-state + confidence, modulators, prediction-error internals, current cluster, WM occupancy, sleep | `felt_state`, `modulators`, `core.py` driver, `concept_tracker` |
+| `brain_history(hours, step_minutes)` | dominant pattern, apps, chemistry and sleep per step | `episode_log` |
+| `brain_concept(id)` | label, sensor profile, first seen, times seen, stability | `exporter.get_concept_profile`, `concept_tracker` |
+| `brain_felt(label)` | all learned states, or one: signature, times taught, when, recognised now | `felt_state`, experience log |
+| `brain_habits()` / `brain_anomalies()` | hourly and weekly profile, deviations | `habit_miner`, `anomaly` |
+| `brain_why(modulator)` | what drove it | `synapse_explainer` |
+| `brain_recall(hours, label, min_minutes)` | stretches when a pattern held: start, end, minutes, apps | `episode_log` |
+| `brain_experience(hours)` | what the pet did and how it went | experience log |
 
-SCP already defines the query/action/event envelope; the tool schema is a
-projection of it. The narrator stays as a fallback for models without tool
-use.
+The narrator's summary stays in the prompt as grounding for the first turn
+and as the fallback for models without tool use.
 
 ## Then: the learned behaviour policy
 
@@ -130,8 +133,7 @@ an experiment with a dataset rather than a hope. Judge it then.
 
 1. Live always-on — done.
 2. Experience log — done. Let it run; read `/api/experience` after a week.
-3. Brain as tools — wire the table above into `ToolRegistry`; the dashboard's
-   Language view shows the calls.
+3. Brain as tools — done. The dashboard's Language view will show the calls.
 4. Learned policy — bandit over the log; the dashboard's Growth view shows
    what it learned.
 5. Fine-tuning — decide with data.
