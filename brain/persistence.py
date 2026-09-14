@@ -14,7 +14,10 @@ and round-trips through .load() into a fresh tensor without manual reshape.
 from __future__ import annotations
 import io
 import json
+import os
+import shutil
 import sqlite3
+import time
 from pathlib import Path
 from typing import Any
 
@@ -90,10 +93,19 @@ def _brain_config(brain: Brain) -> dict[str, Any]:
 
 
 def save_brain(brain: Brain, path: Path) -> None:
+    """Write the checkpoint atomically.
+
+    The full state goes to a sibling .tmp file and is renamed over the real
+    checkpoint only after commit. This file IS the individual and it is
+    rewritten every 60 s for its whole life; deleting it before writing the
+    new one (the old behaviour) opened a window every minute in which a crash,
+    SIGKILL or power loss lost months of growth. os.replace is atomic on
+    POSIX, so a reader only ever sees the previous or the new checkpoint.
+    """
     path = Path(path)
-    if path.exists():
-        path.unlink()
-    conn = sqlite3.connect(str(path))
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.unlink(missing_ok=True)
+    conn = sqlite3.connect(str(tmp))
     try:
         conn.executescript(_SCHEMA)
         # Meta
@@ -176,8 +188,32 @@ def save_brain(brain: Brain, path: Path) -> None:
                 )
 
         conn.commit()
-    finally:
+    except BaseException:
         conn.close()
+        tmp.unlink(missing_ok=True)
+        raise
+    conn.close()
+    os.replace(tmp, path)
+
+
+def backup_checkpoint(path: Path, keep: int = 7) -> Path | None:
+    """Copy the checkpoint to <dir>/backups/<name>-YYYY-MM-DD<suffix>.
+
+    One copy per calendar day, newest `keep` retained. Insurance against the
+    one unrecoverable failure: a corrupted or accidentally deleted checkpoint
+    after months of growth. Returns the backup path, or None if there is no
+    checkpoint to back up yet.
+    """
+    path = Path(path)
+    if not path.exists():
+        return None
+    bdir = path.parent / "backups"
+    bdir.mkdir(parents=True, exist_ok=True)
+    dest = bdir / f"{path.stem}-{time.strftime('%Y-%m-%d')}{path.suffix}"
+    shutil.copy2(path, dest)
+    for old in sorted(bdir.glob(f"{path.stem}-*{path.suffix}"))[:-keep]:
+        old.unlink()
+    return dest
 
 
 def load_brain(path: Path) -> Brain:

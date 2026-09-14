@@ -9,6 +9,7 @@ started by run_daemon() which is called from the braind CLI.
 """
 from __future__ import annotations
 import asyncio
+import time
 from typing import Any, Optional
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -232,11 +233,12 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter:
 
 
 async def persistence_loop(brain: Any, save_path: str, period_sec: float = 60.0) -> None:
-    """Periodically save the brain to SQLite."""
-    from brain.persistence import save_brain
+    """Periodically save the brain to SQLite, plus one backup copy per day."""
+    from brain.persistence import save_brain, backup_checkpoint
     from pathlib import Path
     p = Path(save_path)
     p.parent.mkdir(parents=True, exist_ok=True)
+    last_backup_day = None
     try:
         while True:
             await asyncio.sleep(period_sec)
@@ -244,5 +246,13 @@ async def persistence_loop(brain: Any, save_path: str, period_sec: float = 60.0)
                 save_brain(brain, p)
             except Exception as e:
                 print(f"[persistence] save failed: {e}")
+                continue
+            today = time.strftime("%Y-%m-%d")
+            if today != last_backup_day:
+                try:
+                    backup_checkpoint(p)
+                    last_backup_day = today
+                except Exception as e:
+                    print(f"[persistence] backup failed: {e}")
     except asyncio.CancelledError:
         return
