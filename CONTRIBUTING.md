@@ -62,7 +62,7 @@ http://127.0.0.1:8900
 
 4. **Train felt-states.** Let the brain run while you work. When it asks *"what was that?"*, type a word for the state and hit *Learn*. You can also label or correct the current state at any time. Each correction nudges the self-model toward *you*.
 
-Full-sensor launch (needs macOS Accessibility + Microphone permissions) is wrapped in `./start.sh`.
+Full-sensor launch (needs macOS Accessibility + Microphone permissions) is wrapped in `./start.sh`. To actually raise one, install it always-on with `./scripts/install_launchd.sh` (see the README) — the control server then starts at login and supervises the daemon.
 
 ## Development setup
 

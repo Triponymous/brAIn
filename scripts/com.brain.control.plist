@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Template: install_launchd.sh fills in __PROJ_DIR__ and __PYTHON__.
+       launchd keeps the CONTROL SERVER alive; the control server starts and
+       supervises the brain daemon. Never point launchd at the daemon itself,
+       or KeepAlive fights the console's Stop button. -->
+  <key>Label</key>
+  <string>com.brain.control</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__PYTHON__</string>
+    <string>-m</string>
+    <string>server.control</string>
+    <string>--autostart</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__PROJ_DIR__</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>__PROJ_DIR__/logs/brain.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>__PROJ_DIR__/logs/brain.err.log</string>
+
+  <key>ProcessType</key>
+  <string>Interactive</string>
+</dict>
+</plist>

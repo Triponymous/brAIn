@@ -220,6 +220,16 @@ uv venv && uv pip install -e ".[dev]"
 
 The control server is the steady "bottom turtle": it stays up while you start and stop the brain daemon from the console. The daemon does the live work — runs the network at ~100 Hz, reads the sensors, streams state to the console over WebSocket, asks you to label states it doesn't recognize, and auto-saves every 60 seconds.
 
+### Let it live (always-on)
+
+The organism only becomes someone if it runs for weeks, not for one session. Install the control server as a LaunchAgent: it starts at login, survives reboots, brings the brain daemon up by itself and restarts it if it ever dies (the pidfile is the desired state, so Stop in the console still means stop).
+
+```bash
+./scripts/install_launchd.sh
+```
+
+Because the daemon now runs under launchd rather than your terminal, macOS wants **Input Monitoring** and **Microphone** granted to the venv's Python binary itself — the script prints the exact path to add under System Settings → Privacy & Security. Without them the daemon runs blind; it reports what it can see on every start in `logs/brain.out.log`. `./scripts/uninstall_launchd.sh` removes it again.
+
 ### Mock mode (no permissions needed)
 
 In the console, "Start" launches with real sensors. For a headless or CI run with synthetic input:
