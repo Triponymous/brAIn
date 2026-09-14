@@ -15,8 +15,10 @@ from typing import Any
 
 
 class EpisodeLogger:
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, retention_days: float = 90.0) -> None:
         self.path = Path(path)
+        self.retention_days = retention_days
+        self._log_count = 0
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(str(self.path), check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
@@ -31,7 +33,24 @@ class EpisodeLogger:
                 sleep_mode INTEGER
             )"""
         )
+        # Every reader and the prune below filter on timestamp.
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_episodes_timestamp ON episodes(timestamp)"
+        )
         self._conn.commit()
+        self.prune()
+
+    def prune(self) -> int:
+        """Delete episodes older than retention_days; returns rows removed.
+
+        A row lands every ~10 s for the daemon's whole life, ~3 M rows a year
+        with no cap. No reader looks back further than the HabitMiner's 7-day
+        window, so the default 90 days keeps everything anyone queries.
+        """
+        cutoff = time.time() - self.retention_days * 86400
+        cur = self._conn.execute("DELETE FROM episodes WHERE timestamp < ?", (cutoff,))
+        self._conn.commit()
+        return cur.rowcount
 
     def log(
         self,
@@ -55,6 +74,9 @@ class EpisodeLogger:
             ),
         )
         self._conn.commit()
+        self._log_count += 1
+        if self._log_count % 1000 == 0:  # ~every 3 h at one row per 10 s
+            self.prune()
 
     def query(self, last_n: int = 10, since_timestamp: float | None = None) -> list[dict[str, Any]]:
         """Return recent episodes as list of dicts, most recent first."""

@@ -95,3 +95,45 @@ def test_daily_summary(logger):
     assert "App0" in app_names
     assert "App1" in app_names
     assert "App2" in app_names
+
+
+# ── Retention ────────────────────────────────────────────────────────────────
+# A row lands every ~10 s for the daemon's whole life; without pruning the
+# file grows without bound.
+
+def _log(lg, tick):
+    lg.log(tick=tick, modulators={}, active_concepts=[], sensor_summary={}, sleep_mode=False)
+
+
+def test_prune_removes_rows_older_than_retention(tmp_path, monkeypatch):
+    lg = EpisodeLogger(tmp_path / "ep.db", retention_days=30)
+    now = time.time()
+
+    monkeypatch.setattr(time, "time", lambda: now - 40 * 86400)
+    _log(lg, tick=1)
+    monkeypatch.setattr(time, "time", lambda: now - 10 * 86400)
+    _log(lg, tick=2)
+    monkeypatch.setattr(time, "time", lambda: now)
+    _log(lg, tick=3)
+
+    assert lg.prune() == 1
+    assert [e["tick"] for e in lg.query(last_n=10)] == [3, 2]
+    lg.close()
+
+
+def test_prune_runs_when_the_log_is_opened(tmp_path, monkeypatch):
+    now = time.time()
+    monkeypatch.setattr(time, "time", lambda: now - 40 * 86400)
+    lg = EpisodeLogger(tmp_path / "ep.db", retention_days=30)
+    _log(lg, tick=1)
+    lg.close()
+
+    monkeypatch.setattr(time, "time", lambda: now)
+    reopened = EpisodeLogger(tmp_path / "ep.db", retention_days=30)
+    assert reopened.query(last_n=10) == []
+    reopened.close()
+
+
+def test_timestamp_index_exists(logger):
+    names = {r[1] for r in logger._conn.execute("PRAGMA index_list(episodes)")}
+    assert "idx_episodes_timestamp" in names
