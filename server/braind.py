@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 from pathlib import Path
+import signal
 import sys
 
 import uvicorn
@@ -261,6 +262,17 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     # Run uvicorn in the same loop
     config = build_uvicorn_config(app, args.port)
     server = uvicorn.Server(config)
+    # uvicorn captures SIGTERM for a graceful stop, then restores the ORIGINAL
+    # handler and re-raises the signal (Server.capture_signals). The default
+    # SIGTERM action terminates the process on the spot, inside serve(), so the
+    # final save in the finally below never ran. launchd, the console Stop
+    # button and system shutdown all send SIGTERM, so everything learned since
+    # the last 60 s autosave (a felt-state label taught a moment ago) was lost
+    # on every stop. A Python-level handler is what uvicorn restores; the
+    # re-raised signal lands here harmlessly and serve() returns. Ctrl+C was
+    # never affected: the default SIGINT action raises KeyboardInterrupt, which
+    # unwinds through the finally.
+    signal.signal(signal.SIGTERM, lambda *_: setattr(server, "should_exit", True))
     try:
         await server.serve()
     finally:

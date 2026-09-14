@@ -4,7 +4,16 @@ We test the argument parser and the high-level run flow with mock sensors.
 The actual long-running daemon is exercised by the E2E smoke test in Task 11.
 """
 import argparse
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+from pathlib import Path
+
 import pytest
+
+from brain.persistence import load_brain
 from server.braind import build_parser
 
 
@@ -54,3 +63,48 @@ def test_uvicorn_config_ws_backend_is_importable():
 
     assert config.loaded
     assert config.ws_protocol_class is not None
+
+
+def test_sigterm_ends_with_a_saved_checkpoint(tmp_path):
+    """SIGTERM (launchd, console Stop, system shutdown) must end with a saved brain.
+
+    Regression guard: uvicorn re-raises a captured SIGTERM after restoring the
+    default handler, which terminated the process inside serve() before the
+    daemon's final save could run. Everything learned since the last 60 s
+    autosave was lost on every stop. Only a real process receiving a real
+    signal exercises that path, hence the subprocess.
+    """
+    ckpt = tmp_path / "braind.sqlite"
+    log = tmp_path / "daemon.log"
+    port = 8791
+    with log.open("w") as out:
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "server.braind", "start", "--mock-sensors",
+             "--port", str(port), "--checkpoint", str(ckpt)],
+            cwd=Path(__file__).resolve().parents[1],
+            stdout=out, stderr=subprocess.STDOUT,
+        )
+    try:
+        deadline = time.monotonic() + 90
+        while True:
+            if proc.poll() is not None:
+                pytest.fail(f"daemon exited before becoming healthy:\n{log.read_text()}")
+            try:
+                with urllib.request.urlopen(f"http://127.0.0.1:{port}/healthz", timeout=1):
+                    break
+            except (urllib.error.URLError, OSError):
+                pass
+            if time.monotonic() > deadline:
+                pytest.fail(f"daemon never became healthy:\n{log.read_text()}")
+            time.sleep(0.5)
+
+        proc.terminate()  # SIGTERM, exactly what the console Stop button sends
+        rc = proc.wait(timeout=60)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+
+    assert rc == 0, log.read_text()
+    assert ckpt.exists(), log.read_text()
+    assert "Final save" in log.read_text()
+    assert load_brain(ckpt).tick_count > 0
