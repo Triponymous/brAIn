@@ -107,6 +107,23 @@ def _check_permissions() -> None:
     print()
 
 
+def build_uvicorn_config(app, port: int) -> uvicorn.Config:
+    """Build the daemon's uvicorn config.
+
+    The websocket backend is deliberately left on uvicorn's "auto" default. With
+    websockets installed (it ships with uvicorn[standard]) that resolves to the
+    sansio implementation, which accepts browser upgrades including an Origin
+    header.
+
+    Do not pin ws="wsproto" here: wsproto is not a declared dependency, so a
+    clean install of this project crashes on startup with
+    ModuleNotFoundError: No module named 'wsproto'. The pin was a workaround for
+    an older uvicorn whose legacy websockets backend rejected browser upgrades
+    with 400 Bad Request; the sansio backend handles them correctly.
+    """
+    return uvicorn.Config(app, host="127.0.0.1", port=port, log_level="info")
+
+
 async def _run_daemon(args: argparse.Namespace) -> None:
     # Load or create brain
     checkpoint = Path(args.checkpoint)
@@ -242,7 +259,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     interpreter_task = asyncio.create_task(interpreter_tick_loop())
 
     # Run uvicorn in the same loop
-    config = uvicorn.Config(app, host="127.0.0.1", port=args.port, log_level="info", ws="wsproto")
+    config = build_uvicorn_config(app, args.port)
     server = uvicorn.Server(config)
     try:
         await server.serve()

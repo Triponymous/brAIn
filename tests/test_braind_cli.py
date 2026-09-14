@@ -33,3 +33,24 @@ def test_parser_custom_checkpoint():
     parser = build_parser()
     args = parser.parse_args(["start", "--checkpoint", "/tmp/test.sqlite"])
     assert args.checkpoint == "/tmp/test.sqlite"
+
+
+def test_uvicorn_config_ws_backend_is_importable():
+    """The daemon's websocket backend must be installable from pyproject alone.
+
+    Regression guard: the daemon used to pin ws="wsproto", but wsproto is not a
+    declared dependency. A clean `uv pip install -e ".[dev]"` therefore crashed
+    at startup inside uvicorn's config.load() with
+    ModuleNotFoundError: No module named 'wsproto'.
+
+    config.load() is exactly where that crash happened, so loading a real config
+    is what catches it.
+    """
+    from fastapi import FastAPI
+    from server.braind import build_uvicorn_config
+
+    config = build_uvicorn_config(FastAPI(), 8000)
+    config.load()
+
+    assert config.loaded
+    assert config.ws_protocol_class is not None
