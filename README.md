@@ -64,9 +64,9 @@ The thesis underneath both: **artificial life, not artificial intelligence.** An
 
 snnTorch, sharing this project, called it **brAIn: Living Desktop Manager**. That is exactly what it should become: a living thing that knows you and acts for you. The question is *where the life is*, and the answer decides the whole architecture.
 
-**The animal is the spiking network. The LLM is its voice and its hands.**
+**The spiking network is the living part — the thing that learns the way an animal does. The LLM is its voice and its hands.**
 
-An LLM cannot learn the way an animal does. Its weights move by gradient descent over text, in batches, forgetting as they go. The spiking network already does learn that way: synapses that follow what happens, feelings that are the shape of prediction error, attachment to one human, a memory that *is* the network. So the LLM never becomes the animal. It becomes a faithful, fluent extension of one, in two ways:
+An LLM cannot learn the way an animal does. Its weights move by gradient descent over text, in batches, forgetting as they go. The spiking network in `brain/` already does learn that way: synapses that follow what happens, feelings that are the shape of prediction error, attachment to one human, a memory that *is* the network. So the LLM never becomes the living part. It becomes a faithful, fluent extension of it — that is what "an LLM that learns through an SNN" means here — in two ways:
 
 1. **It understands the animal completely — as tools, not as a paragraph.** Today the speech layer sees four numbers and a few narrated sentences. Instead it calls the organism while it thinks: `brain.state()`, `brain.history(since, until)`, `brain.concept(id)`, `brain.felt("stuck")`, `brain.habits()`, `brain.why("NE")`, `brain.recall(...)`. The network is the LLM's perception and memory of you; the LLM reasons over it. Everything it says is conditioned on a state that was grown by living with you. That is what "an LLM that knows me" means here, and it needs no weight to change.
 

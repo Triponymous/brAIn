@@ -14,7 +14,8 @@ animal or a human does.
 
 ## The decision: where the life is
 
-**The animal is the spiking network. The LLM is its voice and its hands.**
+**The spiking network (`brain/`) is the living part — the thing that learns the
+way an animal does. The LLM is its voice and its hands.**
 
 An LLM's weights move by gradient descent over text, in batches, forgetting
 as they go; that is not how an animal learns, and no amount of fine-tuning
@@ -22,7 +23,8 @@ on a laptop makes it so. The spiking network in `brain/` already learns the
 animal way: synapses that follow what happens (STDP, BCM), feelings that are
 the shape of prediction error (the emergent modulator driver), attachment to
 one human, memory that *is* the network. So the LLM never becomes the
-animal. It becomes a faithful, fluent extension of one:
+living part. It becomes a faithful, fluent extension of it — that is what
+"an LLM that learns through an SNN" means here:
 
 1. **It understands the animal completely — as tools, not as a paragraph.**
    Every answer is conditioned on a state grown by living with this person.
