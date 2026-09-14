@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from bridge.experience import ExperienceLog, state_of
 from bridge.scp_schema import (
     EmotionResult,
     PatternResult,
@@ -118,8 +119,9 @@ class BrainServer:
     Internal state is tracked for event generation in tick().
     """
 
-    def __init__(self, brain: Any) -> None:
+    def __init__(self, brain: Any, experience: ExperienceLog | None = None) -> None:
         self.brain = brain
+        self._experience = experience  # actions the LLM takes on the brain are logged here
         self._event_queue: list[dict] = []
 
         # State tracking for event generation
@@ -174,6 +176,11 @@ class BrainServer:
             return {"ok": False, "error": f"Unknown action: {method}"}
 
         handler(params)
+        if self._experience is not None:
+            self._experience.record(
+                "llm", method,
+                {k: params[k] for k in ("cluster_id", "label", "value") if k in params},
+                state=state_of(self.brain))
         return {"ok": True, "method": method}
 
     # ===================================================================

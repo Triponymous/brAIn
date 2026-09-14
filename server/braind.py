@@ -19,6 +19,7 @@ import asyncio
 from pathlib import Path
 import signal
 import sys
+import time
 
 import uvicorn
 
@@ -159,6 +160,12 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     from bridge.episode_log import EpisodeLogger
     episode_logger = EpisodeLogger(checkpoint.parent / "episodes.db")
 
+    # Experience log — (state, action, consequence, response); see README, The Thesis
+    from bridge.experience import ExperienceLog
+    from server.experience import build_experience_router
+    experience = ExperienceLog(checkpoint.parent / "experience.db")
+    brain._experience = experience  # proactive engine, /api/feel, chat and SCP actions record here
+
     # BrainInterpreter — consciousness layer (must be created before proactive/chat)
     from bridge.interpreter import BrainInterpreter
     interpreter = BrainInterpreter(brain, episode_logger)
@@ -173,7 +180,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     from bridge.scp_server import BrainServer
     from bridge.scp_client import SCPClient
 
-    scp_server = BrainServer(brain)
+    scp_server = BrainServer(brain, experience=experience)
     brain._scp_server = scp_server
 
     # Detect model type from config
@@ -210,6 +217,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     app.include_router(grants_router)
     app.include_router(config_router)
     app.include_router(feel_router)
+    app.include_router(build_experience_router(experience))
 
     # Voice setup
     from bridge.tts import TTSEngine
@@ -256,6 +264,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
         while True:
             interpreter.tick()
             scp_server.tick()  # check for events (pattern changes, etc.)
+            experience.settle(time.time(), getattr(brain, "_last_signature", None))
             await asyncio.sleep(1.0)
     interpreter_task = asyncio.create_task(interpreter_tick_loop())
 

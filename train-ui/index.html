@@ -264,7 +264,10 @@
   // ---- Wire up ----
   document.getElementById("btn-start").onclick = daemonStart;
   document.getElementById("btn-stop").onclick = daemonStop;
-  document.getElementById("ask-dismiss").onclick = hideAsk;
+  document.getElementById("ask-dismiss").onclick = () => {
+    fetch(BRAIN + "/api/feel/dismiss", {method:"POST"}).catch(() => {});
+    hideAsk();
+  };
   document.getElementById("ask-learn").onclick = () => {
     const inp = document.getElementById("ask-label");
     teach(inp.value); inp.value = "";

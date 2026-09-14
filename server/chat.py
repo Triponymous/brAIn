@@ -22,6 +22,7 @@ from bridge.exporter import BrainStateExporter
 from bridge.memory_tools import MemoryTools
 from bridge.llm_router import HybridLLMRouter
 from bridge.emotional_prompt import build_emotional_prompt, detect_emotional_state
+from bridge.experience import state_of
 
 
 _SYSTEM_PROMPT_TEMPLATE = """ABSOLUTE REGELN (niemals brechen):
@@ -103,6 +104,9 @@ def build_chat_router(
 
     @api.post("/api/chat")
     async def chat(req: ChatRequest) -> dict[str, Any]:
+        log = getattr(brain, "_experience", None)
+        if log is not None:  # that a conversation happened, never what was said
+            log.record("human", "chat", {"chars": len(req.message)}, state=state_of(brain))
         # Build system prompt with current brain state + LIVE sensor data
         from adapters.mac_desktop.adapter import MacDesktopAdapter
 
@@ -353,6 +357,10 @@ def build_chat_router(
         brain.concept_tracker.set_label(req.concept_id, req.label)
         # Also keep old exporter label for backward compat
         exporter.set_label(req.concept_id, req.label)
+        log = getattr(brain, "_experience", None)
+        if log is not None:
+            log.record("human", "label_concept", {"cluster_id": req.concept_id, "label": req.label},
+                       state=state_of(brain))
         return {"status": "ok", "cluster_id": str(req.concept_id), "label": req.label}
 
     @api.get("/api/concept/{concept_id}")

@@ -967,3 +967,44 @@ class TestEventValidation:
         for event in server.poll_events():
             errors = validate(event)
             assert errors == [], f"Event {event['method']} failed validation: {errors}"
+
+
+# ---------------------------------------------------------------------------
+# Experience log: actions the LLM takes on the brain are recorded
+# ---------------------------------------------------------------------------
+
+class TestActionExperience:
+    def _brain(self) -> MagicMock:
+        brain = MagicMock()
+        brain.tick_count = 5
+        brain.sleep_mode = False
+        brain.felt_state = None
+        brain._last_signature = None
+        brain._last_concept_cluster = 2
+        return brain
+
+    def test_actions_are_logged_with_method_and_filtered_params(self, tmp_path):
+        from bridge.experience import ExperienceLog
+        log = ExperienceLog(tmp_path / "experience.db")
+        server = BrainServer(self._brain(), experience=log)
+
+        assert server.action("brain.label", {"cluster_id": 3, "label": "coding", "secret": "x"})["ok"]
+        assert server.action("brain.reward", {})["ok"]
+
+        rows = list(reversed(log.recent()))
+        assert [(r["actor"], r["kind"]) for r in rows] == [("llm", "brain.label"), ("llm", "brain.reward")]
+        assert rows[0]["payload"] == {"cluster_id": 3, "label": "coding"}   # unknown keys dropped
+        assert rows[0]["cluster"] == 2 and rows[0]["tick"] == 5
+        log.close()
+
+    def test_unknown_action_is_not_logged(self, tmp_path):
+        from bridge.experience import ExperienceLog
+        log = ExperienceLog(tmp_path / "experience.db")
+        server = BrainServer(self._brain(), experience=log)
+        assert server.action("brain.nope", {})["ok"] is False
+        assert log.recent() == []
+        log.close()
+
+    def test_without_a_log_actions_still_work(self):
+        server = BrainServer(self._brain())
+        assert server.action("brain.reward", {})["ok"]

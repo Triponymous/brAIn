@@ -40,3 +40,15 @@ def test_ask_freezes_the_moment():
     assert eng._check_felt_state(30) is not None              # fires the ask
     assert getattr(brain, "_pending_ask", None) is not None   # captured the moment
     assert brain._pending_ask["signature"] == brain._last_signature
+
+
+def test_ask_is_recorded_as_an_experience(tmp_path):
+    from bridge.experience import ExperienceLog
+    eng, brain = _engine()
+    brain._experience = ExperienceLog(tmp_path / "experience.db")
+    eng._check_felt_state(0)
+    eng._check_felt_state(30)                                 # fires the ask
+    rows = brain._experience.recent()
+    assert len(rows) == 1 and rows[0]["actor"] == "pet" and rows[0]["kind"] == "ask_label"
+    assert rows[0]["ts"] == 30 and rows[0]["signature"] == brain._last_signature
+    assert brain._pending_ask["event_id"] == rows[0]["id"]  # the answer can find its ask

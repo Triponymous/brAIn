@@ -17,6 +17,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from brain.core import Brain
+from bridge.experience import state_of
 from bridge.exporter import BrainStateExporter
 from bridge.felt_state import FeltStateWatcher
 from server.ws import WSPusher
@@ -153,8 +154,14 @@ class ProactiveEngine:
         cluster = int(c) if c is not None else -1
         self._felt_watcher.observe(fs.recognize(sig, cluster)[0], now)
         if self._felt_watcher.should_ask(now):
+            ask = "Dein Zustand hatte sich veraendert — was war da los?"
             self.brain._pending_ask = {"signature": list(sig), "cluster": cluster, "at": now}
-            return "Dein Zustand hatte sich veraendert — was war da los?"
+            log = getattr(self.brain, "_experience", None)
+            if log is not None:
+                # The answer (or the dismissal) will be linked back to this event.
+                self.brain._pending_ask["event_id"] = log.record(
+                    "pet", "ask_label", {"message": ask}, state=state_of(self.brain), now=now)
+            return ask
         return None
 
     async def run(self, check_interval: float = 10.0) -> None:
@@ -199,6 +206,12 @@ class ProactiveEngine:
                             "category": notification["category"],
                             "tick": self.brain.tick_count,
                         }, detail_state=None)
+                        log = getattr(self.brain, "_experience", None)
+                        if log is not None:
+                            log.record("pet", "notify",
+                                       {"category": notification["category"],
+                                        "message": notification["context"]},
+                                       state=state_of(self.brain), now=now)
         except asyncio.CancelledError:
             return
 
