@@ -8,6 +8,7 @@
 <p align="center">
   <a href="#the-idea">The Idea</a> •
   <a href="#the-pivot">The Pivot</a> •
+  <a href="#the-thesis">The Thesis</a> •
   <a href="#how-it-works">How It Works</a> •
   <a href="#the-felt-state-loop">Felt-State Loop</a> •
   <a href="#architecture">Architecture</a> •
@@ -56,6 +57,24 @@ This project did not start here, and it's worth being honest about that — the 
 2. **The pet learns your own vocabulary of internal states.** Instead of imposing six canned emotions, it builds a **felt-state self-model** from *your* corrections (`bridge/felt_state.py`). When a state it doesn't recognize holds for a while, it proactively asks *"what was that?"* — and you tell it: "that's flow," "that's me grinding," "that's stuck." It learns *your* words for *your* states. A generic classifier can't represent "flow"; this can, because you taught it.
 
 The thesis underneath both: **artificial life, not artificial intelligence.** And the LLM, which used to feel central, is now correctly demoted — it's a **detachable speech layer**, a tongue for a brain that can't talk, never the brain itself.
+
+---
+
+## The Thesis
+
+snnTorch, sharing this project, called it **brAIn: Living Desktop Manager**. That is exactly what it should become: a living thing that knows you and acts for you. The question is *where the life is*, and the answer decides the whole architecture.
+
+**The animal is the spiking network. The LLM is its voice and its hands.**
+
+An LLM cannot learn the way an animal does. Its weights move by gradient descent over text, in batches, forgetting as they go. The spiking network already does learn that way: synapses that follow what happens, feelings that are the shape of prediction error, attachment to one human, a memory that *is* the network. So the LLM never becomes the animal. It becomes a faithful, fluent extension of one, in two ways:
+
+1. **It understands the animal completely — as tools, not as a paragraph.** Today the speech layer sees four numbers and a few narrated sentences. Instead it calls the organism while it thinks: `brain.state()`, `brain.history(since, until)`, `brain.concept(id)`, `brain.felt("stuck")`, `brain.habits()`, `brain.why("NE")`, `brain.recall(...)`. The network is the LLM's perception and memory of you; the LLM reasons over it. Everything it says is conditioned on a state that was grown by living with you. That is what "an LLM that knows me" means here, and it needs no weight to change.
+
+2. **The animal teaches it how to behave.** When to stay silent, when to speak, what to offer — not thresholds we wrote, but a policy learned from consequence. The reward is the organism's own affect after an action (interrupt someone in flow and noradrenaline spikes; hold back and serotonin holds) plus what you do in response: answer, dismiss, correct. Operant conditioning, on device, inspectable. R-STDP for behaviour.
+
+Both stand on one thing: the **experience log** (`bridge/experience.py`) — every action of the pet, every answer of yours, the state it happened in, and what followed. Facts, not judgements, and never content. It is the proof that this individual is learning *you*, the reward signal for the learned policy, and — with an explicit, opt-in transcript alongside it — the dataset if we ever decide to fine-tune after all. That door stays open; it just opens with data instead of a guess.
+
+Acting is the last step, and it is gated: the learned policy decides whether to *offer* a task; nothing runs without a grant (`capabilities/`). The order of work: live always-on, log experience, expose the brain as tools, learn the policy, then judge fine-tuning by the numbers. The engineering detail is in [docs/living-desktop-manager.md](docs/living-desktop-manager.md).
 
 ---
 
@@ -314,6 +333,7 @@ brain/          SNN core — LIF neurons, expansion projection, STDP, BCM,
                 WTA concept layer, working memory, emergent prediction-error
                 modulator driver, SQLite persistence
 bridge/         the speech + self-model layer — felt-state model & watcher,
+                experience log (what the pet did, what you did, what followed),
                 SCP v2 (scp_server/scp_client/scp_schema), LLM router & adapter,
                 proactive engine, state detector, interpreter, narrator
 server/         daemon (braind), control server (start/stop from the console),
