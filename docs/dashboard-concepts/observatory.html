@@ -60,10 +60,10 @@
 </i>
 <span>Methods &amp; provenance</span>
 </a>
-<button data-tour-open lang="de">
+<button data-tour-open lang="en" data-tour-label="open" aria-label="Open dashboard introduction">
 <i data-icon="info">
 </i>
-<span>Einführung</span>
+<span data-tour-text="launch">Introduction</span>
 </button>
 <button data-action="export">
 <i data-icon="download">
@@ -105,7 +105,7 @@
 <b data-page-name>Observatory</b>
 </div>
 <div class="topbar-actions">
-<button class="btn small tour-launch" data-tour-open lang="de" aria-label="Dashboard-Einführung öffnen"><i data-icon="info"></i><span>Einführung</span></button>
+<button class="btn small tour-launch" data-tour-open lang="en" data-tour-label="open" aria-label="Open dashboard introduction"><i data-icon="info"></i><span data-tour-text="launch">Introduction</span></button>
 <a class="btn small" href="#live" id="open-live">Live session</a>
 <span class="pill source-pill">
 <span class="dot">
@@ -827,41 +827,41 @@
 </div>
 <div class="tooltip" role="tooltip" hidden>
 </div>
-<dialog id="tour-welcome" aria-labelledby="tour-welcome-title" lang="de">
-  <div class="tour-welcome-top"><span class="tour-label">brAIn / Field guide</span><button class="tour-icon-button" data-tour-dismiss aria-label="Einführung schließen">×</button></div>
+<dialog id="tour-welcome" aria-labelledby="tour-welcome-title" lang="en">
+  <div class="tour-welcome-top"><span class="tour-label">brAIn / Field guide</span><select id="tour-welcome-language" class="tour-language" data-tour-language data-tour-label="language" aria-label="Tour language"><option value="en" lang="en">English</option><option value="de" lang="de">Deutsch</option></select><button class="tour-icon-button" data-tour-dismiss data-tour-label="close" aria-label="Close introduction">×</button></div>
   <div class="tour-welcome-body">
   <div class="tour-emblem" aria-hidden="true">01<span>→</span></div>
-  <h2 id="tour-welcome-title" tabindex="-1">Lerne dein<br>Observatory kennen.</h2>
-  <p class="tour-welcome-copy">Ein Rundgang wie beim ersten Spielstart: Wir zeigen dir, wo du klicken kannst, was du siehst und was die Werte wirklich bedeuten.</p>
-  <div class="tour-safety"><span aria-hidden="true">◎</span><p>Du bestimmst das Tempo. Die Tour aktiviert keine Sensoren und verändert keine Erfassungsfreigaben.</p></div>
-  <p class="tour-label tour-chapter-label">Ganz von vorn oder direkt zu einem Kapitel</p>
-  <div class="tour-chapters" aria-label="Kapitel der Einführung">
-    <button data-tour-chapter="live"><span>01</span>Live &amp; Datenschutz</button>
+  <h2 id="tour-welcome-title" tabindex="-1" data-tour-text="welcome">Get to know your Observatory.</h2>
+  <p class="tour-welcome-copy" data-tour-text="intro">A first-play walkthrough: discover where to click, what you are looking at and what the values really mean.</p>
+  <div class="tour-safety"><span aria-hidden="true">◎</span><p data-tour-text="safety">You set the pace. The tour never enables sensors or changes capture permissions.</p></div>
+  <p class="tour-label tour-chapter-label" data-tour-text="choose">Start at the beginning or jump to a chapter</p>
+  <div class="tour-chapters" data-tour-label="chapters" aria-label="Introduction chapters">
+    <button data-tour-chapter="live"><span>01</span><span data-tour-text="live">Live &amp; privacy</span></button>
     <button data-tour-chapter="overview"><span>02</span>Observatory</button>
     <button data-tour-chapter="network"><span>03</span>Neural explorer</button>
     <button data-tour-chapter="vocabulary"><span>04</span>Vocabulary</button>
     <button data-tour-chapter="journal"><span>05</span>Learning journal</button>
-    <button data-tour-chapter="methods"><span>06</span>Methoden &amp; Export</button>
+    <button data-tour-chapter="methods"><span>06</span><span data-tour-text="methods">Methods &amp; export</span></button>
   </div>
   </div>
-  <div class="tour-welcome-actions"><button class="tour-button tour-primary" data-tour-start>Rundgang starten <span aria-hidden="true">→</span></button><button class="tour-button" data-tour-dismiss>Später</button></div>
-  <p class="tour-storage-note">Nur der Hinweis „Einführung gesehen“ wird in diesem Browser gespeichert. Über „Einführung“ kannst du jederzeit zurückkommen.</p>
+  <div class="tour-welcome-actions"><button class="tour-button tour-primary" data-tour-start><span data-tour-text="start">Start the tour</span> <span aria-hidden="true">→</span></button><button class="tour-button" data-tour-dismiss data-tour-text="later">Later</button></div>
+  <p class="tour-storage-note" data-tour-text="storage">Only the “introduction seen” flag and your chosen tour language are saved in this browser. Return anytime via “Introduction”.</p>
 </dialog>
 <div id="tour-spotlight" aria-hidden="true" hidden><span id="tour-marker"></span></div>
-<section id="tour-card" role="dialog" aria-modal="false" aria-labelledby="tour-title" lang="de" hidden>
-  <div class="tour-card-top"><span class="tour-label">Geführte Einführung</span><button class="tour-icon-button" data-tour-exit aria-label="Rundgang beenden">×</button></div>
-  <div class="tour-progress-row"><label class="sr-only" for="tour-chapter">Kapitel wählen</label><select id="tour-chapter" aria-label="Kapitel wählen"></select><span id="tour-count" class="tour-label"></span></div>
-  <progress id="tour-progress" value="1" max="1" aria-label="Fortschritt im Rundgang"></progress>
+<section id="tour-card" role="dialog" aria-modal="false" aria-labelledby="tour-title" lang="en" hidden>
+  <div class="tour-card-top"><span class="tour-label" data-tour-text="guide">Guided introduction</span><select id="tour-card-language" class="tour-language" data-tour-language data-tour-label="language" aria-label="Tour language"><option value="en" lang="en">English</option><option value="de" lang="de">Deutsch</option></select><button class="tour-icon-button" data-tour-exit data-tour-label="exit" aria-label="End the tour">×</button></div>
+  <div class="tour-progress-row"><label class="sr-only" for="tour-chapter" data-tour-text="chapter">Choose a chapter</label><select id="tour-chapter" data-tour-label="chapter" aria-label="Choose a chapter"></select><span id="tour-count" class="tour-label"></span></div>
+  <progress id="tour-progress" value="1" max="1" data-tour-label="progress" aria-label="Tour progress"></progress>
   <div class="tour-card-content">
     <span id="tour-source" class="tour-source"></span>
     <h2 id="tour-title" tabindex="-1"></h2>
     <p id="tour-description"></p>
     <p id="tour-caution" class="tour-caution"></p>
-    <div id="tour-exercise" hidden><span class="tour-label">Selbst ausprobieren · freiwillig</span><p id="tour-task"></p><p id="tour-result" role="status" aria-live="polite"></p></div>
+    <div id="tour-exercise" hidden><span class="tour-label" data-tour-text="exercise">Try it yourself · optional</span><p id="tour-task"></p><p id="tour-result" role="status" aria-live="polite"></p></div>
   </div>
-  <button class="tour-target-button" data-tour-focus>Markierten Bereich ansehen <span aria-hidden="true">↗</span></button>
-  <div class="tour-card-actions"><button class="tour-button" data-tour-back>Zurück</button><button class="tour-button tour-primary" data-tour-next>Weiter <span aria-hidden="true">→</span></button></div>
-  <p class="tour-key-hint">Esc beendet · Du kannst jeden Schritt überspringen</p>
+  <button class="tour-target-button" data-tour-focus><span data-tour-text="focus">Explore highlighted area</span> <span aria-hidden="true">↗</span></button>
+  <div class="tour-card-actions"><button class="tour-button" data-tour-back data-tour-text="back">Back</button><button class="tour-button tour-primary" data-tour-next>Next →</button></div>
+  <p class="tour-key-hint" data-tour-text="hint">Esc exits · You can skip any step</p>
 </section>
 <noscript>
 <p style="padding:30px">This interactive design study needs JavaScript enabled.</p>
@@ -882,6 +882,8 @@
 <script src="live-data.js"></script>
 <script src="live-workspace.js"></script>
 <script src="onboarding-data.js"></script>
+<script src="onboarding-en.js"></script>
+<script src="onboarding-i18n.js"></script>
 <script src="onboarding-layout.js"></script>
 <script src="onboarding.js"></script>
 </body>

@@ -1,10 +1,34 @@
 (() => {
-  const { steps, chapters, storageKey } = ObservatoryTourData;
+  const { chapters, storageKey } = ObservatoryTourData;
+  let language = 'en', steps, copy, completed = false;
+  try {
+    if (localStorage.getItem(ObservatoryTourI18n.storageKey) === 'de') language = 'de';
+  } catch { /* English is the dashboard default, including without storage. */ }
   const el = id => document.getElementById(id);
   const welcome = el('tour-welcome'), card = el('tour-card'), spotlight = el('tour-spotlight');
   let index = -1, entry = null, target = null, addedTabIndex = false, scheduled = 0;
   const active = () => index >= 0;
   const viewport = () => ({ width: document.documentElement.clientWidth, height: window.innerHeight });
+
+  function translate() {
+    copy = ObservatoryTourI18n.ui[language];
+    steps = ObservatoryTourI18n.steps(language);
+    for (const node of document.querySelectorAll('[data-tour-text]')) node.textContent = copy[node.dataset.tourText];
+    for (const node of document.querySelectorAll('[data-tour-label]')) node.setAttribute('aria-label', copy[node.dataset.tourLabel]);
+    for (const node of document.querySelectorAll('[data-tour-language]')) node.value = language;
+    for (const node of [welcome, card, ...document.querySelectorAll('[data-tour-open]')]) node.setAttribute('lang', language);
+    for (const [i, [page, label]] of chapters.entries()) {
+      el('tour-chapter').children[i].textContent = ['live', 'methods'].includes(page) ? `${label.slice(0, 5)}${copy[page]}` : label;
+    }
+    if (active()) { renderStep(); scheduleLayout(); }
+  }
+  function renderStep() {
+    const step = steps[index];
+    for (const [id, value] of Object.entries({ 'tour-title': step.title, 'tour-source': step.source,
+      'tour-description': step.description, 'tour-caution': step.caution, 'tour-task': step.task || '',
+      'tour-result': completed ? '✓ ' + step.success : '' })) el(id).textContent = value;
+    card.querySelector('[data-tour-next]').textContent = index === steps.length - 1 ? copy.finish : copy.next;
+  }
 
   function seen() {
     try { return localStorage.getItem(storageKey) === 'seen'; } catch { return false; }
@@ -88,22 +112,21 @@
     if (!Number.isInteger(next) || next < 0 || next >= steps.length) return;
     if (!entry) captureEntry();
     index = next;
+    completed = false;
     welcome.close();
     const step = steps[index];
     visit(step.page);
     card.hidden = false;
     card.dataset.step = step.id;
     document.body.classList.add('tour-active');
-    for (const [id, value] of Object.entries({ 'tour-title': step.title, 'tour-source': step.source,
-      'tour-description': step.description, 'tour-caution': step.caution,
-      'tour-task': step.task || '', 'tour-result': '', 'tour-marker': String(index + 1).padStart(2, '0'),
+    renderStep();
+    for (const [id, value] of Object.entries({ 'tour-marker': String(index + 1).padStart(2, '0'),
       'tour-count': `${String(index + 1).padStart(2, '0')} / ${steps.length}` })) el(id).textContent = value;
     el('tour-exercise').hidden = !step.task;
     el('tour-progress').max = steps.length;
     el('tour-progress').value = index + 1;
     el('tour-chapter').value = step.page;
     card.querySelector('[data-tour-back]').disabled = index === 0;
-    card.querySelector('[data-tour-next]').textContent = index === steps.length - 1 ? 'Fertig ✓' : 'Weiter →';
     markTarget();
     card.querySelector('.tour-card-content').scrollTop = 0;
     el('tour-title').focus({ preventScroll: true });
@@ -137,6 +160,7 @@
     if (!active()) return;
     const step = steps[index];
     if (step.event !== event.type || !event.target.closest(step.action)) return;
+    completed = true;
     el('tour-result').textContent = '✓ ' + step.success;
     scheduleLayout();
   }
@@ -145,6 +169,14 @@
     const option = document.createElement('option');
     option.value = page; option.textContent = label; el('tour-chapter').append(option);
   }
+  translate();
+  for (const select of document.querySelectorAll('[data-tour-language]')) select.addEventListener('change', event => {
+    const value = event.target.value;
+    if (!['en', 'de'].includes(value)) return;
+    language = value;
+    try { localStorage.setItem(ObservatoryTourI18n.storageKey, language); } catch { /* Selection still works for this visit. */ }
+    translate();
+  });
   document.addEventListener('click', event => {
     const button = event.target.closest('[data-tour-open],[data-tour-dismiss],[data-tour-start],'
       + '[data-tour-chapter],[data-tour-back],[data-tour-next],[data-tour-exit],[data-tour-focus]');
