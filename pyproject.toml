@@ -5,7 +5,11 @@ description = "A persistent neuromorphic brain with LLM bridge"
 requires-python = ">=3.11,<3.13"
 dependencies = [
     "snntorch>=0.9.1",
-    "torch>=2.2",
+    # Security floor: torch 2.2-2.10 carries 23 OSV advisories, several critical —
+    # memory corruption via torch.jit.script (CVE-2025-3000, fixed in 2.13.0),
+    # torch.load deserialization issues, multiple DoS/Inductor bugs. The old
+    # unbounded ">=2.2" let a fresh environment resolve anywhere in that window.
+    "torch>=2.13.0",
     "numpy>=1.26",
     "matplotlib>=3.8",
     # Phase 3a — Mac sensor adapter + daemon
