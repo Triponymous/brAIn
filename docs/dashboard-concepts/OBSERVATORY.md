@@ -2,7 +2,9 @@
 
 brAIn: Living Desktop Manager · Research workspace 03 · 14. September 2026
 
-**Aktuell:** [Vorschau](http://127.0.0.1:4178/observatory.html#overview) · [Ausarbeitung, Grenzen und Prüfbelege](RESEARCH-WORKSPACE.md) · [Ursprüngliche drei Varianten](index.html)
+**Designstand der fünf Demo-Ansichten:** [Vorschau](http://127.0.0.1:4178/observatory.html#overview) · [Ausarbeitung, Grenzen und Prüfbelege](RESEARCH-WORKSPACE.md) · [Ursprüngliche drei Varianten](index.html).
+Aktuell kommen die getrennte [Live session](LIVE-DATA.md) und die
+[zweisprachige Einführung](EINFUEHRUNG.md) hinzu. Einstieg: [Dokumentation](../README.md).
 
 ## Die gewählte Richtung
 

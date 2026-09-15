@@ -2,6 +2,12 @@
 
 ## Version 0.1.0 (Draft)
 
+> Historical design draft, not the current external integration contract.
+> The internal implementation now lives in `bridge/scp_schema.py`,
+> `bridge/scp_server.py` and `bridge/scp_client.py`. Some paths include actions.
+> For the separate query-only external adapter, use [MCP.md](MCP.md);
+> for runtime boundaries, use [the architecture guide](living-desktop-manager.md).
+
 ### Abstract
 
 SCP (Spiking Communication Protocol) is an open protocol for bidirectional communication between Spiking Neural Networks (SNNs) and Large Language Models (LLMs). It provides a standardized interface for LLMs to query neural state, receive events from the SNN, send feedback actions, and adopt SNN-driven personality modes.

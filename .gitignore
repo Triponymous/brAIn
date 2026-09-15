@@ -4,6 +4,10 @@ __pycache__/
 *.egg-info/
 .venv/
 
+# Local build leftovers from the removed Tauri client
+/pet-face/node_modules/
+/pet-face/src-tauri/target/
+
 # uv
 .uv-cache/
 

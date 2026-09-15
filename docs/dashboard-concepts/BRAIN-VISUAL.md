@@ -27,7 +27,7 @@ Die Koordinaten der 1.000 auswählbaren Einheiten wurden aus sichtbaren Bereiche
 - [observatory.html](observatory.html): bestehendes Dashboard, neue Hauptansicht integriert.
 - [brain-view.js](brain-view.js): Vektor-Overlay, Zeigerauswahl, Verbindungen und Ansichtswechsel.
 - [brain-view.css](brain-view.css): Layout und responsive Darstellung.
-- [brain-points.js](brain-points.js): 1.000 aus dem Bild abgeleitete Illustration-Koordinaten.
+- `brain-points.js` (inzwischen entfernt): 1.000 aus dem Bild abgeleitete Illustration-Koordinaten im damaligen Vorentwurf.
 - [assets/brain-observatory.png](assets/brain-observatory.png): unveränderte Kopie des generierten Bildes, 1.254 × 1.254 px, Alpha-Kanal, ca. 1,8 MB.
 
 Keine neuen Bibliotheken, kein Buildschritt, keine Sensoren, keine Backend-Änderungen und keine externen Requests im Dashboard. Zum Übertragen den gesamten Ordner verwenden, nicht nur die HTML-Datei.

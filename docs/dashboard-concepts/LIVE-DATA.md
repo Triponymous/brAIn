@@ -28,7 +28,7 @@ Der erste Ausbau ist eine isolierte Live-Ansicht mit lesenden Modelldaten und en
 
 ## Lokal starten
 
-Im Repository `/Users/leonmatthies/brAIntest`:
+Vom Repository-Stamm aus (Installation und statischer Server: [RUNNING.md](../RUNNING.md)):
 
 ```sh
 # Verbindungsprüfung ohne Sensoren und ohne Modellschritte

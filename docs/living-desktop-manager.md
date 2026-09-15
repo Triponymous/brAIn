@@ -1,172 +1,98 @@
-# brAIn: Living Desktop Manager — direction and architecture
+# Living Desktop Manager: direction and architecture
 
-snnTorch, sharing this project on LinkedIn and their blog, called it
-*brAIn: Living Desktop Manager*. This document is the engineering side of
-that name: what the thing is meant to become, what is already there, what is
-missing, and in which order it gets built. The README's *Thesis* section is
-the short version.
+Status reviewed against source on **2026-09-15**.
+[Documentation index](README.md) · [Roadmap](ROADMAP.md) · [Privacy](PRIVACY.md)
 
-## The goal, in the owner's words
+## Research thesis
 
-An LLM that gets to know me through a spiking network — through emotions and
-actions rather than text — and acts for me. An LLM that learns the way an
-animal or a human does.
+Can a small, continuously adapting local model provide useful personal context
+to a desktop interface and to a user's chosen AI assistant?
 
-## The decision: where the life is
+The SNN learns associations through local plasticity; an optional LLM interprets
+available context. This separation does not make the system biologically alive,
+prove emotional understanding or update the LLM's weights. “Living Desktop
+Manager” is the intended direction, not an existing autonomous product.
 
-**The spiking network (`brain/`) is the living part — the thing that learns the
-way an animal does. The LLM is its voice and its hands.**
+## Two independent runtimes
 
-An LLM's weights move by gradient descent over text, in batches, forgetting
-as they go; that is not how an animal learns, and no amount of fine-tuning
-on a laptop makes it so. The spiking network in `brain/` already learns the
-animal way: synapses that follow what happens (STDP, BCM), feelings that are
-the shape of prediction error (the emergent modulator driver), attachment to
-one human, memory that *is* the network. So the LLM never becomes the
-living part. It becomes a faithful, fluent extension of it — that is what
-"an LLM that learns through an SNN" means here:
+| | Opt-in observer | Persistent daemon |
+| --- | --- | --- |
+| Entry point | `server.observe` | `server.braind start` |
+| HTTP | 127.0.0.1:8001 | 127.0.0.1:8000 |
+| Interface | Observatory Live session | Training console via control server on 8900 |
+| Model | Fresh seeded instance | Loaded checkpoint or fresh model |
+| Capture | Four sources, off by default | Broader desktop sensors including microphone features |
+| Storage | Bounded RAM window, explicit export | Checkpoints, episodes, experience and grants |
+| External model | None | Optional internal LLM; external stdio MCP proxy |
+| Shared controls | None | Observatory stop switches do not govern this daemon |
 
-1. **It understands the animal completely — as tools, not as a paragraph.**
-   Every answer is conditioned on a state grown by living with this person.
-2. **The animal teaches it how to behave.** When to be silent, when to
-   speak, what to offer — a policy learned from consequence, on device.
+The five other Observatory pages use deterministic synthetic demonstration data.
+A live tick is not a demo frame, a recording session or an entire saved brain.
 
-Both stand on the **experience log**. Nothing in this plan changes an LLM
-weight. The door to fine-tuning stays open and is opened, if ever, by the
-numbers the log produces.
+## Model and representations
 
-## What exists (September 2026)
+`brain/core.py` defaults to 200 sensory, 500 expansion, 200 concept and 100
+working-memory units. The expansion is a fixed sparse projection; its binary
+output has no membrane potential. LIF, competitive concept dynamics, STDP/BCM,
+recurrent memory and model modulators implement the learning experiment.
 
-| Layer | Where | State |
-|---|---|---|
-| Organism: LIF, expansion, WTA concept layer, WM, STDP/BCM, emergent DA/NE/ACh/5HT | `brain/` | done, benchmarked |
-| Learned felt-state vocabulary + active-learning asks | `bridge/felt_state.py`, `bridge/proactive.py`, `server/feel.py` | done |
-| Stable concept clusters with sensor profiles and label suggestions | `brain/concept_tracker.py`, `bridge/exporter.py` | done |
-| Episodic history (one snapshot per ~10 s), habits, anomalies | `bridge/episode_log.py`, `habit_miner.py`, `anomaly.py` | done |
-| SCP: typed queries, events, actions between brain and LLM | `bridge/scp_*.py`, `docs/scp-specification.md` | done (v2), used as prompt material |
-| Narrator: brain state as prose for the prompt | `bridge/snn_narrator.py`, `emotional_prompt.py` | done — the *thin* interface this plan replaces |
-| Capabilities: wish detection, grants, tools (search, shell, files) | `capabilities/` | skeleton, gated |
-| Always-on: launchd → control server → supervised daemon | `server/control.py`, `scripts/` | done |
-| Experience log | `bridge/experience.py`, `server/experience.py` | done |
-| Brain as tools for the LLM | `bridge/brain_tools.py`, tool loop in `bridge/llm_local.py` / `llm_cloud.py` | done |
-| **Context layer for other models (MCP)** | `server/tools.py`, `server/mcp.py`, `brain-mcp` script | **done — this step** |
-| Learned behaviour policy | — | next |
+`ConceptTracker` is a separate clustering representation, not the SNN concept
+layer. The current tracker masks Mel channels. An audio evaluation must state
+which representation it measures rather than attributing tracker outcomes
+automatically to SNN synapses.
 
-## The experience log
+DA, NE, ACh and 5HT derive from model prediction-error dynamics. They are not
+human biochemical measurements. Sleep/consolidation is a model regime, not
+evidence about biological sleep or clinical benefit.
 
-One row per event: who acted, what they did, the organism's state at that
-moment, and — written ~120 s later — what followed.
+## Labels, history and experience
 
-```
-experiences(id, ts, tick,
-            actor      'pet' | 'human' | 'llm',
-            kind       ask_label | notify | teach_felt | dismiss_ask | chat |
-                       label_concept | brain.reward | brain.correct | brain.label | ...
-            payload    JSON, never content,
-            felt_label, felt_conf, cluster, sleep, signature[6],   -- state at ts
-            after_signature[6], after_ts,                          -- consequence
-            response_kind 'answered' | 'dismissed', response_id)   -- how the human replied
-```
+- `bridge/felt_state.py` stores user-taught prototypes associated with model
+  signatures and behavioural clusters. Confidence is not calibrated clinical
+  certainty. The proactive watcher can freeze a signature for later correction.
+- `bridge/episode_log.py` persists episode summaries and prunes rows older than
+  90 days by default. App information and labels may be personal data.
+- `bridge/experience.py` records events and response links, then settles a
+  consequence signature approximately 120 seconds later. Its default does not
+  implement the episode log's 90-day retention policy.
+- `server/tools.py` records external query names, arguments and provenance in
+  the experience log. “Read-only” refers to model/action access, not zero disk writes.
 
-- **Recorded by** the proactive engine (asks, notifications), `/api/feel`
-  (teach, dismiss), `/api/chat` (that a conversation happened), `/api/label`,
-  and every SCP action the LLM takes on the brain.
-- **Consequence** is the 180 s modulator signature 120 s after the event —
-  the same six numbers the felt-state model reads. If the daemon was down in
-  between, the row is closed without a consequence rather than given today's
-  mood.
-- **Facts, not judgements.** The log never stores a reward; whoever reads it
-  computes one, so the reward function can change without losing history.
-- **Never content.** No chat text, no keystrokes, no audio. Labels the human
-  chose, categories, app names, counts. The privacy line of the README holds.
-- **Read** via `GET /api/experience?limit=&hours=`: recent rows plus a
-  summary — counts per actor and kind, ask/answer/dismiss rates, and the mean
-  signature change after each kind of pet action. After one week of running,
-  that summary is the first real answer to *is it learning me?*
+A later signature is an observational outcome, not causal proof that an action
+helped. An experience count alone does not establish adaptation or user benefit.
 
-## The brain as tools
+## Context for AI assistants
 
-The model calls these while it reasons; the backend runs a real loop
-(call, execute, hand the result back, until the model answers — at most
-four rounds, then it is asked to answer with what it has). Both the local
-model via Ollama and the cloud model use it; the chat endpoint tells the
-model the tools exist and logs every call as an experience. `brain_state`
-supersedes the older `current_state` / `query_concepts` / `episode_search`,
-which stay callable but are no longer offered.
+`bridge/brain_tools.py` defines nine query tools.
+`bridge/llm_local.py` and `bridge/llm_cloud.py` implement tool-result loops for
+the daemon's optional chat path. `server/mcp.py` separately proxies the query API
+over stdio for compatible external hosts. [MCP contract](MCP.md).
 
-| Tool | Returns | Backed by (exists) |
-|---|---|---|
-| `brain_state()` | felt-state + confidence, modulators, prediction-error internals, current cluster, WM occupancy, sleep | `felt_state`, `modulators`, `core.py` driver, `concept_tracker` |
-| `brain_history(hours, step_minutes)` | dominant pattern, apps, chemistry and sleep per step | `episode_log` |
-| `brain_concept(id)` | label, sensor profile, first seen, times seen, stability | `exporter.get_concept_profile`, `concept_tracker` |
-| `brain_felt(label)` | all learned states, or one: signature, times taught, when, recognised now | `felt_state`, experience log |
-| `brain_habits()` / `brain_anomalies()` | hourly and weekly profile, deviations | `habit_miner`, `anomaly` |
-| `brain_why(modulator)` | what drove it | `synapse_explainer` |
-| `brain_recall(hours, label, min_minutes)` | stretches when a pattern held: start, end, minutes, apps | `episode_log` |
-| `brain_experience(hours)` | what the pet did and how it went | experience log |
+SCP (`bridge/scp_*.py`) is the project's internal protocol and includes action
+paths. It is not the same thing as MCP and must not be described as read-only
+just because the external MCP adapter is restricted to queries.
 
-The narrator's summary stays in the prompt as grounding for the first turn
-and as the fallback for models without tool use.
+The current external interface lacks per-client field consent, expiry controls,
+pairing and an authenticated remote transport. It must remain local and trusted.
+A production context layer needs these before it can claim user-controlled
+disclosure across applications.
 
-## brAIn as a context layer for other models (MCP)
+## Actions and deployment boundary
 
-The same read-only tools, for models that do not live in the daemon: Claude
-Code, Codex, Claude Desktop, anything that speaks MCP. `server/mcp.py` is a
-stdio MCP server (console script `brain-mcp`) that proxies every call to the
-daemon's `POST /api/tools/{name}`; `server/tools.py` exposes exactly
-`BrainTools.NAMES` there and nothing else, so no client can label, teach,
-reward or run anything through this path. Each call lands in the experience
-log as `llm / tool_call / via: mcp` — how often outside models consult the
-brain is part of the record.
+Capability grants and shell/file/search implementations exist, but they are
+experimental rather than hardened isolation. Do not enable shell or file tools
+for untrusted instructions. See [security limits](../SECURITY.md).
 
-- Listing works without a daemon (the definitions are static); a call with
-  the daemon down answers with how to start it instead of failing silently.
-- `BRAIN_URL` (default `http://127.0.0.1:8000`) or `brain-mcp --url` points
-  at the daemon.
-- Setup: `claude mcp add --scope user brain -- /abs/.venv/bin/brain-mcp`;
-  Codex: `[mcp_servers.brain] command = "/abs/.venv/bin/brain-mcp"` in
-  `~/.codex/config.toml`; Claude Desktop: the same command under
-  `mcpServers.brain`.
-- What leaves the machine: labels, app names, patterns, numbers. Never
-  keystrokes, audio, chat text.
+A learned interruption policy, automatic desktop routines, resumption cards and
+wearable capture are not implemented. Existing proactive timing uses configured
+logic; a future bandit or R-STDP action policy is a research proposal.
 
-This is the "personal context layer" reading of the thesis: the frontier
-model is a second voice for the same organism. It reads; the organism
-learns; the local policy (next) decides when the organism itself speaks.
+The former Tauri Pet-Face application was removed. Backend voice endpoints
+remain; removal of the visual client did not remove microphone/transcription code.
 
-## Then: the learned behaviour policy
+## Evidence
 
-- **Actions:** stay silent · notify · ask a question · suggest a break ·
-  *offer* a task.
-- **Context:** felt-state label, cluster, hour bucket, modulator band, sleep.
-- **Reward, computed from the log:** the human's response (answered +,
-  dismissed −, silence 0) plus the affect consequence (ΔNE up is bad,
-  Δ5HT held is good). The organism's own feeling after acting is the
-  teacher — that is the animal part.
-- **Learner:** a contextual bandit (Thompson sampling per context/action),
-  persisted in the checkpoint, fully inspectable. It replaces the hand-tuned
-  intervals and priority order in `proactive.py` — the same move the modulator
-  driver made for emotion: emergent instead of scripted.
-- **Safety:** the policy decides whether to *offer*; nothing executes without
-  a grant (`capabilities/grants.py`). A bandit never runs a shell command.
-
-## Later, by the numbers: fine-tuning
-
-With hundreds of logged experiences and an explicit, opt-in transcript store
-(the log itself never holds text), a LoRA adapter on the local model becomes
-an experiment with a dataset rather than a hope. Judge it then.
-
-## Order of work
-
-1. Live always-on — done.
-2. Experience log — done. Let it run; read `/api/experience` after a week.
-3. Brain as tools — done. The dashboard's Language view will show the calls.
-3b. MCP context layer for Claude Code / Codex — done; read-only by construction.
-4. Learned policy — bandit over the log; the dashboard's Growth view shows
-   what it learned.
-5. Fine-tuning — decide with data.
-
-## Non-goals
-
-Training LLM weights from SNN state directly; a general assistant; anything
-that stores content. The point is one individual that knows one person.
+Implementation is not the same as a validated product. See
+[verification scope](VERIFICATION.md) for reproducible tests and known failures.
+Proposed comparisons must use matched inputs, feedback budgets, held-out time
+periods and simple baselines. Report failures and resource cost alongside accuracy.

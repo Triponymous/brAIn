@@ -175,21 +175,12 @@ no retained raw audio by default, no upload, and clear status/error reporting.
 A microphone cannot be assumed to hear playback through headphones. Test that
 domain separately; file-based results do not establish microphone performance.
 
-## Contributor task and unsent reply draft
+## Contributor task
 
 First contribution: propose a reproducible, legally usable corpus manifest with
 source-group separation and all five classes, then run both feature arms and
 report failures as well as gains. No cloud accounts or hardware purchase needed.
 Do not upload private recordings with an issue or pull request.
-
-Unsent draft (no contact has been made):
-
-> Hey, sorry for the very late reply! I'm giving brAIn more attention again.
-> Your VAD suggestion is now part of a small offline experiment: the existing
-> Mel/RMS features versus the same features plus local Silero VAD. I haven't
-> established whether it improves separation yet—podcasts and singing are
-> important counterexamples to “speech = meeting”. Would you be interested in
-> helping define a small, reproducible test corpus with clearly separated sources?
 
 ## Verification
 
