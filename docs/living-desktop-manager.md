@@ -48,8 +48,9 @@ numbers the log produces.
 | Capabilities: wish detection, grants, tools (search, shell, files) | `capabilities/` | skeleton, gated |
 | Always-on: launchd → control server → supervised daemon | `server/control.py`, `scripts/` | done |
 | Experience log | `bridge/experience.py`, `server/experience.py` | done |
-| **Brain as tools for the LLM** | `bridge/brain_tools.py`, tool loop in `bridge/llm_local.py` / `llm_cloud.py` | **done — this step** |
-| Learned behaviour policy | — | after that |
+| Brain as tools for the LLM | `bridge/brain_tools.py`, tool loop in `bridge/llm_local.py` / `llm_cloud.py` | done |
+| **Context layer for other models (MCP)** | `server/tools.py`, `server/mcp.py`, `brain-mcp` script | **done — this step** |
+| Learned behaviour policy | — | next |
 
 ## The experience log
 
@@ -107,6 +108,32 @@ which stay callable but are no longer offered.
 The narrator's summary stays in the prompt as grounding for the first turn
 and as the fallback for models without tool use.
 
+## brAIn as a context layer for other models (MCP)
+
+The same read-only tools, for models that do not live in the daemon: Claude
+Code, Codex, Claude Desktop, anything that speaks MCP. `server/mcp.py` is a
+stdio MCP server (console script `brain-mcp`) that proxies every call to the
+daemon's `POST /api/tools/{name}`; `server/tools.py` exposes exactly
+`BrainTools.NAMES` there and nothing else, so no client can label, teach,
+reward or run anything through this path. Each call lands in the experience
+log as `llm / tool_call / via: mcp` — how often outside models consult the
+brain is part of the record.
+
+- Listing works without a daemon (the definitions are static); a call with
+  the daemon down answers with how to start it instead of failing silently.
+- `BRAIN_URL` (default `http://127.0.0.1:8000`) or `brain-mcp --url` points
+  at the daemon.
+- Setup: `claude mcp add --scope user brain -- /abs/.venv/bin/brain-mcp`;
+  Codex: `[mcp_servers.brain] command = "/abs/.venv/bin/brain-mcp"` in
+  `~/.codex/config.toml`; Claude Desktop: the same command under
+  `mcpServers.brain`.
+- What leaves the machine: labels, app names, patterns, numbers. Never
+  keystrokes, audio, chat text.
+
+This is the "personal context layer" reading of the thesis: the frontier
+model is a second voice for the same organism. It reads; the organism
+learns; the local policy (next) decides when the organism itself speaks.
+
 ## Then: the learned behaviour policy
 
 - **Actions:** stay silent · notify · ask a question · suggest a break ·
@@ -134,6 +161,7 @@ an experiment with a dataset rather than a hope. Judge it then.
 1. Live always-on — done.
 2. Experience log — done. Let it run; read `/api/experience` after a week.
 3. Brain as tools — done. The dashboard's Language view will show the calls.
+3b. MCP context layer for Claude Code / Codex — done; read-only by construction.
 4. Learned policy — bandit over the log; the dashboard's Growth view shows
    what it learned.
 5. Fine-tuning — decide with data.

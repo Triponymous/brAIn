@@ -255,7 +255,8 @@ class BrainTools:
         except TypeError as e:
             return {"error": f"bad arguments for {name}: {e}"}
 
-    def tool_definitions(self) -> list[dict[str, Any]]:
+    @staticmethod
+    def tool_definitions() -> list[dict[str, Any]]:
         no_args = {"type": "object", "properties": {}}
         hours = {"type": "number", "description": "How many hours back to look.", "default": 24}
         return [

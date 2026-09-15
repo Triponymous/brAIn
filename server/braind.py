@@ -222,6 +222,8 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     app.include_router(config_router)
     app.include_router(feel_router)
     app.include_router(build_experience_router(experience))
+    from server.tools import build_tools_router
+    app.include_router(build_tools_router(brain, brain_tools))  # read-only, for server/mcp.py and scripts
 
     # Voice setup
     from bridge.tts import TTSEngine

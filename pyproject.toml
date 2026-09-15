@@ -18,6 +18,8 @@ dependencies = [
     "pyobjc-framework-Quartz>=10.0; sys_platform == 'darwin'",
     # Phase 3b — LLM bridge
     "anthropic>=0.40",
+    # MCP server: brAIn as a context layer for Claude Code, Codex and friends
+    "mcp>=2",
     # Phase 3c — Voice
     "piper-tts>=1.2",
     "pywhispercpp>=1.2",
@@ -31,12 +33,15 @@ dev = [
     "httpx>=0.27",
 ]
 
+[project.scripts]
+brain-mcp = "server.mcp:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["brain"]
+packages = ["brain", "bridge", "server", "adapters", "capabilities"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

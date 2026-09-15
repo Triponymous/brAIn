@@ -259,6 +259,23 @@ In the console, "Start" launches with real sensors. For a headless or CI run wit
 
 Full sensor mode needs macOS **Input Monitoring** and **Microphone** permissions for your terminal (System Settings → Privacy & Security). The daemon prints a clear diagnostic on startup if a permission is missing.
 
+### Use it from Claude Code, Codex or Claude Desktop (MCP)
+
+brAIn is a **personal context layer**: any frontier model can read what it has learned about you — how you seem right now, what you did today, when you were last in flow, your habits — through a small read-only MCP server that proxies to the running daemon. Nothing can be written through it.
+
+```bash
+# Claude Code (available in every project)
+claude mcp add --scope user brain -- "$PWD/.venv/bin/brain-mcp"
+```
+
+```toml
+# Codex — ~/.codex/config.toml
+[mcp_servers.brain]
+command = "/absolute/path/to/brAIn/.venv/bin/brain-mcp"
+```
+
+Claude Desktop takes the same command under `mcpServers.brain` in its `claude_desktop_config.json`. What leaves your machine when a cloud model calls a tool: labels you taught, app names, patterns and numbers — never keystrokes, audio or chat text. The daemon has to be running; with it down the tools are still listed and a call explains how to start it.
+
 ### Pet face (optional)
 
 ```bash
@@ -337,7 +354,8 @@ bridge/         the speech + self-model layer — felt-state model & watcher,
                 SCP v2 (scp_server/scp_client/scp_schema), LLM router & adapter,
                 proactive engine, state detector, interpreter, narrator
 server/         daemon (braind), control server (start/stop from the console),
-                /api/feel, chat, websocket, FastAPI app
+                /api/feel, chat, websocket, FastAPI app, /api/tools (read-only),
+                mcp.py — the brain as an MCP server for Claude Code / Codex
 adapters/       Mac desktop sensors — keyboard, mouse, screen, microphone + encoder
 train-ui/       the training console — single-file Neumorphism UI (the frontend)
 capabilities/   emergent tool system — wish detection, grant registry
