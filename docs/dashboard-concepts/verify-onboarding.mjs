@@ -5,7 +5,7 @@ import { harness, read } from './tour-test-harness.mjs';
 
 test('tour scripts parse; every chapter and target binds to the actual markup', () => {
   const html = read('observatory.html');
-  for (const name of ['onboarding-data.js', 'onboarding-layout.js', 'onboarding.js']) new Script(read(name));
+  for (const name of ['onboarding-data.js', 'onboarding-en.js', 'onboarding-i18n.js', 'onboarding-layout.js', 'onboarding.js']) new Script(read(name));
   const { data } = harness();
   assert.equal(data.steps.length, 18);
   assert.equal(new Set(data.steps.map(step => step.id)).size, data.steps.length);
@@ -24,6 +24,77 @@ test('tour scripts parse; every chapter and target binds to the actual markup', 
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
   assert.equal(new Set(ids).size, ids.length);
   assert(html.indexOf('src="onboarding-data.js"') < html.indexOf('src="onboarding.js"'));
+});
+
+test('English and German cover every step, exercise and static label', () => {
+  const h = harness();
+  const i18n = runInContext('ObservatoryTourI18n', h.context);
+  const translations = runInContext('ObservatoryTourEnglish', h.context);
+  assert.deepEqual(Object.keys(translations).sort(), Array.from(h.data.steps, step => step.id).sort());
+  assert.deepEqual(Object.keys(i18n.ui.en).sort(), Object.keys(i18n.ui.de).sort());
+  for (const language of ['en', 'de']) {
+    const steps = i18n.steps(language);
+    for (const [index, step] of steps.entries()) {
+      for (const key of ['source', 'title', 'description', 'caution', ...(step.task ? ['task', 'success'] : [])]) assert(step[key]?.trim(), `${language}/${step.id}/${key}`);
+      for (const key of ['id', 'page', 'target', 'action', 'event']) assert.equal(step[key], h.data.steps[index][key]);
+    }
+    h.changeLanguage(language);
+    for (const node of h.bindings) {
+      if (node.dataset.tourText) assert.equal(node.textContent, i18n.ui[language][node.dataset.tourText]);
+      if (node.dataset.tourLabel) assert.equal(node.getAttribute('aria-label'), i18n.ui[language][node.dataset.tourLabel]);
+    }
+  }
+});
+
+test('English is the default; explicit language survives reload without repeating the welcome', () => {
+  const h = harness();
+  assert.equal(h.ids.get('tour-welcome').getAttribute('lang'), 'en');
+  assert.equal(h.ids.get('tour-welcome-title').textContent, 'Get to know your Observatory.');
+  h.changeLanguage('de', 'tour-welcome-language');
+  assert.equal(h.ids.get('tour-card-language').value, 'de');
+  assert.equal(h.ids.get('tour-welcome-title').textContent, 'Lerne dein Observatory kennen.');
+  assert.equal(h.writes.at(-1)[1], 'de');
+  const reload = harness({ visited: true, language: h.writes.at(-1)[1] });
+  assert(!reload.ids.get('tour-welcome').open);
+  reload.click('open'); reload.click('start');
+  assert.equal(reload.ids.get('tour-title').textContent, 'Hier beginnt die echte Beobachtung.');
+  assert.equal(harness({ language: 'invalid' }).ids.get('tour-welcome').getAttribute('lang'), 'en');
+});
+
+test('language changes preserve step, exercise result, highlighted target, focus and route', () => {
+  const h = harness(); h.click('start'); h.chapter('overview'); h.click('next');
+  const control = h.make('select'); control.closest = selector => selector === '#moment-select' ? control : null;
+  h.doc.emit('change', { target: control });
+  const routes = h.routes.length, scroll = h.win.scrollY;
+  h.ids.get('tour-card-language').focus();
+  h.changeLanguage('de');
+  assert.equal(h.ids.get('tour-card').dataset.step, 'contexts');
+  assert.equal(h.ids.get('tour-progress').value, 9);
+  assert.equal(h.routes.length, routes); assert.equal(h.win.scrollY, scroll);
+  assert.equal(h.doc.activeElement, h.ids.get('tour-card-language'));
+  assert.equal(h.ids.get('tour-result').textContent, '✓ Beispiel gewechselt. Die Demo zeigt jetzt einen anderen Kontext.');
+  assert.equal(h.targets.get('.moment-control').getAttribute('data-tour-highlight'), 'contexts');
+  h.changeLanguage('en');
+  assert.equal(h.ids.get('tour-result').textContent, '✓ Example changed. The demo now shows a different context.');
+  h.chapter('methods'); h.click('next');
+  assert.equal(h.buttons.get('next').textContent, 'Finish ✓');
+  h.changeLanguage('de'); assert.equal(h.buttons.get('next').textContent, 'Fertig ✓');
+});
+
+test('both full tours are side-effect free, including with storage blocked', () => {
+  for (const language of ['en', 'de']) {
+    const h = harness({ blockedStorage: true, page: 'journal' });
+    h.changeLanguage(language, 'tour-welcome-language'); h.click('start');
+    const expected = runInContext('ObservatoryTourI18n', h.context).steps(language);
+    for (const step of expected) {
+      assert.equal(h.ids.get('tour-title').textContent, step.title);
+      assert.equal(h.ids.get('tour-caution').textContent, step.caution);
+      h.click('next');
+    }
+    assert.equal(h.writes.length, 0);
+    assert.equal(h.doc.body.dataset.page, 'journal');
+    assert(h.ids.get('tour-card').hidden);
+  }
 });
 
 test('first visit offers the guide without navigation; only a seen flag is persisted', () => {

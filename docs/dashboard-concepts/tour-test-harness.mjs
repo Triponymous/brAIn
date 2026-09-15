@@ -42,9 +42,9 @@ class Element {
   querySelector(selector) { return this.children.find(child => child.matches(selector)) ?? this.children.map(child => child.querySelector(selector)).find(Boolean) ?? null; }
 }
 
-export function harness({ visited = false, blockedStorage = false, page = 'live' } = {}) {
+export function harness({ visited = false, blockedStorage = false, page = 'live', language = null } = {}) {
   const context = createContext({});
-  runInContext(read('onboarding-data.js') + read('onboarding-layout.js'), context);
+  runInContext(read('onboarding-data.js') + read('onboarding-en.js') + read('onboarding-i18n.js') + read('onboarding-layout.js'), context);
   const data = runInContext('ObservatoryTourData', context);
   const ids = new Map(), targets = new Map(), routes = [], frames = new Map(), writes = [];
   const doc = new Element('document');
@@ -71,14 +71,25 @@ export function harness({ visited = false, blockedStorage = false, page = 'live'
   doc.createElement = tag => make(tag);
   doc.querySelector = selector => selector === 'dialog[open]' ? (welcome.open ? welcome : null) :
     selector === '.tour-launch' ? buttons.get('open') : targets.get(selector) ?? null;
+  const bindings = [];
+  for (const match of read('observatory.html').matchAll(/<([\w-]+)\b([^>]*\bdata-tour-(?:text|label|language|open)\b[^>]*)>/g)) {
+    const id = match[2].match(/\bid="([^"]+)"/)?.[1];
+    const node = id ? ids.get(id) : match[2].includes('data-tour-open') ? buttons.get('open') : make(match[1]);
+    for (const attr of match[2].matchAll(/(data-tour-[\w-]+)(?:="([^"]*)")?/g)) {
+      node.setAttribute(attr[1], attr[2] || '');
+      node.dataset[attr[1].slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = attr[2] || '';
+    }
+    bindings.push(node);
+  }
+  doc.querySelectorAll = selector => bindings.filter(node => node.matches(selector));
   const location = new URL('http://127.0.0.1:4178/observatory.html#' + page);
   const win = new Element('window'); win.innerHeight = 900; win.scrollY = 120;
   win.scrollTo = ({ top }) => { win.scrollY = top; };
   let raf = 0;
   Object.assign(context, { document: doc, window: win, location, URL,
     localStorage: {
-      getItem() { if (blockedStorage) throw Error('blocked'); return visited ? 'seen' : null; },
-      setItem(key, value) { if (blockedStorage) throw Error('blocked'); visited = true; writes.push([key, value]); }
+      getItem(key) { if (blockedStorage) throw Error('blocked'); return key === data.storageKey ? (visited ? 'seen' : null) : language; },
+      setItem(key, value) { if (blockedStorage) throw Error('blocked'); if (key === data.storageKey) visited = true; else language = value; writes.push([key, value]); }
     },
     history: { replaceState(_state, _title, url) { location.href = String(url); } },
     setPage() { doc.body.dataset.page = location.hash.slice(1); routes.push(doc.body.dataset.page); },
@@ -93,5 +104,6 @@ export function harness({ visited = false, blockedStorage = false, page = 'live'
   const flush = () => { const pending = [...frames.values()]; frames.clear(); pending.forEach(fn => fn()); };
   const click = action => { doc.emit('click', { target: buttons.get(action) }); flush(); };
   const chapter = page => { const node = ids.get('tour-chapter'); node.value = page; node.emit('change'); flush(); };
-  return { context, doc, win, data, ids, targets, buttons, routes, writes, click, chapter, flush, make };
+  const changeLanguage = (value, id = 'tour-card-language') => { const node = ids.get(id); node.value = value; node.emit('change'); flush(); };
+  return { context, doc, win, data, ids, targets, buttons, routes, writes, click, chapter, changeLanguage, bindings, flush, make };
 }

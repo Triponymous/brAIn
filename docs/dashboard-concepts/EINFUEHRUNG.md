@@ -2,7 +2,14 @@
 
 ## Ziel und Plan
 
-Deutschsprachiger Rundgang direkt im vorhandenen Dashboard, kein separates Mockup.
+Zweisprachiger Rundgang (Englisch und Deutsch) direkt im vorhandenen Dashboard, kein separates Mockup.
+Englisch ist der Standard passend zum Dashboard. Die Sprachwahl in Begrüßung und
+Schrittkarte wechselt jederzeit zwischen English und Deutsch, ohne den aktuellen
+Schritt, eine bereits bestätigte Übung oder die Sensorfreigaben zu verändern.
+Nur eine ausdrücklich gewählte Sprache wird zusätzlich zum bisherigen
+„Einführung gesehen“-Hinweis im Browser gespeichert. Ohne verfügbaren Speicher
+funktioniert die Auswahl für den aktuellen Besuch; beim nächsten Laden gilt Englisch.
+Die Sprache des restlichen Dashboards bleibt unverändert.
 Die erste Nutzung bietet die Einführung an. Danach ist sie über einen dauerhaften
 „Einführung“-Button und gezielt nach Kapitel erreichbar. Überspringen und Beenden
 bleiben immer möglich; Übungen sind freiwillig.
@@ -115,7 +122,8 @@ Export im Bereich Live session. Der Rundgang startet keine Exporte.
 - Escape beendet die Tour; bei einem darüber geöffneten Erklärdialog schließt
   Escape zuerst diesen. Markierungen, Fokus-Verweise und Layout-Zusätze werden
   beim Beenden entfernt. Der vorherige Bereich wird wiederhergestellt.
-- Der Browser speichert nur, dass die Einführung angeboten wurde. Kein Nutzerprofil,
+- Der Browser speichert, dass die Einführung angeboten wurde, und die ausdrücklich
+  gewählte Tour-Sprache. Kein Nutzerprofil,
   keine Annotation und kein Capture-Zustand wird dadurch gespeichert oder verändert.
 - Keine automatische Verbindung, Sensorfreigabe, Annotation, Download oder OS-Aktion
   durch Tour-Start, Weiter, Zurück oder Kapitelwechsel.
@@ -125,6 +133,24 @@ Referenzen für das Interaktionsmodell:
 [MDN: dialog](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/dialog).
 
 ## Abnahme
+
+Spracherweiterung geprüft am 15. September 2026, Branch `codex/english-onboarding`:
+
+- **37 automatisierte Tests bestanden:** 15 Tour-Tests und 22 bestehende Dashboard-
+  Tests. Beide Sprachen enthalten alle 18 Schritte einschließlich Übungen,
+  Rückmeldungen, Warnungen und Bedienlabels. Gesperrter Speicher und Sprachwechsel
+  ohne Fortschrittsverlust sind abgedeckt.
+- **Browser:** englische Begrüßung auf Desktop und bei 320 × 568 geprüft;
+  Deutschwahl über Neuladen erhalten. Sprachwechsel während der Tour behält den
+  Schritt. Alle 18 englischen Karten bei 390 × 844 und alle 18 deutschen Karten
+  bei 320 × 568 ohne horizontalen Kartenüberlauf durchlaufen. Bei Platzmangel
+  bleibt der Karteninhalt intern scrollbar. Viewport anschließend zurückgesetzt.
+- **Bestehendes Design beibehalten:** Sprachwahl mit 44-px-Mindesthöhe und
+  sichtbarem Tastaturfokus gemäß Dashboard-Skill ergänzt.
+- Keine Sensorfreigaben geändert, keine Verbindung oder Exporte ausgelöst;
+  Erfassungsrevision weiterhin 4. Browserkonsole ohne Warnungen oder Fehler.
+
+Historische Abnahme der ursprünglichen deutschen Einführung:
 
 Geprüft am 14. September 2026:
 

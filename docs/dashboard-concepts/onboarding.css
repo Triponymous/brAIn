@@ -16,6 +16,9 @@
 #tour-welcome .tour-welcome-body { flex-shrink: 1; overflow: auto; min-height: 0; overscroll-behavior: contain; }
 #tour-welcome::backdrop { background: #07100fd9; backdrop-filter: blur(5px); }
 .tour-welcome-top, .tour-card-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.tour-language { flex: none; min-height: 44px; max-width: 110px; padding: 8px; margin-left: auto; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--panel); font: 12px var(--sans); }
+.tour-language:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
+.tour-chapters button > [data-tour-text] { font: inherit; color: inherit; }
 .tour-emblem { display: flex; align-items: center; justify-content: space-between; width: 86px; height: 54px; margin: 22px 0; border-top: 1px solid #698676; border-bottom: 1px solid #698676; font: 22px var(--mono); color: var(--mint); }
 .tour-emblem span { font: 28px var(--sans); }
 #tour-welcome h2 { font-size: clamp(28px, 5vw, 38px); font-weight: 450; letter-spacing: -1.3px; line-height: 1.15; margin: 0 0 16px; }
@@ -89,8 +92,8 @@
 @media (max-height: 520px) {
   #tour-card { max-height: 72dvh; width: min(360px, 60vw); }
   #tour-progress, .tour-key-hint, .tour-card-top .tour-label { display: none; }
-  #tour-card .tour-card-top { position: absolute; right: 16px; top: 10px; }
-  .tour-progress-row { margin-top: 0; padding-right: 36px; }
+  #tour-card .tour-card-top { position: static; }
+  .tour-progress-row { margin-top: 0; }
   #tour-chapter { min-height: 36px; }
   #tour-title { font-size: 18px; }
   .tour-target-button { margin-top: 4px; }
