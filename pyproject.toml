@@ -5,7 +5,8 @@ description = "A persistent neuromorphic brain with LLM bridge"
 requires-python = ">=3.11,<3.13"
 dependencies = [
     "snntorch>=0.9.1",
-    "torch>=2.2",
+    # security floor: older releases carry open advisories (torch.jit.script memory corruption, torch.load deserialization)
+    "torch>=2.13",
     "numpy>=1.26",
     "matplotlib>=3.8",
     # Phase 3a — Mac sensor adapter + daemon

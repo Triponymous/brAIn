@@ -204,8 +204,7 @@ The brain is a small spiking network with one decorrelating expansion stage — 
                   ▼
        Training Console (train-ui)  ◀── you teach it here
 
-  optional bodies:  Tauri desktop pet-face (animated eyes + TTS/STT)
-                    ESP32-S3 AMOLED companion robot  (in development)
+  optional body:    ESP32-S3 AMOLED companion robot  (in development)
 ```
 
 The signal path is one-way into the brain: sensors are **encoded into spikes**, never stored. The brain perceives *patterns* — frequency, rhythm, intensity, which app is frontmost — not content. No speech recognition, no keystroke logging, no screen recording. **Privacy by architecture.**
@@ -218,7 +217,6 @@ The signal path is one-way into the brain: sensors are **encoded into spikes**, 
 - macOS (Apple Silicon) — developed on an M4 MacBook Air, 32 GB RAM
 - Python 3.11+
 - [Ollama](https://ollama.com) with a local model (default config: `qwen2.5:14b-instruct`) — optional; the brain runs and learns without the LLM, you just don't get speech
-- Rust toolchain — only if you want the Tauri pet-face
 
 ### Raise it (recommended path)
 
@@ -275,12 +273,6 @@ command = "/absolute/path/to/brAIn/.venv/bin/brain-mcp"
 ```
 
 Claude Desktop takes the same command under `mcpServers.brain` in its `claude_desktop_config.json`. What leaves your machine when a cloud model calls a tool: labels you taught, app names, patterns and numbers — never keystrokes, audio or chat text. The daemon has to be running; with it down the tools are still listed and a call explains how to start it.
-
-### Pet face (optional)
-
-```bash
-cd pet-face && npx tauri dev
-```
 
 ---
 
@@ -359,7 +351,6 @@ server/         daemon (braind), control server (start/stop from the console),
 adapters/       Mac desktop sensors — keyboard, mouse, screen, microphone + encoder
 train-ui/       the training console — single-file Neumorphism UI (the frontend)
 capabilities/   emergent tool system — wish detection, grant registry
-pet-face/       optional Tauri body — animated eyes + TTS / STT
 benchmark/      the SNN benchmark suite
 tests/          unit + integration tests
 scripts/        utilities, soak tests, visualization
