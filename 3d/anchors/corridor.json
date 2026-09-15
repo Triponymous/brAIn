@@ -1,0 +1,62 @@
+{
+  "3d/reference-sources/01-cyan-contour.png": {
+    "width": 480,
+    "height": 720,
+    "mask": "full",
+    "luminance": {
+      "p5": 10.7,
+      "p50": 23.5,
+      "p95": 191.7
+    },
+    "dynamicRange": 181.0,
+    "clippedPct": 0.019,
+    "colorEntropyBits": 7.34,
+    "dominantFraction": 0.127,
+    "edgeDensity": 0.3908
+  },
+  "3d/reference-sources/02-spatial-network.png": {
+    "width": 1000,
+    "height": 519,
+    "mask": "full",
+    "luminance": {
+      "p5": 0.0,
+      "p50": 8.2,
+      "p95": 168.6
+    },
+    "dynamicRange": 168.6,
+    "clippedPct": 0.011,
+    "colorEntropyBits": 5.8,
+    "dominantFraction": 0.3761,
+    "edgeDensity": 0.4746
+  },
+  "3d/reference-sources/03-fiber-brain.png": {
+    "width": 612,
+    "height": 408,
+    "mask": "full",
+    "luminance": {
+      "p5": 1.0,
+      "p50": 7.8,
+      "p95": 130.1
+    },
+    "dynamicRange": 129.1,
+    "clippedPct": 0.018,
+    "colorEntropyBits": 6.66,
+    "dominantFraction": 0.4039,
+    "edgeDensity": 0.4318
+  },
+  "3d/reference-sources/04-golden-fiber-brain.png": {
+    "width": 512,
+    "height": 512,
+    "mask": "full",
+    "luminance": {
+      "p5": 0.0,
+      "p50": 0.1,
+      "p95": 124.2
+    },
+    "dynamicRange": 124.2,
+    "clippedPct": 0.001,
+    "colorEntropyBits": 4.62,
+    "dominantFraction": 0.5622,
+    "edgeDensity": 0.3364
+  }
+}

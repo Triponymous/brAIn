@@ -1,0 +1,75 @@
+.graph-viewbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:15px 20px 0}
+.graph-view-tabs{display:flex;gap:3px;padding:3px;background:#0e181b;border:1px solid var(--line);border-radius:7px}
+.graph-view-tabs button{border:0;background:transparent;border-radius:4px;color:var(--muted);padding:6px 13px;font-size:11px}
+.graph-view-tabs button[aria-pressed=true]{background:#2c4237;color:var(--mint)}
+.graph-view-tabs button:hover{color:var(--ink)}
+.graph-view-tabs button{font-size:12px;min-height:36px}
+.graph-view-options{display:flex;align-items:center;gap:11px;color:var(--muted);font-size:10px}
+.graph-view-options label{display:flex;gap:6px;align-items:center}
+.graph-view-options input{accent-color:var(--mint);margin:0}
+.graph-view-options .btn{width:27px;height:27px;padding:6px;background:#243a2e}
+.brain-caption{padding:0 19px 14px;display:flex;gap:12px;align-items:center;justify-content:space-between;font-size:10px;color:var(--muted)}
+.brain-caption>span{max-width:420px;line-height:1.6}
+.brain-caption .text-button{flex:none;font-size:10px}
+#neural-workspace[data-graph-mode=brain] .graph-stage{height:530px;background:radial-gradient(ellipse at 50% 49%,#42655117,transparent 63%)}
+#neural-workspace[data-graph-mode=brain] .graph-stage::before{display:none}
+#neural-workspace[data-graph-mode=brain] .graph-svg{cursor:crosshair}
+#neural-workspace[data-graph-mode=brain] .graph-svg .neuron{transition:opacity .12s}
+#neural-workspace[data-graph-mode=brain] .graph-svg .brain-marker{font:9px var(--mono);letter-spacing:1.2px;fill:#8a9e9c}
+#neural-workspace[data-graph-mode=brain] .graph-svg .brain-unit-label{font:11px var(--mono);fill:var(--ink)}
+#neural-workspace[data-graph-mode=circuit] .brain-only{display:none}
+body[data-page=network] #neural-workspace[data-graph-mode=brain] .graph-stage{height:608px}
+.brain-material{transition:opacity .15s}
+@media(min-width:1600px){#neural-workspace[data-graph-mode=brain] .graph-stage{height:602px}}
+@media(max-width:1000px){.graph-viewbar{padding:14px 15px 0}.graph-view-options{gap:8px}.graph-view-tabs button{padding:6px 10px}}
+@media(max-width:780px){#neural-workspace[data-graph-mode=brain] .graph-stage,body[data-page=network] #neural-workspace[data-graph-mode=brain] .graph-stage{height:545px}}
+@media(max-width:580px){#neural-workspace[data-graph-mode=brain] .graph-stage,body[data-page=network] #neural-workspace[data-graph-mode=brain] .graph-stage{height:387px}.graph-viewbar{gap:8px}.graph-view-options{font-size:10px}.graph-view-tabs button{padding:7px 11px}.brain-caption{padding:0 15px 14px;align-items:start}.brain-caption>span{font-size:10px;max-width:230px}.brain-caption .text-button{font-size:10px}.graph-bottom>.mono{font-size:8px}}
+@media(max-width:370px){#neural-workspace[data-graph-mode=brain] .graph-stage,body[data-page=network] #neural-workspace[data-graph-mode=brain] .graph-stage{height:330px}.graph-viewbar{padding:12px 13px 0}.graph-view-tabs button{padding:6px 8px}.graph-view-options{gap:7px}.brain-caption{flex-wrap:wrap;gap:4px}.brain-caption>span{max-width:none}}
+@media(pointer:coarse){.graph-view-tabs button,.graph-view-options label{min-height:40px}.graph-view-options .btn{width:34px;height:34px}}
+@media(prefers-reduced-motion:reduce){.brain-material,#neural-workspace[data-graph-mode=brain] .graph-svg .neuron{transition:none}}
+
+/* A bounded instrument: no page-level camera or scroll interception. */
+#neural-workspace[data-graph-mode=brain] .graph-stage{background:radial-gradient(ellipse at 50% 47%,#11232b 0%,#091417 64%,#0c181b 100%);margin:14px 12px 12px;border:1px solid #273a40;border-radius:8px}
+.brain-viewport{position:absolute;inset:0;isolation:isolate}
+.brain-viewport canvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab;outline-offset:-3px}
+.brain-viewport canvas:active{cursor:grabbing}
+.brain-viewport canvas:focus-visible{outline:2px solid var(--mint)}
+.brain-hud,.brain-navigation{position:absolute;left:19px;right:19px;display:flex;justify-content:space-between;align-items:center;gap:16px;pointer-events:none;font:9px var(--mono);letter-spacing:.8px;color:#89a3ac}
+.brain-hud{top:20px}.brain-hud b{font-weight:400;letter-spacing:.5px;border:1px solid #476275;color:#bdcdd7;border-radius:3px;padding:3px 5px;margin-left:7px}
+.brain-hud [data-brain-status]{font-size:8px;color:#768f99}
+.brain-camera{position:absolute;left:50%;top:50px;transform:translateX(-50%);display:flex;padding:3px;border:1px solid #31464d;border-radius:6px;background:#0a181dde;gap:2px}
+.brain-camera button{border:0;background:transparent;color:#9bb0b7;border-radius:3px;padding:6px 11px;font-size:11px;font-weight:500}
+.brain-camera button[aria-pressed=true]{background:#2a414a;color:#e0edf1}
+.brain-camera button:focus-visible,.brain-selection:focus-visible{outline:2px solid var(--mint);outline-offset:3px}
+.brain-navigation{bottom:17px;letter-spacing:0;font:10px var(--sans)}
+.brain-navigation [data-brain-count]{font:9px var(--mono);color:#69838d;white-space:nowrap}
+.brain-selection{position:absolute;left:0;top:0;will-change:transform;background:#162b27e8;color:#e2edcf;border:1px solid #597968;border-radius:4px;padding:6px 9px;font:11px var(--mono);box-shadow:0 3px 20px #03090888}
+.brain-selection[hidden]{display:none}
+.brain-atlas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden}
+.brain-atlas path{fill:none;stroke:#9ab2b8;stroke-width:.65;stroke-opacity:.65}
+.brain-atlas circle{fill:#bed0d4;stroke:#091417;stroke-width:1.5}
+.brain-atlas text{fill:#c0d0d5;font:10px var(--mono);paint-order:stroke;stroke:#091417;stroke-width:4px;stroke-linejoin:round}
+.brain-atlas-toggle{position:absolute;right:12px;top:96px;min-height:44px;padding:7px 10px;border:1px solid #31464d;border-radius:6px;background:#0a181dde;color:#9bb0b7;font:10px var(--mono)}
+.brain-atlas-toggle[aria-pressed=true]{color:#e0edf1;border-color:#68858f}
+.brain-atlas-toggle:focus-visible{outline:2px solid var(--mint);outline-offset:3px}
+@media(max-width:580px){.brain-atlas text{font-size:8px}.brain-atlas-toggle{top:90px;font-size:9px}}
+.brain-credit{padding:0 19px 13px;color:var(--quiet);font-size:9px;line-height:1.7}
+.brain-credit a{color:#a0b3bb;text-decoration-color:#4b646f;text-underline-offset:3px}
+.brain-caption,.brain-caption .text-button{font-size:11px}
+.brain-credit{font-size:10px}
+.brain-navigation{font-size:11px;color:#a9bdc3}
+.brain-navigation [data-brain-count]{font-size:10px;color:#94adb6}
+.brain-camera button{font-size:12px;min-height:36px}
+.brain-hud [data-brain-status]{color:#9ab0b8;font-size:9px}
+.brain-loading,.brain-fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:15px;color:#bfdbdf;text-align:center;padding:22px}
+.brain-loading span{font-size:16px}.brain-loading small{color:#8babb4;font-size:12px}
+.brain-fallback img{max-width:72%;max-height:65%;object-fit:contain;opacity:.65}.brain-fallback p{max-width:340px;font-size:13px}
+#neural-workspace[data-brain-fallback=true] .brain-caption,#neural-workspace[data-brain-fallback=true] .brain-credit{display:none}
+.context-lost canvas{opacity:.14}.context-lost .brain-camera,.context-lost .brain-selection{display:none}
+.context-lost [data-brain-status]{color:#e4bd81;max-width:220px;line-height:1.6}
+@media(hover:hover) and (pointer:fine){.brain-camera button:hover{background:#23373f;color:#e0edf1}.brain-selection:hover{border-color:var(--mint);background:#243e34}}
+@media(max-width:1000px){.brain-hud,.brain-navigation{left:12px;right:12px}.brain-hud [data-brain-status]{font-size:7px}.brain-navigation{font-size:9px;flex-direction:column;gap:6px}.brain-camera button{padding:6px 9px}}
+@media(max-width:580px){#neural-workspace[data-graph-mode=brain] .graph-stage{margin:12px 8px}.brain-hud{top:17px;font-size:8px}.brain-hud [data-brain-status]{display:none}.brain-camera{top:44px}.brain-camera button{padding:8px 10px;font-size:10px}.brain-credit{padding-inline:15px}.brain-navigation{bottom:13px;font-size:9px}.brain-selection{font-size:10px;padding:5px 7px}}
+@media(pointer:coarse){.brain-camera button{min-height:40px}.brain-selection{min-height:36px}}
+@media(min-width:1231px){body[data-page=overview] #neural-workspace[data-graph-mode=brain] .graph-stage{height:450px}}
+@media(pointer:coarse){.brain-camera button,.brain-selection,.graph-view-tabs button,.graph-view-options label{min-height:44px}}

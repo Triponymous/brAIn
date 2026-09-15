@@ -1,0 +1,43 @@
+# Phase 0: vorgeschlagene pruefbare Interaktionszustaende, keine Scroll-Choreografie.
+# scroll/scrollRange dienen nur der normalisierten Reihenfolge im spaeteren Capture-Harness.
+# Die reale Bedienung erfolgt per controls, Zeiger und Tastatur; die Seite bleibt nativ scrollbar.
+
+- id: whole_brain
+  scroll: [0.00, 0.20]
+  scrollRange: [0.00, 0.20]
+  aussage: "Eine transparente Gehirnform macht das raeumliche Fasernetz als Ganzes erkennbar."
+  ereignis: "Dreiviertelansicht mit Kontur, drei Tiefenebenen und ruhigen Fasern."
+  signature: true
+  trigger: "Initiale Ansicht oder Reset"
+
+- id: orbit
+  scroll: [0.20, 0.40]
+  scrollRange: [0.20, 0.40]
+  aussage: "Nahe und entfernte Verbindungen sind echte raeumliche Geometrie."
+  ereignis: "Manueller Orbit veraendert Perspektive und gegenseitige Ueberdeckung."
+  signature: true
+  trigger: "Ziehen, Zoomen oder Standardansicht waehlen"
+
+- id: selected_neuron
+  scroll: [0.40, 0.60]
+  scrollRange: [0.40, 0.60]
+  aussage: "Eine ausgewaehlte Einheit verbindet die raeumliche Ansicht mit ihren Modelldaten."
+  ereignis: "Neuron und Nachbarverbindungen leuchten, der Inspector zeigt dieselbe stabile ID."
+  signature: true
+  trigger: "Neuron anklicken oder ueber den Inspector auswaehlen"
+
+- id: signal_flow
+  scroll: [0.60, 0.80]
+  scrollRange: [0.60, 0.80]
+  aussage: "Aktivitaet entwickelt sich entlang bestimmter Verbindungen ueber die Zeit."
+  ereignis: "Wenige warme Impulse wandern ueber hervorgehobene synthetische Signalwege."
+  signature: true
+  trigger: "Play, Pause und manuelle Zeitposition"
+
+- id: isolated_region
+  scroll: [0.80, 1.00]
+  scrollRange: [0.80, 1.00]
+  aussage: "Eine Modellregion laesst sich untersuchen, ohne sie mit einem anatomischen Gehirnlappen gleichzusetzen."
+  ereignis: "Region isolieren, Huelle ausblenden oder die zugehoerige technische Schaltung oeffnen."
+  signature: true
+  trigger: "Regionsfilter, Huelle und Brain-Circuit-Umschalter"

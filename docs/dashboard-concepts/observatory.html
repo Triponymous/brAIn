@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#101517">
+<meta name="description" content="brAIn Observatory: an open-source research workspace for inspecting neural activity, labeling patterns and tracing evidence. Interactive synthetic demonstration.">
+<title>brAIn — Observatory</title>
+<link rel="stylesheet" href="observatory.css">
+<link rel="stylesheet" href="brain-view.css?v=atlas-4">
+<link rel="stylesheet" href="live-workspace.css">
+<link rel="stylesheet" href="capture-controls.css">
+<link rel="stylesheet" href="onboarding.css">
+</head>
+<body data-page="overview">
+<a class="skip-link" href="#main-content">Skip to workspace</a>
+<div class="app-shell">
+<aside class="sidebar">
+<a class="brand" href="#overview" aria-label="brAIn Observatory home">
+<div class="row">
+<span data-logo>
+</span>
+<span class="brand-word">brAIn</span>
+</div>
+<p class="brand-caption">LIVING DESKTOP MANAGER</p>
+</a>
+<div class="nav-group">
+<p class="eyebrow">The workspace</p>
+<nav class="side-nav" aria-label="Main navigation">
+<a href="#live" data-nav="live"><i data-icon="activity"></i><span>Live session</span></a>
+<a href="#overview" data-nav="overview">
+<i data-icon="grid">
+</i>
+<span>Observatory</span>
+</a>
+<a href="#network" data-nav="network">
+<i data-icon="network">
+</i>
+<span>Neural explorer</span>
+</a>
+<a href="#vocabulary" data-nav="vocabulary">
+<i data-icon="circle-dot">
+</i>
+<span>Vocabulary</span>
+<span class="nav-number" data-word-count>04</span>
+</a>
+<a href="#journal" data-nav="journal">
+<i data-icon="journal">
+</i>
+<span>Learning journal</span>
+</a>
+</nav>
+</div>
+<div class="nav-group resources">
+<p class="eyebrow">The research</p>
+<div class="side-nav">
+<a href="#methods" data-nav="methods">
+<i data-icon="book">
+</i>
+<span>Methods &amp; provenance</span>
+</a>
+<button data-tour-open lang="de">
+<i data-icon="info">
+</i>
+<span>Einführung</span>
+</button>
+<button data-action="export">
+<i data-icon="download">
+</i>
+<span>Export snapshot</span>
+</button>
+<a href="https://github.com/Triponymous/brAIn" target="_blank" rel="noreferrer">
+<i data-icon="code">
+</i>
+<span>Project on GitHub</span>
+</a>
+</div>
+</div>
+<div class="side-bottom">
+<div class="connection-state">
+<h3>
+<span class="dot">
+</span>Example dataset</h3>
+<p>Browser-only study.<br>No live sensors or OS control.</p>
+<button class="text-button" data-action="about">Study boundaries <i data-icon="arrow-up-right">
+</i>
+</button>
+</div>
+<div class="owner">
+<div class="avatar">LM</div>
+<div>
+<div class="owner-name">Leon Matthies</div>
+<div class="owner-sub">OPEN-SOURCE RESEARCH</div>
+</div>
+</div>
+<a class="back-link" href="index.html#observatory">
+<i data-icon="arrow-left">
+</i>Original design directions</a>
+</div>
+</aside>
+<main class="main" id="main-content" tabindex="-1">
+<div class="topbar">
+<div class="breadcrumb">brAIn <span class="muted">/</span>
+<b data-page-name>Observatory</b>
+</div>
+<div class="topbar-actions">
+<button class="btn small tour-launch" data-tour-open lang="de" aria-label="Dashboard-Einführung öffnen"><i data-icon="info"></i><span>Einführung</span></button>
+<a class="btn small" href="#live" id="open-live">Live session</a>
+<span class="pill source-pill">
+<span class="dot">
+</span>SYNTHETIC DATA</span>
+<a class="btn small" href="#methods" aria-label="Methods">
+<i data-icon="book">
+</i>
+<span>Methods</span>
+</a>
+<button class="btn small" data-action="export" aria-label="Export">
+<i data-icon="download">
+</i>
+<span>Export</span>
+</button>
+</div>
+</div>
+<header class="header">
+<div>
+<p class="eyebrow" data-page-kicker>A little more understood.</p>
+<h1 data-page-title>Inside a living mind.</h1>
+<p data-page-subtitle>What it notices. What it learns. What you can teach it.</p>
+</div>
+<div class="moment-control">
+<label for="moment-select">Example context</label>
+<div class="select-wrap">
+<select class="select" id="moment-select">
+<option value="focus">Steady work</option>
+<option value="switching">Rapid app switching</option>
+<option value="rest">A quiet break</option>
+<option value="unknown">Something unfamiliar</option>
+</select>
+<i data-icon="chevron">
+</i>
+</div>
+</div>
+</header>
+<div class="session-strip" aria-label="Dataset and annotation status">
+<div class="session-identity">
+<span class="session-mark">03</span>
+<div>
+<span class="mono">OBS-DEMO-03</span>
+<span class="session-detail">Procedural fixture · 2.00 s window</span>
+</div>
+</div>
+<div class="session-meta">
+<span>Model basis <a href="#methods" class="mono">f8ba635</a>
+</span>
+<span id="annotation-status">No local annotations</span>
+</div>
+<button class="text-button" data-action="copy-link" aria-label="Copy reproducible view link">
+<i data-icon="code">
+</i>
+<span>Copy view</span>
+</button>
+</div>
+<section class="screen" id="live" aria-label="Local model observation">
+<div class="panel live-connection">
+  <div><span class="eyebrow" id="live-source">NO DATA SOURCE</span><h2 id="live-status" role="status">Not connected</h2><p id="live-input-note">Connect to the opt-in local observation service. No synthetic fallback.</p></div>
+  <div class="live-actions"><button class="btn primary" id="live-connect">Connect local model</button><button class="btn" id="live-disconnect" disabled>Disconnect view</button></div>
+  <p class="live-note">Model data from <code>127.0.0.1:8001</code>. Disconnecting this view or closing the browser does not stop capture. Use <strong>Stop all capture</strong> below; Ctrl-C stops the runner completely.</p>
+</div>
+<section class="panel capture-panel" aria-labelledby="capture-heading">
+  <div class="live-panel-heading"><div><span class="eyebrow">DATA &amp; PRIVACY / THIS LOCAL SESSION</span><h2 id="capture-heading">You control the inputs.</h2></div><button class="btn capture-stop" id="capture-stop" disabled>Stop all capture</button></div>
+  <div class="capture-overview"><strong id="capture-summary" role="status">Capture status unverified</strong><button class="btn small" id="capture-refresh">Refresh status</button></div>
+  <p class="live-note" id="capture-connection">Checking the local runner. No input is enabled by opening this page.</p>
+  <div class="capture-inputs">
+    <div class="capture-input"><div><label for="capture-keystroke_rate">Keyboard activity</label><p id="capture-desc-keystroke_rate">Key-down event count per second. No keys, typed text or within-window typing rhythm.</p><small id="capture-state-keystroke_rate">Status not loaded</small></div><input type="checkbox" role="switch" id="capture-keystroke_rate" aria-describedby="capture-desc-keystroke_rate capture-state-keystroke_rate" disabled></div>
+    <div class="capture-input"><div><label for="capture-mouse_rate">Pointer activity</label><p id="capture-desc-mouse_rate">Movement, click, drag and scroll event counts per second. No cursor coordinates or click targets.</p><small id="capture-state-mouse_rate">Status not loaded</small></div><input type="checkbox" role="switch" id="capture-mouse_rate" aria-describedby="capture-desc-mouse_rate capture-state-mouse_rate" disabled></div>
+    <div class="capture-input"><div><label for="capture-idle">Idle time</label><p id="capture-desc-idle">Seconds since the last keyboard or pointer activity, even if their separate counters are off. No event contents.</p><small id="capture-state-idle">Status not loaded</small></div><input type="checkbox" role="switch" id="capture-idle" aria-describedby="capture-desc-idle capture-state-idle" disabled></div>
+    <div class="capture-input"><div><label for="capture-active_app">Foreground app category</label><p id="capture-desc-active_app">The frontmost app name is read briefly, reduced to a broad category, then discarded. No names, window titles or app list are retained.</p><small id="capture-state-active_app">Status not loaded</small></div><input type="checkbox" role="switch" id="capture-active_app" aria-describedby="capture-desc-active_app capture-state-active_app" disabled></div>
+  </div>
+  <p class="capture-feedback" id="capture-message" role="status" aria-live="polite"></p>
+  <p class="live-note">Enabled inputs are sampled once per second. “On” is your selection, not proof of access: keyboard, pointer and idle time also need macOS Input Monitoring. Off stops that channel’s queries and removes its cached input; it does not revoke the macOS permission.</p>
+  <div class="capture-excluded"><div><strong>Microphone</strong><span>Off · not implemented in this runner</span></div><div><strong>Wearables</strong><span>Not connected · no health data collected</span></div></div>
+  <details class="capture-boundaries"><summary>Storage, derived data and the limits of these controls</summary><div class="capture-boundary-grid">
+    <div><h3>Local processing only</h3><p>No cloud or LLM calls. No typed contents, screenshots, clipboard, audio or location. Observation times and model outputs are generated locally.</p></div>
+    <div><h3>Off is not deletion</h3><p>All off stops sensor reads and model steps. Earlier snapshots and learned weights remain in this process’s memory until the runner ends. An exported JSON file remains wherever you saved it.</p></div>
+    <div><h3>No automatic storage</h3><p>The runner keeps up to 512 model steps in memory; this view keeps up to 200. No checkpoint or recording is saved automatically. Every server restart begins with all inputs off.</p></div>
+    <div><h3>This runner, not the whole Mac</h3><p>Controls apply only to server.observe on port 8001. They do not change macOS permissions, other apps or a separately started legacy brAIn daemon. Model activity is not a measurement of your feelings.</p></div>
+  </div></details>
+</section>
+<div class="live-stats">
+  <div class="panel"><span class="eyebrow">Captured model tick</span><strong id="live-tick">—</strong><small id="live-sample-time">Waiting for a captured sample</small></div>
+  <div class="panel"><span class="eyebrow">Active outputs at cursor</span><strong id="live-active">—</strong><small>Includes binary expansion units; not Hz</small></div>
+  <div class="panel"><span class="eyebrow">Retained samples</span><strong id="live-window-count">0</strong><small id="live-gap">Rolling window · not a complete recording</small></div>
+</div>
+<div class="live-grid">
+  <section class="panel live-network" aria-label="Observed activity in the neural atlas">
+    <div class="live-panel-heading"><div><span class="eyebrow">COMPUTATION, NOT ANATOMICAL LOCALIZATION</span><h2>The model, observed.</h2></div><span class="pill">No invented edges</span></div>
+    <p id="live-no-data" class="live-empty">No observed activity yet. Connect to your local session to inspect a real model step.</p>
+    <div id="live-graph-stage" hidden></div>
+    <div class="live-cursor-bar"><button class="btn" id="live-follow" aria-pressed="false" disabled>Follow incoming samples</button><span id="live-view-mode">Frozen inspection · collection is independent</span></div>
+    <label class="eyebrow" for="live-cursor">Inspect the retained window</label>
+    <input id="live-cursor" type="range" min="0" max="0" value="0" disabled>
+    <p class="live-note">Color = model role, exactly as in Circuit: blue Input, violet Expansion, mint Concepts, amber Memory. Brighter points = actual output at the selected tick; the selected unit has an enlarged marker even when inactive. Atlas labels identify anatomy, not the biological location of a model role. Connections are hidden because this stream does not export synaptic weights.</p>
+    <p class="live-credit">Anatomy adapted from Z-Anatomy / BodyParts3D © DBCLS · <a href="assets/brain-LICENSE.md" target="_blank">CC BY-SA 4.0 &amp; attribution</a></p>
+  </section>
+  <section class="panel live-inspector" aria-label="Captured unit inspector">
+    <span class="eyebrow">Single unit / actual model output</span><h2 id="live-unit-name">C-042</h2>
+    <div class="live-unit-form"><label>Region<select class="select" id="live-region" disabled><option value="s">Sensory</option><option value="e">Expansion</option><option value="c" selected>Concept</option><option value="w">Memory</option></select></label><label>Unit index<input class="input" id="live-index" type="number" min="0" max="199" value="42" step="1" disabled></label></div>
+    <dl class="provenance-list"><div><dt>Output at tick</dt><dd id="live-output">—</dd></div><div><dt>Membrane after step</dt><dd id="live-membrane">—</dd></div></dl>
+    <svg id="live-trace" viewBox="0 0 480 145" role="img" aria-label="Captured unit values over actual elapsed time"></svg>
+    <p class="live-note" id="live-trace-note">No generated traces. Expansion has no membrane potential.</p>
+    <div class="live-model-mods"><div>DA<strong id="live-mod-DA">—</strong></div><div>NE<strong id="live-mod-NE">—</strong></div><div>ACh<strong id="live-mod-ACh">—</strong></div><div>5-HT<strong id="live-mod-5HT">—</strong></div></div>
+    <p class="live-note">Model variables derived from prediction error. Not measured neurotransmitters or a reading of how you feel.</p>
+    <p class="live-note" id="live-model-time">No model steps observed</p>
+  </section>
+</div>
+<section class="panel live-sensors-panel"><div class="live-panel-heading"><div><span class="eyebrow">Input provenance / selected tick</span><h2>Only what was observed.</h2></div><span class="pill">Microphone off · cloud off</span></div><p class="live-note" id="live-capture-history">No captured input values yet.</p><div id="live-sensors"></div></section>
+<section class="panel live-methods">
+  <div><span class="eyebrow">Research boundaries</span><h2>Real output. Open questions.</h2><p>A fresh <code>brain.core.Brain</code> learns from opt-in, coarse desktop metadata. No existing personal checkpoint is touched. The view has no emotion classifier, wearable connection or desktop actions.</p><p>Only the last 200 observed steps are retained here. Freeze affects inspection, not learning. Export keeps this window, not the complete experiment or model weights.</p></div>
+  <dl class="provenance-list"><div><dt>Session</dt><dd class="mono" id="live-session">No session</dd></div><div><dt>Latest server sample age</dt><dd id="live-age">—</dd></div></dl>
+  <button class="btn" id="live-export" disabled>Export observed window</button>
+  <details><summary>Start and stop the local collector</summary><p>From the repository directory, to make the local input switches available:</p><code class="live-command">.venv/bin/python -m server.observe --desktop-metadata</code><p>All inputs still start off. Enable only the channels you want in Data &amp; privacy above. Without <code>--desktop-metadata</code>, controls cannot enable collection. macOS permissions are checked, never requested automatically. Stop all capture in this page, or stop the runner completely with Ctrl-C; no checkpoint is saved.</p></details>
+</section>
+</section>
+<section class="screen active" id="overview" aria-label="Observatory overview">
+<div class="state-banner" id="state-banner">
+<div>
+<div class="eyebrow" data-state-kicker>Recognized pattern / a word you taught it</div>
+<h2 class="state-name">
+<span data-state-prefix>This looks like </span>
+<strong data-current-label>Flow.</strong>
+</h2>
+<p class="state-subtitle" data-state-description>A familiar combination of steady input and a settled internal signature.</p>
+<div class="signal-chips" data-signal-chips>
+</div>
+</div>
+<button class="match-display" data-action="why" aria-label="Explain the illustrative similarity score">
+<span class="eyebrow">Similarity</span>
+<span class="match-number">
+<strong data-match-value>0.84</strong>
+<span data-match-caption>example score</span>
+</span>
+<span class="metric-caveat">Not confidence <i data-icon="info">
+</i>
+</span>
+</button>
+<div class="state-feedback">
+<h3 data-feedback-title>Does that feel right?</h3>
+<p data-feedback-copy>You give the patterns meaning.<br>A small correction helps it learn.</p>
+<div class="row">
+<button class="btn primary" data-action="confirm">
+<i data-icon="check">
+</i>
+<span data-confirm-text>Yes, that fits</span>
+</button>
+<button class="text-button" data-action="teach">Teach a word <i data-icon="arrow-up-right">
+</i>
+</button>
+</div>
+<div class="state-source" data-state-source>Your label · model similarity, not certainty</div>
+</div>
+</div>
+<div class="section-heading">
+<div>
+<h2>
+<span class="section-number">01</span>The neural workspace</h2>
+<p>Inspect the whole network, then follow a single unit.</p>
+</div>
+<a class="text-button" href="#network">Open explorer <i data-icon="arrow-up-right">
+</i>
+</a>
+</div>
+<div id="overview-network-slot">
+</div>
+<section class="modulator-section">
+<div class="section-heading">
+<h2>
+<span class="section-number">02</span>Signals that shape learning</h2>
+<span class="mono muted" style="font-size:10px">CONTEXT FIXTURE · 0–1</span>
+</div>
+<div class="modulator-grid" id="modulator-grid">
+</div>
+</section>
+<div class="lower-grid">
+<section class="panel">
+<div class="section-heading">
+<h2>
+<span class="section-number">03</span>Input context</h2>
+<button class="text-button" data-action="sensors">Input contract <i data-icon="arrow-up-right">
+</i>
+</button>
+</div>
+<div class="sensor-rows" data-sensor-rows>
+</div>
+<p class="sensors-note">6 example input channels. Nothing is being collected from this desktop.</p>
+</section>
+<section class="panel">
+<div class="section-heading">
+<h2>
+<span class="section-number">04</span>The annotation trail</h2>
+<a href="#journal" class="text-button">Journal <i data-icon="arrow-up-right">
+</i>
+</a>
+</div>
+<div class="moment-list" id="recent-moments">
+</div>
+<div class="bottom-action">
+<button class="text-button" data-action="desktop">
+<i data-icon="window">
+</i>
+<span id="desktop-preview-label">From a pattern to a helpful suggestion</span>
+<i data-icon="arrow-up-right">
+</i>
+</button>
+</div>
+</section>
+</div>
+</section>
+<section class="screen" id="network" aria-label="Neural explorer">
+<div class="network-facts">
+<div>
+<strong>1,000</strong>
+<span>units</span>
+</div>
+<div>
+<strong id="sample-active">—</strong>
+<span>outputs active at cursor</span>
+</div>
+<div>
+<strong>140k</strong>
+<span>plastic weights in source</span>
+</div>
+<button class="text-button" data-action="architecture">Default architecture <i data-icon="info">
+</i>
+</button>
+</div>
+<div id="explorer-network-slot">
+</div>
+<div class="research-plots">
+<section class="panel">
+<div class="section-heading">
+<h2>When concepts fire</h2>
+<span class="mono muted" style="font-size:10px">C-000 — C-039</span>
+</div>
+<svg class="research-plot" id="spike-raster" role="img" aria-label="Synthetic spike raster for concept neurons zero through 39 over two seconds">
+</svg>
+<p class="plot-caption">40 units from the same procedural dataset as the brain. The cursor follows the replay; select C-000–C-039 to highlight a row.</p>
+</section>
+<section class="panel">
+<div class="section-heading">
+<h2>Connection evidence</h2>
+<span class="mono muted" style="font-size:10px">ILLUSTRATIVE</span>
+</div>
+<div id="connection-detail">
+</div>
+</section>
+</div>
+</section>
+<section class="screen" id="vocabulary" aria-label="Learned vocabulary">
+<div class="panel vocabulary-intro">
+<div>
+<div class="eyebrow">User-defined meaning</div>
+<h2>A vocabulary you can refine.</h2>
+<p>Start with 4 example labels. Add your own annotations to a frozen moment and inspect the reference signature. A label is not a diagnosis.</p>
+</div>
+<div class="row">
+<button class="btn primary" data-action="teach">
+<i data-icon="plus">
+</i>Teach a new word</button>
+<button class="text-button" data-action="learning">How the learning loop works <i data-icon="arrow-up-right">
+</i>
+</button>
+</div>
+</div>
+<div class="vocab-layout">
+<div>
+<div class="vocab-search">
+<label class="sr-only" for="vocab-search">Find a learned word</label>
+<input class="input" id="vocab-search" placeholder="Search example and session labels…" type="search" autocomplete="off">
+<span class="mono muted" data-vocab-results>4 words</span>
+</div>
+<div class="vocab-grid" id="vocab-grid">
+</div>
+<div class="empty-message" id="vocab-empty" hidden>No words match that search. Try another word, or teach the current moment a name.</div>
+</div>
+<aside class="panel word-detail" id="word-detail">
+</aside>
+</div>
+<div class="vocab-explanation">
+<h3>A vocabulary, not a personality preset.</h3>
+<p>“Flow” and “untangling” are user-defined labels. A matching signature is a model observation, not proof of what someone feels. An unfamiliar pattern should remain unfamiliar until you decide to name it.</p>
+</div>
+</section>
+<section class="screen" id="journal" aria-label="Learning journal">
+<div class="panel journal-day">
+<div class="row between journal-day-top">
+<div>
+<div class="eyebrow">Context timeline / synthetic</div>
+<h2 style="margin-top:8px">Every annotation has a moment.</h2>
+<p>Select a context, or inspect the exact snapshot attached to an annotation.</p>
+</div>
+<span class="pill">ILLUSTRATED DAY</span>
+</div>
+<div class="day-strip" id="day-strip">
+</div>
+<div class="day-times">
+<span>09:00</span>
+<span>10:30</span>
+<span>12:00</span>
+<span>13:30</span>
+<span>15:00</span>
+</div>
+</div>
+<div class="journal-layout">
+<div>
+<div class="journal-filters" aria-label="Filter journal entries">
+<button class="filter-button" data-journal-filter="all" aria-pressed="true">All moments</button>
+<button class="filter-button" data-journal-filter="observation" aria-pressed="false">Observations</button>
+<button class="filter-button" data-journal-filter="correction" aria-pressed="false">Your corrections</button>
+</div>
+<p class="journal-order">Session annotations first, then illustrated history. Times are example context times.</p>
+<div class="journal-events" id="journal-events">
+</div>
+</div>
+<aside class="panel journal-moment" id="journal-moment">
+</aside>
+</div>
+</section>
+<section class="screen" id="methods" aria-label="Methods and provenance">
+<section class="panel methods-lead">
+<div>
+<p class="eyebrow">The research contract</p>
+<h2>Make the model inspectable.<br>Keep every claim traceable.</h2>
+<p>brAIn explores a living desktop manager: a spiking network learns recurring input patterns, people supply meaning, and assistance remains an explicit choice.</p>
+</div>
+<div class="boundary-note">
+<span class="pill source-pill">DESIGN RESEARCH</span>
+<h3>This workspace demonstrates the interface.</h3>
+<p>It does not establish model accuracy, cognitive validity or safe autonomous desktop control. No live experiment is running here.</p>
+</div>
+</section>
+<div class="methods-grid">
+<section class="panel method-card">
+<div class="section-heading">
+<h2>01 / Data provenance</h2>
+<span class="pill">LOCAL ONLY</span>
+</div>
+<dl class="provenance-list">
+<div>
+<dt>Dataset</dt>
+<dd>OBS-DEMO-03 · synthetic</dd>
+</div>
+<div>
+<dt>Generator</dt>
+<dd class="mono">procedural-lif-v1</dd>
+</div>
+<div>
+<dt>Activity seed</dt>
+<dd class="mono">4271</dd>
+</div>
+<div>
+<dt>Sample window</dt>
+<dd>200 samples · 100 Hz · [0, 2) s</dd>
+</div>
+<div>
+<dt>Replay speed</dt>
+<dd>0.1× by default · adjustable</dd>
+</div>
+<div>
+<dt>Model execution</dt>
+<dd>None · browser fixture, not snnTorch</dd>
+</div>
+<div>
+<dt>Annotations</dt>
+<dd>Tab memory only · export to retain</dd>
+</div>
+</dl>
+<p class="method-note">The same deterministic unit series drives Brain, Circuit, trace and raster. Context signals and similarity scores are authored examples held constant within each context.</p>
+</section>
+<section class="panel method-card">
+<div class="section-heading">
+<h2>02 / Evidence boundaries</h2>
+</div>
+<div class="evidence-row">
+<span class="evidence-state">AVAILABLE</span>
+<div>
+<h3>Interactive inspection</h3>
+<p>3D anatomy, linked selection, replay, annotations and reproducible snapshots.</p>
+</div>
+</div>
+<div class="evidence-row">
+<span class="evidence-state missing">NOT CONNECTED</span>
+<div>
+<h3>Live telemetry</h3>
+<p>No sensors, checkpoints, current weights or server connection. No permission to monitor your desktop is requested.</p>
+</div>
+</div>
+<div class="evidence-row">
+<span class="evidence-state missing">NOT PROVIDED</span>
+<div>
+<h3>Experimental validation</h3>
+<p>No held-out evaluation, ablation results, calibrated confidence or measured benefit is supplied by this demo.</p>
+</div>
+</div>
+<div class="evidence-row">
+<span class="evidence-state missing">PREVIEW ONLY</span>
+<div>
+<h3>Desktop interventions</h3>
+<p>Suggestions change the preview only. Real actions need scoped consent, visible effects and recovery.</p>
+</div>
+</div>
+</section>
+</div>
+<section class="panel method-card architecture-card">
+<div class="section-heading">
+<div>
+<h2>03 / Architecture, from source</h2>
+<p>Default Brain() at <a class="source-link" href="https://github.com/Triponymous/brAIn/blob/f8ba635a5b2307934c5b0adba0ca8b0e7be952b7/brain/core.py" target="_blank" rel="noreferrer">f8ba635 ↗</a>. Defaults are not a loaded experiment configuration.</p>
+</div>
+<button class="text-button" data-action="architecture">Technical notes <i data-icon="arrow-up-right">
+</i>
+</button>
+</div>
+<div class="architecture-flow" aria-label="Sensory, fixed Expansion, Concepts and recurrent Working memory">
+<div style="--series:var(--s)">
+<span>200</span>
+<strong>Sensory</strong>
+<small>Desktop signals → spikes</small>
+</div>
+<i>→</i>
+<div style="--series:var(--e)">
+<span>500</span>
+<strong>Expansion</strong>
+<small>Fixed thresholded projection</small>
+</div>
+<i>→</i>
+<div style="--series:var(--c)">
+<span>200</span>
+<strong>Concepts</strong>
+<small>Competition + plasticity</small>
+</div>
+<i>↔</i>
+<div style="--series:var(--w)">
+<span>100</span>
+<strong>Working memory</strong>
+<small>Retained context + feedback</small>
+</div>
+</div>
+<div class="table-scroll" tabindex="0" aria-label="Model connection matrix">
+<table class="research-table">
+<caption>Source parameter counts, not sampled network edges</caption>
+<thead>
+<tr>
+<th scope="col">Connection</th>
+<th scope="col">Matrix</th>
+<th scope="col">Plastic parameters</th>
+<th scope="col">Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th scope="row">Sensory → Expansion</th>
+<td>500 × 200</td>
+<td>0</td>
+<td>Fixed sparse projection</td>
+</tr>
+<tr>
+<th scope="row">Expansion → Concepts</th>
+<td>200 × 500</td>
+<td>100,000</td>
+<td>Modulated STDP</td>
+</tr>
+<tr>
+<th scope="row">Concepts → Memory</th>
+<td>100 × 200</td>
+<td>20,000</td>
+<td>STDP</td>
+</tr>
+<tr>
+<th scope="row">Memory → Concepts</th>
+<td>200 × 100</td>
+<td>20,000</td>
+<td>STDP / feedback</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="method-note">The 3D view displays 678 paths from 3,386 seeded sample edges. Anatomical position is an orientation aid, not a biological mapping. Moving lights along fibers illustrate direction, not measured causal transmission.</p>
+</section>
+<div class="methods-grid">
+<section class="panel method-card">
+<h2>04 / What a snapshot contains</h2>
+<p class="method-note">Generator version and seeds, source revision, all example contexts, selected unit and time, its complete series, vocabulary revisions and annotation snapshots.</p>
+<p class="method-note">“Copy view” encodes the fixture selection in a local URL; this is not a hosted share page. It never includes your labels or notes, and does not preserve camera orbit. “Export” includes local annotations in a JSON file; review it before sharing.</p>
+<div class="method-actions">
+<button class="btn primary" data-action="export">
+<i data-icon="download">
+</i>Export JSON snapshot</button>
+<a class="text-button" href="RESEARCH-WORKSPACE.md" target="_blank">Research brief <i data-icon="arrow-up-right">
+</i>
+</a>
+</div>
+</section>
+<section class="panel method-card">
+<h2>05 / Open source, explicit attribution</h2>
+<p class="method-note">Project code: <a class="source-link" href="https://github.com/Triponymous/brAIn" target="_blank" rel="noreferrer">brAIn ↗</a>. 3D anatomy: adapted Z-Anatomy / BodyParts3D © DBCLS, licensed separately under CC BY-SA 4.0. Renderer: Three.js, MIT.</p>
+<p class="method-note">No university, lab or prospective acquirer affiliation is implied. The anatomy is not a clinical atlas and the dashboard does not infer a medical or psychological state.</p>
+<div class="method-actions">
+<a class="btn" href="assets/brain-LICENSE.md" target="_blank">Anatomy attribution <i data-icon="arrow-up-right">
+</i>
+</a>
+</div>
+</section>
+</div>
+</section>
+<footer class="app-footer">
+<span>brAIn / OBSERVATORY</span>
+<span>RESEARCH WORKSPACE 03 · EXAMPLE DATA</span>
+<a href="#methods">Source, assumptions &amp; limitations ↗</a>
+</footer>
+</main>
+</div>
+<section class="neural-workspace" id="neural-workspace" data-graph-mode="brain" aria-label="Network and explanation">
+<div class="panel network-panel">
+<div class="network-toolbar">
+<div>
+<h2 id="network-visual-title">Inside a living network</h2>
+<p id="network-visual-description">Turn it. Trace a connection. Discover a pattern.</p>
+</div>
+<div class="row">
+<button class="btn square" data-action="zoom-out" aria-label="Zoom out">
+<i data-icon="minus">
+</i>
+</button>
+<button class="btn square" data-action="zoom-in" aria-label="Zoom in">
+<i data-icon="plus">
+</i>
+</button>
+<button class="btn square" data-action="zoom-reset" aria-label="Reset graph view">
+<i data-icon="maximize">
+</i>
+</button>
+</div>
+</div>
+<div class="graph-viewbar">
+<div class="graph-view-tabs" aria-label="Network visualization">
+<button data-graph-view="brain" aria-pressed="true">Brain</button>
+<button data-graph-view="circuit" aria-pressed="false">Circuit</button>
+</div>
+<div class="graph-view-options">
+<label class="brain-only">
+<input type="checkbox" id="show-brain-surface" checked>Contours</label>
+</div>
+</div>
+<div class="graph-stage" id="graph-stage">
+</div>
+<div class="brain-caption brain-only">
+<span>Point colors match Circuit; brighter points show example outputs. The selected unit is enlarged. Atlas labels name anatomy, not SNN functions; traveling lights are illustrative.</span>
+<button class="text-button" data-action="brain">About this view <i data-icon="info">
+</i>
+</button>
+</div>
+<div class="brain-credit brain-only">Anatomy: <a href="https://www.z-anatomy.com/" target="_blank" rel="noreferrer">Z-Anatomy</a> / BodyParts3D © DBCLS · <a href="assets/brain-LICENSE.md" target="_blank">CC BY-SA 4.0 · adapted</a>
+</div>
+<div class="graph-bottom">
+<div class="graph-legend">
+<span>
+<i class="swatch" style="--series:var(--s)">
+</i>Input</span>
+<span>
+<i class="swatch" style="--series:var(--e)">
+</i>Expansion</span>
+<span>
+<i class="swatch" style="--series:var(--c)">
+</i>Concepts</span>
+<span>
+<i class="swatch" style="--series:var(--w)">
+</i>Memory</span>
+</div>
+<span class="mono" id="graph-view-provenance">3D ANATOMY · SYNTHETIC SNN</span>
+</div>
+<div class="graph-filters" aria-label="Highlight a neural region">
+<button class="filter-button" data-region="all" aria-pressed="true">All regions</button>
+<button class="filter-button" data-region="s" aria-pressed="false">Input</button>
+<button class="filter-button" data-region="e" aria-pressed="false">Expansion</button>
+<button class="filter-button" data-region="c" aria-pressed="false">Concepts</button>
+<button class="filter-button" data-region="w" aria-pressed="false">Memory</button>
+<label class="edge-control">
+<input type="checkbox" id="show-edges" checked>Connections</label>
+</div>
+<div class="replay-toolbar" aria-label="Replay controls">
+<div class="replay-heading">
+<div class="row">
+<button class="btn square" data-action="play" aria-label="Play simulated neural activity" aria-pressed="false">
+<i data-icon="play">
+</i>
+</button>
+<div>
+<span data-playback-label>Replay paused</span>
+<span class="replay-meta">200 samples · 100 Hz</span>
+</div>
+</div>
+<div class="row">
+<label for="replay-speed">Speed</label>
+<select class="select" id="replay-speed">
+<option value="0.1">0.1×</option>
+<option value="0.5">0.5×</option>
+<option value="1">1×</option>
+</select>
+</div>
+</div>
+<div class="replay-track">
+<span class="mono">0.00</span>
+<input type="range" id="frame-slider" min="0" max="199" value="42" aria-label="Simulated activity frame">
+<span class="mono">1.99 s</span>
+</div>
+<div class="replay-position">
+<span id="replay-time">t +0.420 s</span>
+<span>Frame <span id="frame-number">042</span> / 199</span>
+<button class="text-button" data-action="teach">Annotate this frame <i data-icon="plus">
+</i>
+</button>
+</div>
+</div>
+<div class="graph-story">
+<i data-icon="spark">
+</i>
+<span id="graph-story">Recurring inputs can shape associations. Your labels give those patterns a name.</span>
+</div>
+</div>
+<aside class="panel insight-panel">
+<div class="insight-tabs" role="tablist" aria-label="Network detail">
+<button role="tab" id="meaning-tab" aria-controls="meaning-pane" aria-selected="true" data-insight="meaning">In plain language</button>
+<button role="tab" id="neuron-tab" aria-controls="neuron-pane" aria-selected="false" data-insight="neuron">Single neuron</button>
+</div>
+<div class="insight-content" id="meaning-pane" role="tabpanel" aria-labelledby="meaning-tab">
+<h3 id="meaning-title">Why it looks familiar.</h3>
+<p id="meaning-intro">Three parts of the story come together.</p>
+<div class="reason-list" id="reason-list">
+</div>
+</div>
+<div class="insight-content" id="neuron-pane" role="tabpanel" aria-labelledby="neuron-tab" hidden>
+<div class="selected-name">
+<h3 id="neuron-name">C-042</h3>
+<span class="pill" style="font-size:9px">PROCEDURAL</span>
+</div>
+<p class="neuron-region" id="neuron-region">Concept region</p>
+<dl class="neuron-values">
+<div>
+<dt id="neuron-event-name">Spikes / 2 s</dt>
+<dd id="neuron-spikes">12</dd>
+</div>
+<div>
+<dt id="neuron-metric-name">Membrane</dt>
+<dd>
+<span id="neuron-metric">0.73</span>
+<small id="neuron-unit">a.u.</small>
+</dd>
+</div>
+</dl>
+<div class="mini-plot-label">
+<span id="trace-label">Membrane potential</span>
+<span id="trace-window">t +0.420 s</span>
+</div>
+<svg class="mini-trace" id="neuron-trace" role="img" aria-label="Illustrative neuron trace">
+</svg>
+<p class="neuron-description" id="neuron-description">
+</p>
+<form class="neuron-find" id="neuron-find">
+<label class="sr-only" for="neuron-region-select">Neuron region</label>
+<select class="select" id="neuron-region-select">
+<option value="c">Concepts</option>
+<option value="s">Input</option>
+<option value="e">Expansion</option>
+<option value="w">Memory</option>
+</select>
+<label class="sr-only" for="neuron-index">Neuron index</label>
+<input id="neuron-index" type="number" min="0" max="199" value="42" required>
+<button class="btn small" type="submit">Find</button>
+</form>
+<div class="neuron-neighbors" id="neuron-neighbors">
+</div>
+</div>
+<div class="insight-foot">
+<span id="insight-foot-copy">A pattern match is similarity to a learned signature. It is not a measurement of your feelings.</span>
+<button class="text-button" data-action="why">How the model reaches a label <i data-icon="arrow-up-right">
+</i>
+</button>
+</div>
+</aside>
+</section>
+<dialog id="info-dialog" aria-labelledby="info-title">
+<button class="btn square close" data-action="close" aria-label="Close explanation">
+<i data-icon="x">
+</i>
+</button>
+<div id="info-content">
+</div>
+</dialog>
+<dialog id="teach-dialog" aria-labelledby="teach-title">
+<button class="btn square close" data-action="close" aria-label="Close teaching dialog">
+<i data-icon="x">
+</i>
+</button>
+<div class="eyebrow">One moment. Your words.</div>
+<h2 id="teach-title">Give this moment meaning.</h2>
+<p>The context and frame are frozen. This annotation stays attached to that snapshot; it does not claim a future recognition.</p>
+<div class="frozen-moment" id="frozen-moment">
+</div>
+<form id="teach-form">
+<label for="new-word">Give this state a name</label>
+<input class="input" id="new-word" name="label" aria-describedby="teach-error" maxlength="40" placeholder="e.g. finding my rhythm" required autocomplete="off">
+<p class="teaching-note">An existing label creates a reference revision. Its previous signature stays in the annotation trail.</p>
+<label for="word-note">What does it mean to you? <span class="muted">(optional)</span>
+</label>
+<input class="input" id="word-note" name="note" maxlength="160" placeholder="A short description in your own words" autocomplete="off">
+<p class="form-error" id="teach-error" role="alert" hidden>Please enter a word, not only spaces.</p>
+<div class="dialog-actions">
+<span class="muted" style="font-size:11px">Tab memory only. Export your annotations to keep them.</span>
+<button type="submit" class="btn primary">Teach this moment <i data-icon="arrow-up-right">
+</i>
+</button>
+</div>
+</form>
+</dialog>
+<div class="toast" role="status" aria-live="polite">
+</div>
+<div class="tooltip" role="tooltip" hidden>
+</div>
+<dialog id="tour-welcome" aria-labelledby="tour-welcome-title" lang="de">
+  <div class="tour-welcome-top"><span class="tour-label">brAIn / Field guide</span><button class="tour-icon-button" data-tour-dismiss aria-label="Einführung schließen">×</button></div>
+  <div class="tour-welcome-body">
+  <div class="tour-emblem" aria-hidden="true">01<span>→</span></div>
+  <h2 id="tour-welcome-title" tabindex="-1">Lerne dein<br>Observatory kennen.</h2>
+  <p class="tour-welcome-copy">Ein Rundgang wie beim ersten Spielstart: Wir zeigen dir, wo du klicken kannst, was du siehst und was die Werte wirklich bedeuten.</p>
+  <div class="tour-safety"><span aria-hidden="true">◎</span><p>Du bestimmst das Tempo. Die Tour aktiviert keine Sensoren und verändert keine Erfassungsfreigaben.</p></div>
+  <p class="tour-label tour-chapter-label">Ganz von vorn oder direkt zu einem Kapitel</p>
+  <div class="tour-chapters" aria-label="Kapitel der Einführung">
+    <button data-tour-chapter="live"><span>01</span>Live &amp; Datenschutz</button>
+    <button data-tour-chapter="overview"><span>02</span>Observatory</button>
+    <button data-tour-chapter="network"><span>03</span>Neural explorer</button>
+    <button data-tour-chapter="vocabulary"><span>04</span>Vocabulary</button>
+    <button data-tour-chapter="journal"><span>05</span>Learning journal</button>
+    <button data-tour-chapter="methods"><span>06</span>Methoden &amp; Export</button>
+  </div>
+  </div>
+  <div class="tour-welcome-actions"><button class="tour-button tour-primary" data-tour-start>Rundgang starten <span aria-hidden="true">→</span></button><button class="tour-button" data-tour-dismiss>Später</button></div>
+  <p class="tour-storage-note">Nur der Hinweis „Einführung gesehen“ wird in diesem Browser gespeichert. Über „Einführung“ kannst du jederzeit zurückkommen.</p>
+</dialog>
+<div id="tour-spotlight" aria-hidden="true" hidden><span id="tour-marker"></span></div>
+<section id="tour-card" role="dialog" aria-modal="false" aria-labelledby="tour-title" lang="de" hidden>
+  <div class="tour-card-top"><span class="tour-label">Geführte Einführung</span><button class="tour-icon-button" data-tour-exit aria-label="Rundgang beenden">×</button></div>
+  <div class="tour-progress-row"><label class="sr-only" for="tour-chapter">Kapitel wählen</label><select id="tour-chapter" aria-label="Kapitel wählen"></select><span id="tour-count" class="tour-label"></span></div>
+  <progress id="tour-progress" value="1" max="1" aria-label="Fortschritt im Rundgang"></progress>
+  <div class="tour-card-content">
+    <span id="tour-source" class="tour-source"></span>
+    <h2 id="tour-title" tabindex="-1"></h2>
+    <p id="tour-description"></p>
+    <p id="tour-caution" class="tour-caution"></p>
+    <div id="tour-exercise" hidden><span class="tour-label">Selbst ausprobieren · freiwillig</span><p id="tour-task"></p><p id="tour-result" role="status" aria-live="polite"></p></div>
+  </div>
+  <button class="tour-target-button" data-tour-focus>Markierten Bereich ansehen <span aria-hidden="true">↗</span></button>
+  <div class="tour-card-actions"><button class="tour-button" data-tour-back>Zurück</button><button class="tour-button tour-primary" data-tour-next>Weiter <span aria-hidden="true">→</span></button></div>
+  <p class="tour-key-hint">Esc beendet · Du kannst jeden Schritt überspringen</p>
+</section>
+<noscript>
+<p style="padding:30px">This interactive design study needs JavaScript enabled.</p>
+</noscript>
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.min.js"}}</script>
+<script src="observatory-data.js">
+</script>
+<script src="demo-telemetry.js">
+</script>
+<script src="brain-view.js?v=atlas-4">
+</script>
+<script src="observatory-session.js">
+</script>
+<script src="observatory.js?v=atlas-4">
+</script>
+<script src="capture-data.js"></script>
+<script src="capture-controls.js"></script>
+<script src="live-data.js"></script>
+<script src="live-workspace.js"></script>
+<script src="onboarding-data.js"></script>
+<script src="onboarding-layout.js"></script>
+<script src="onboarding.js"></script>
+</body>
+</html>

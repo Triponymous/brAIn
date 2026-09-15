@@ -1,0 +1,101 @@
+/* The field guide inherits Observatory's palette; it never styles the model. */
+.topbar { height: auto; min-height: 66px; padding-block: 12px; }
+.topbar-actions { flex-wrap: wrap; justify-content: flex-end; }
+.topbar .tour-launch { min-height: 44px; white-space: nowrap; }
+.tour-active { padding-bottom: var(--tour-clearance, 390px); }
+.tour-label { font: 10px/1.5 var(--mono); letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); }
+.tour-icon-button { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border: 1px solid var(--line); border-radius: 10px; background: transparent; font-size: 25px; line-height: 1; }
+.tour-icon-button:hover { background: var(--raised); }
+.tour-button { display: inline-flex; align-items: center; justify-content: center; gap: 14px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 10px; background: transparent; font-size: 13px; font-weight: 600; }
+.tour-button:hover { background: var(--raised); }
+.tour-primary { color: var(--mint-ink); background: var(--mint); border-color: var(--mint); }
+.tour-primary:hover { background: #c9efd7; }
+#tour-welcome { width: 570px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); padding: 28px; }
+#tour-welcome[open] { display: flex; flex-direction: column; overflow: hidden; }
+#tour-welcome > * { flex-shrink: 0; }
+#tour-welcome .tour-welcome-body { flex-shrink: 1; overflow: auto; min-height: 0; overscroll-behavior: contain; }
+#tour-welcome::backdrop { background: #07100fd9; backdrop-filter: blur(5px); }
+.tour-welcome-top, .tour-card-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.tour-emblem { display: flex; align-items: center; justify-content: space-between; width: 86px; height: 54px; margin: 22px 0; border-top: 1px solid #698676; border-bottom: 1px solid #698676; font: 22px var(--mono); color: var(--mint); }
+.tour-emblem span { font: 28px var(--sans); }
+#tour-welcome h2 { font-size: clamp(28px, 5vw, 38px); font-weight: 450; letter-spacing: -1.3px; line-height: 1.15; margin: 0 0 16px; }
+#tour-welcome .tour-welcome-copy { font-size: 14px; line-height: 1.7; margin: 0; }
+.tour-safety { display: flex; align-items: flex-start; gap: 12px; padding: 14px; margin-block: 20px; background: #1a2c24; border: 1px solid #334d3f; border-radius: 12px; }
+.tour-safety > span { color: var(--mint); font-size: 21px; line-height: 1.3; }
+#tour-welcome .tour-safety p { color: #c1d7c9; font-size: 12px; line-height: 1.6; margin: 0; }
+#tour-welcome .tour-chapter-label { margin: 0 0 10px; font-size: 10px; }
+.tour-chapters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tour-chapters button { display: flex; gap: 10px; align-items: center; text-align: left; border: 1px solid var(--line); border-radius: 10px; background: transparent; padding: 11px; min-height: 48px; font-size: 12px; }
+.tour-chapters button > span { font: 10px var(--mono); color: var(--mint); }
+.tour-chapters button:hover { background: var(--raised); border-color: #688779; }
+.tour-welcome-actions { display: flex; gap: 10px; margin-top: 22px; }
+.tour-welcome-actions .tour-primary { flex: 1; }
+#tour-welcome .tour-storage-note { font-size: 11px; line-height: 1.6; margin: 14px 0 0; }
+#tour-spotlight { position: fixed; z-index: 950; pointer-events: none; border: 1px solid var(--mint); border-radius: 12px; box-shadow: 0 0 0 9999px #030909a3, 0 0 0 4px #b9e8cb12; }
+#tour-marker { position: absolute; top: -11px; left: 12px; border-radius: 5px; padding: 3px 7px; background: var(--mint); color: var(--mint-ink); font: 10px/1.2 var(--mono); }
+#tour-card { position: fixed; z-index: 960; display: flex; flex-direction: column; width: 376px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); padding: 16px 20px; overflow: hidden; color: var(--ink); border: 1px solid #577466; border-radius: 16px; background: #151e20; box-shadow: 0 12px 45px #0008; }
+#tour-card > * { flex-shrink: 0; }
+#tour-card .tour-card-content { flex-shrink: 1; overflow: auto; overscroll-behavior: contain; min-height: 0; padding: 2px 4px 2px 0; }
+.tour-card-top .tour-icon-button { width: 44px; height: 44px; margin: -6px -10px -4px 0; border-color: transparent; }
+.tour-progress-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+#tour-chapter { min-width: 0; max-width: calc(100% - 64px); min-height: 44px; padding: 8px 24px 8px 0; border: 0; color: var(--ink); background: transparent; font-size: 12px; }
+#tour-chapter option { background: var(--panel); color: var(--ink); }
+#tour-count { flex: none; white-space: nowrap; }
+#tour-progress { display: block; width: 100%; height: 3px; border: 0; border-radius: 3px; margin: 4px 0 20px; overflow: hidden; background: #30403c; accent-color: var(--mint); }
+#tour-progress::-webkit-progress-bar { background: #30403c; }
+#tour-progress::-webkit-progress-value { background: var(--mint); }
+#tour-progress::-moz-progress-bar { background: var(--mint); }
+.tour-source { display: block; color: var(--mint); font: 10px/1.6 var(--mono); letter-spacing: .2px; }
+#tour-title { margin: 8px 0 12px; font-size: 23px; line-height: 1.24; letter-spacing: -.6px; }
+#tour-description { font-size: 13px; line-height: 1.7; color: #cfdbd8; }
+.tour-caution { margin-top: 14px; padding-left: 10px; border-left: 2px solid #738579; font-size: 12px; line-height: 1.65; color: #aebebb; }
+#tour-exercise { padding: 12px; margin-top: 16px; border: 1px solid #395747; border-radius: 10px; background: #1b2c24; }
+#tour-exercise > .tour-label { color: #adc9b6; font-size: 9px; }
+#tour-task { margin-top: 5px; font-size: 12px; line-height: 1.6; }
+#tour-result { color: var(--mint); font-size: 12px; line-height: 1.6; }
+#tour-result:not(:empty) { margin-top: 8px; }
+.tour-target-button { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; min-height: 44px; margin-top: 12px; padding: 8px 0; border: 0; background: transparent; text-align: left; color: var(--mint); font-size: 12px; }
+.tour-card-actions { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding-top: 14px; margin-top: 2px; }
+.tour-card-actions .tour-primary { min-width: 114px; }
+.tour-key-hint { margin-top: 10px; color: var(--muted); font-size: 10px; text-align: center; }
+#tour-title:focus, #tour-welcome-title:focus { outline: none; }
+[data-tour-highlight]:focus-visible { outline: 2px solid var(--mint); outline-offset: 5px; }
+.tour-active [data-tour-highlight] :is(button, input, select, a) { scroll-margin-top: 24px; scroll-margin-bottom: var(--tour-clearance, 390px); }
+@media (prefers-reduced-motion: no-preference) {
+  #tour-welcome[open], #tour-card:not([hidden]) { animation: tour-arrive .25s ease-out; }
+  .tour-button, .tour-chapters button { transition: background .15s ease-out; }
+  @keyframes tour-arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+}
+@media (max-width: 999px) {
+  #tour-card { width: 420px; max-height: 55dvh; }
+  #tour-card .tour-card-top { min-height: 26px; }
+  #tour-progress { margin-bottom: 12px; }
+  #tour-title { font-size: 21px; }
+}
+@media (max-width: 580px) {
+  .topbar { min-height: 59px; }
+  .topbar-actions { justify-content: space-between; }
+  .topbar .tour-launch { min-height: 44px; }
+  #tour-welcome { padding: 20px; }
+  .tour-emblem { margin-block: 16px; height: 40px; }
+  .tour-chapters { gap: 6px; }
+  .tour-chapters button { padding: 9px; gap: 6px; font-size: 11px; }
+  #tour-card { padding: 12px 16px; max-height: 52dvh; }
+  #tour-description { font-size: 12px; }
+  .tour-caution { margin-top: 10px; font-size: 11px; }
+  .tour-card-actions { padding-top: 10px; }
+  #tour-exercise { margin-top: 10px; }
+}
+@media (max-height: 520px) {
+  #tour-card { max-height: 72dvh; width: min(360px, 60vw); }
+  #tour-progress, .tour-key-hint, .tour-card-top .tour-label { display: none; }
+  #tour-card .tour-card-top { position: absolute; right: 16px; top: 10px; }
+  .tour-progress-row { margin-top: 0; padding-right: 36px; }
+  #tour-chapter { min-height: 36px; }
+  #tour-title { font-size: 18px; }
+  .tour-target-button { margin-top: 4px; }
+  .tour-card-actions { padding-top: 6px; }
+}
+@media (min-height: 521px) and (max-height: 700px) and (max-width: 999px) {
+  #tour-card { max-height: 66dvh; }
+}

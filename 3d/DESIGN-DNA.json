@@ -1,0 +1,450 @@
+{
+  "meta": {
+    "name": "Observatory — luminous fiber brain",
+    "description": "Phase-0 proposal from four user-provided still images. Image 4 is the proposed primary reference. Scene colors are visual estimates, not measured anchor values. UI tokens are inherited from Observatory; motion and interaction are proposed because still images do not demonstrate behavior. No new renderer has been implemented.",
+    "source_references": [
+      {
+        "path": "reference-sources/04-golden-fiber-brain.png",
+        "role": "Primary proposed reference: delicate blue-white fibers, restrained gold nodes, oblique lateral silhouette",
+        "status": "User-supplied private visual reference; publication license not established"
+      },
+      {
+        "path": "reference-sources/03-fiber-brain.png",
+        "role": "Organic fiber bundles and spatial layers",
+        "status": "Watermarked reference retained unchanged; not a runtime asset"
+      },
+      {
+        "path": "reference-sources/01-cyan-contour.png",
+        "role": "Readable contour and localized warm pulses",
+        "status": "User-supplied reference, not a runtime asset"
+      },
+      {
+        "path": "reference-sources/02-spatial-network.png",
+        "role": "Spatial nodes and network depth",
+        "status": "User-supplied reference, not a runtime asset"
+      },
+      {
+        "path": "../docs/dashboard-concepts/observatory.html",
+        "role": "Existing approved dashboard design direction and interaction context",
+        "status": "Local interactive design prototype, synthetic data"
+      }
+    ],
+    "created_at": "2026-09-14"
+  },
+  "design_system": {
+    "color": {
+      "palette_type": "split-complementary",
+      "primary": {
+        "hex": "#a1cbd4",
+        "role": "Fine near-field fibers and restrained brain contour; proposed from image 4"
+      },
+      "secondary": {
+        "hex": "#3b789f",
+        "role": "Distant fibers and depth separation"
+      },
+      "accent": {
+        "hex": "#f5d78b",
+        "role": "Sparse active signal packets and selected pathway highlights"
+      },
+      "neutral": {
+        "scale": [
+          "#091417",
+          "#101517",
+          "#151d20",
+          "#1b2528",
+          "#2b393c",
+          "#819699",
+          "#9cacae",
+          "#eff3ef"
+        ],
+        "usage": "Dark scene and existing Observatory surfaces; bright neutral text stays in DOM"
+      },
+      "semantic": {
+        "success": "#b9e8cb",
+        "warning": "#e0bc87",
+        "error": "#e09b91",
+        "info": "#9dc7d7"
+      },
+      "surface": {
+        "background": "#101517",
+        "card": "#151d20",
+        "elevated": "#1b2528"
+      },
+      "contrast_strategy": "Readable DOM text against opaque surfaces; luminous fibers remain separate from text. Region colors and activity colors need explicit, non-conflicting legends."
+    },
+    "typography": {
+      "type_scale": {
+        "display": {
+          "size": "clamp(30px, 2.6vw, 37px)",
+          "weight": 500,
+          "line_height": "1.2",
+          "tracking": "-0.04em"
+        },
+        "heading_1": {
+          "size": "clamp(24px, 2.5vw, 37px)",
+          "weight": 500,
+          "line_height": "1.2",
+          "tracking": "-0.04em"
+        },
+        "heading_2": {
+          "size": "17px",
+          "weight": 500,
+          "line_height": "1.4",
+          "tracking": "-0.02em"
+        },
+        "heading_3": {
+          "size": "13px",
+          "weight": 500,
+          "line_height": "1.5",
+          "tracking": "0"
+        },
+        "body": {
+          "size": "13px",
+          "weight": 400,
+          "line_height": "1.55",
+          "tracking": "0"
+        },
+        "body_small": {
+          "size": "12px",
+          "weight": 400,
+          "line_height": "1.6",
+          "tracking": "0"
+        },
+        "caption": {
+          "size": "11px",
+          "weight": 400,
+          "line_height": "1.5",
+          "tracking": "0"
+        },
+        "overline": {
+          "size": "10px",
+          "weight": 400,
+          "line_height": "1.5",
+          "tracking": "0.12em"
+        }
+      },
+      "font_families": {
+        "heading": "-apple-system, BlinkMacSystemFont, Helvetica Neue, Arial, sans-serif",
+        "body": "-apple-system, BlinkMacSystemFont, Helvetica Neue, Arial, sans-serif",
+        "mono": "SFMono-Regular, Consolas, monospace"
+      },
+      "font_style_notes": "Local system fonts from Observatory, not inferred from stock-image watermarks or background typography."
+    },
+    "spacing": {
+      "base_unit": "4px",
+      "scale": [
+        4,
+        8,
+        12,
+        16,
+        20,
+        24,
+        32,
+        40,
+        48
+      ],
+      "content_density": "comfortable",
+      "section_rhythm": "Preserve current dashboard spacing; keep scene controls close to their viewport and explanations in the inspector."
+    },
+    "layout": {
+      "grid_system": "Existing sidebar and responsive main grid; one persistent 3D viewport with adjacent inspector",
+      "max_content_width": "1650px main area",
+      "columns": "Scene plus inspector on desktop; stacked on narrow screens",
+      "gutter": "16px",
+      "breakpoints": {
+        "mobile": 580,
+        "stacked": 780,
+        "compact": 1000,
+        "wide": 1600
+      },
+      "alignment_tendency": "strict grid"
+    },
+    "shape": {
+      "border_radius": {
+        "small": "7px",
+        "medium": "14px",
+        "large": "18px",
+        "pill": "999px"
+      },
+      "border_usage": "subtle 1px panel and input borders",
+      "divider_style": "1px low-contrast solid separators inherited from Observatory"
+    },
+    "elevation": {
+      "shadow_style": "none in normal dashboard panels; spatial depth belongs to the 3D scene",
+      "levels": {
+        "low": "surface contrast only",
+        "medium": "0 8px 24px #0003 for temporary UI overlays",
+        "high": "0 24px 64px #0005 for modal explanations"
+      },
+      "depth_cues": [
+        "Perspective",
+        "Occlusion",
+        "Near/far intensity separation",
+        "Overlapping curved fibers",
+        "Localized restrained glow"
+      ]
+    },
+    "iconography": {
+      "style": "Existing outline icons",
+      "stroke_weight": "1.5px",
+      "size_scale": [
+        14,
+        16,
+        18
+      ],
+      "preferred_set": "Current repo-native Observatory icon dictionary"
+    },
+    "motion": {
+      "easing": "cubic-bezier(0.2,0,0,1)",
+      "duration_scale": {
+        "micro": "120ms",
+        "normal": "240ms",
+        "macro": "400ms"
+      },
+      "entrance_pattern": "Scene appears in a stable initial pose; no unsolicited orbit",
+      "exit_pattern": "Pause rendering or preserve viewport state across route changes",
+      "philosophy": "Functional spatial interaction; proposed signal motion is user-started, pausable and reduced-motion aware"
+    },
+    "components": {
+      "button_style": "Existing mint primary and compact ghost buttons; toggle states visibly selected",
+      "input_style": "Existing dark native inputs with labels and visible focus",
+      "card_style": "Retain Observatory panels; do not put extra glass cards inside the canvas",
+      "navigation_pattern": "Keep four current app views; Brain and Circuit remain local scene modes",
+      "modal_style": "Existing explanation dialog, no camera or input leakage through its backdrop",
+      "list_style": "Current vocabulary and journal layouts unchanged",
+      "component_notes": "Add only direct controls for orbit/reset, standard views, selected unit, region isolation, shell visibility and playback; preserve existing model meanings."
+    }
+  },
+  "design_style": {
+    "aesthetic": {
+      "mood": [
+        "Precise",
+        "Curious",
+        "Luminous",
+        "Calm"
+      ],
+      "visual_metaphor": "A transparent brain made of fine living pathways, not a solid tissue specimen",
+      "era_influence": "Contemporary scientific visualization",
+      "genre": "Interactive open-source research instrument",
+      "personality_traits": [
+        "Meticulous",
+        "Inviting",
+        "Explorable"
+      ],
+      "adjectives": [
+        "Filamentary",
+        "Spatial",
+        "Transparent",
+        "Restrained"
+      ]
+    },
+    "visual_language": {
+      "complexity": "rich",
+      "ornamentation": "Only meaning-bearing fibers, nodes and signal highlights",
+      "whitespace_usage": "Dark negative space around a clearly bounded brain silhouette",
+      "visual_weight_distribution": "One dominant 3D brain; supporting controls and inspector remain quieter",
+      "focal_strategy": "Selected neuron or active path inside a readable whole",
+      "contrast_level": "High local contrast on a small number of luminous elements",
+      "texture_usage": "Fine curved fibers, not an opaque photo texture or background noise"
+    },
+    "composition": {
+      "hierarchy_method": "Spatial depth and selected-path contrast within the established dashboard hierarchy",
+      "balance_type": "asymmetric",
+      "flow_direction": "Whole brain to selected unit to traced pathway",
+      "grouping_strategy": "Fibers form legible bundles; computational regions remain distinct from anatomical lobes",
+      "negative_space_role": "Preserves silhouette, depth and room for readable inspection"
+    },
+    "imagery": {
+      "photo_treatment": "Reference images guide style only; no stock photograph is used as the 3D scene",
+      "illustration_style": "Original or licensed geometry with runtime-controllable fibers and nodes",
+      "graphic_elements": [
+        "Fine blue-white pathways",
+        "Small gold activity cores",
+        "Restrained orientation shell",
+        "Selective region overlays"
+      ],
+      "pattern_usage": "No generic repeating decorative pattern",
+      "image_shape": "Open lateral-oblique brain silhouette that remains recognizable during orbit"
+    },
+    "interaction_feel": {
+      "feedback_style": "Hover identifies; click fixes selection; inspector and geometry share the same stable ID",
+      "hover_behavior": "Subtle local highlight and concise label, no physical deformation",
+      "transition_personality": "snappy",
+      "loading_style": "Clearly marked static fallback until the usable 3D scene is ready",
+      "microinteraction_density": "moderate; controls support research tasks"
+    },
+    "brand_voice_in_ui": {
+      "tone": "Clear and cautious about model interpretation",
+      "formality": "Professional but approachable",
+      "cta_style": "Direct actions such as Inspect, Isolate, Trace and Reset",
+      "empty_state_approach": "Distinguish no selection, missing telemetry, synthetic demo and unsupported WebGL",
+      "error_tone": "Specific, recoverable and free of fabricated measurements"
+    }
+  },
+  "visual_effects": {
+    "overview": {
+      "effect_intensity": "moderate",
+      "performance_tier": "heavy",
+      "fallback_strategy": "A clearly labeled static brain or Circuit view when WebGL is unavailable; reduced-motion disables unsolicited animation while retaining accessible inspection",
+      "primary_technology": "WebGL/Three.js proposed, pinned version to be verified before implementation"
+    },
+    "background_effects": {
+      "type": "none",
+      "description": "Opaque dark scene ground; no animated background",
+      "technology": "CSS",
+      "params": {
+        "color_palette": [
+          "#091417"
+        ],
+        "speed": 0,
+        "density": 0,
+        "opacity": 1,
+        "blend_mode": "normal"
+      }
+    },
+    "particle_systems": {
+      "enabled": true,
+      "type": "connected-nodes",
+      "description": "Model-addressable nodes and sparse signal packets, not decorative floating particles",
+      "technology": "Batched WebGL geometry proposed",
+      "params": {
+        "count": "1,000 model units; visible secondary fibers adapt to quality and filters",
+        "shape": "Small light core with restrained halo",
+        "size_range": "Approximately 1–4 screen pixels, with larger accessible selection targets",
+        "movement_pattern": "Nodes remain fixed in model space; only selected synthetic packets travel along defined connections",
+        "color_behavior": "Blue-white resting structure and sparse gold activity; computational-region color mode is explicitly labeled",
+        "interaction": "Hover and click select a stable node, then highlight its known sample connections",
+        "spawn_area": "Inside the modeled brain volume, not a flat image mask"
+      }
+    },
+    "3d_elements": {
+      "enabled": true,
+      "type": "hero-model",
+      "description": "One genuine volumetric brain-network viewer inside Observatory, guided mainly by user image 4",
+      "technology": "WebGL scene; suitable licensed source geometry preferred over rebuilding",
+      "params": {
+        "renderer": "WebGL renderer with one persistent canvas; no WebGPU requirement",
+        "lighting": "Depth-aware restrained contour and controlled emissive fibers; no generic ambient-plus-directional lighting recipe",
+        "camera": "Perspective, proposed 40–65 mm range; manually orbitable, oblique lateral starting view, constrained zoom and reset",
+        "materials": [
+          "Mostly transparent orientation shell",
+          "Thin depth-separated curved fibers",
+          "Small luminous nodes and localized packets"
+        ],
+        "geometry": "A usable licensed brain surface if available, with independently addressable runtime fibers and nodes; no specific asset chosen yet",
+        "post_processing": [
+          "Restrained selective glow, to be evaluated against anchors",
+          "Edge antialiasing if required"
+        ],
+        "interaction_model": "Orbit, zoom, named views, stable-ID selection, region isolation, shell fade, play/pause and Circuit comparison"
+      }
+    },
+    "shader_effects": {
+      "enabled": true,
+      "type": "custom-GLSL",
+      "description": "Proposed depth-sensitive fiber intensity and signal highlighting; no shader code exists yet",
+      "technology": "WebGL shader layer to be scoped after reference and asset gates",
+      "params": {
+        "uniforms": [
+          "Time when playing",
+          "Selected-node state",
+          "Activity values",
+          "Region visibility",
+          "Quality level"
+        ],
+        "vertex_manipulation": "No decorative distortion; source geometry retains recognizable shape",
+        "fragment_output": "Depth-aware cool fibers and limited warm emission, with highlights checked for clipping",
+        "noise_type": "none",
+        "distortion": "none"
+      }
+    },
+    "scroll_effects": {
+      "parallax": {
+        "enabled": false,
+        "layers": 0,
+        "depth_range": "none",
+        "speed_curve": "none"
+      },
+      "scroll_triggered_animations": {
+        "enabled": false,
+        "trigger_points": [],
+        "animation_type": "none",
+        "scrub_behavior": "none; normal page scrolling must remain usable"
+      },
+      "scroll_morphing": {
+        "enabled": false,
+        "description": "No scroll-driven scene transformation"
+      }
+    },
+    "text_effects": {
+      "type": "none",
+      "description": "Stable readable UI text",
+      "technology": "HTML/CSS",
+      "params": {
+        "split_strategy": "none",
+        "animation_per_unit": "none",
+        "stagger": 0,
+        "effect_style": "none"
+      }
+    },
+    "cursor_effects": {
+      "enabled": false,
+      "type": "none",
+      "description": "Keep native pointer affordances; picking is part of the 3D viewport interaction",
+      "params": {
+        "shape": "native pointer",
+        "size": "system default",
+        "blend_mode": "normal",
+        "trail": false,
+        "interaction_zone": "Scene viewport only"
+      }
+    },
+    "image_effects": {
+      "type": "none",
+      "description": "No tilt or parallax applied to a bitmap as a substitute for 3D",
+      "technology": "none",
+      "params": {
+        "filter_pipeline": [],
+        "hover_transform": "none",
+        "reveal_animation": "none",
+        "distortion_type": "none"
+      }
+    },
+    "glassmorphism_neumorphism": {
+      "enabled": false,
+      "style": "none",
+      "params": {
+        "blur_radius": 0,
+        "transparency": 0,
+        "border_treatment": "Ordinary opaque Observatory panel borders",
+        "shadow_type": "none",
+        "light_source_angle": "not applicable to DOM surfaces"
+      }
+    },
+    "canvas_drawings": {
+      "enabled": false,
+      "type": "none",
+      "description": "No separate Canvas2D decorative layer; the proposed WebGL viewer is described under 3d_elements",
+      "technology": "none",
+      "params": {
+        "draw_method": "none",
+        "animation_loop": "No additional animation-loop owner",
+        "color_scheme": "Inherited scene palette",
+        "responsiveness": "Handled by the single 3D viewport",
+        "interaction": "No additional Canvas2D interactions"
+      }
+    },
+    "svg_animations": {
+      "enabled": false,
+      "type": "none",
+      "description": "Existing static UI icons may remain; SVG is not the primary spatial scene",
+      "params": {
+        "animation_method": "none",
+        "path_morphing": false,
+        "stroke_animation": "none",
+        "filter_effects": []
+      }
+    },
+    "composite_notes": "The still references show a luminous fiber aesthetic but cannot prove volumetric implementation or motion. Actual orbit, perspective, depth occlusion and ID-consistent selection must be demonstrated in the future 3D prototype. Decorative anatomical fibers, sample model edges and measured telemetry must stay distinguishable. The latest image changes the proposed dominant scene from cyan-neon to delicate blue-white fibers and restrained gold. This file records a plan, not a completed implementation or validated performance result."
+  }
+}

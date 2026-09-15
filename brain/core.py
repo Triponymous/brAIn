@@ -373,6 +373,7 @@ class Brain:
 
         return {
             "sensory": sensory_spikes,
+            "expansion": expansion_spikes,
             "concept": concept_spikes,
             "wm": wm_spikes,
         }

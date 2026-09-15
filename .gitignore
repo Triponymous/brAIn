@@ -28,6 +28,7 @@ logs/
 
 # Generated benchmark output (regenerate with `python -m benchmark.run_all`)
 benchmark/reports/
+benchmark/audio-data/
 
 # Voice models (large binary files)
 models/

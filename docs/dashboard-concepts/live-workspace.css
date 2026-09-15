@@ -1,0 +1,66 @@
+/* Existing Observatory tokens; flat instruments and explicit source states. */
+body:not([data-page="overview"]):not([data-page="network"]) #neural-workspace { display: none; }
+body[data-page="live"] .moment-control,
+body[data-page="live"] .session-strip,
+body[data-page="live"] .topbar-actions > a[href="#methods"],
+body[data-page="live"] .topbar-actions > button[data-action="export"],
+body[data-page="live"] .connection-state button,
+body[data-page="live"] [data-action="guide"],
+body[data-page="live"] #open-live { display: none; }
+.live-connection { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; padding: 24px; border-color: #416454; }
+.live-connection > div:first-child { flex: 1 1 340px; }
+.live-connection h2 { margin: 8px 0; font-size: 23px; }
+.live-connection p { margin: 0; max-width: 700px; }
+.live-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.live-note { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.live-connection > .live-note { flex-basis: 100%; }
+.live-stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin: 20px 0; }
+.live-stats > div { padding: 20px; min-width: 0; }
+.live-stats strong { display: block; font-family: var(--mono); font-size: 32px; font-weight: 400; margin: 10px 0; font-variant-numeric: tabular-nums; }
+.live-stats small { color: var(--muted); font-size: 12px; line-height: 1.6; display: block; }
+.live-grid { display: grid; grid-template-columns: minmax(0,1.65fr) minmax(270px,1fr); gap: 20px; align-items: start; }
+.live-grid > section { min-width: 0; }
+.live-network, .live-inspector, .live-sensors-panel, .live-methods { padding: 22px; }
+.live-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+#live h2 { letter-spacing: -.025em; }
+.live-panel-heading h2 { font-size: 24px; margin: 8px 0 12px; }
+#live-graph-stage { position: relative; height: 420px; margin: 0 -16px; }
+.live-empty { min-height: 280px; display: grid; place-content: center; text-align: center; padding: 48px; color: var(--muted); }
+.live-empty[hidden], #live-graph-stage[hidden] { display: none; }
+.live-cursor-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 16px 0; }
+.live-cursor-bar span { font-size: 12px; color: var(--muted); }
+#live-cursor { width: 100%; margin: 12px 0; accent-color: var(--mint); min-height: 30px; }
+.live-credit { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.live-credit a { text-decoration: underline; }
+.live-inspector h2 { font-family: var(--mono); font-weight: 400; margin: 12px 0 24px; }
+.live-unit-form { display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px; }
+.live-unit-form label { min-width: 0; font-size: 12px; color: var(--muted); display: grid; gap: 8px; }
+.live-unit-form input, .live-unit-form select { width: 100%; min-width: 0; }
+#live-trace { width: 100%; height: auto; min-height: 110px; margin-top: 16px; }
+#live-trace text { font: 11px var(--mono); fill: var(--muted); }
+.live-model-mods { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; border-top: 1px solid var(--line); padding-top: 18px; margin-top: 24px; }
+.live-model-mods div { font: 11px var(--mono); color: var(--muted); }
+.live-model-mods strong { display: block; font-size: 17px; font-weight: 400; color: var(--ink); margin-top: 10px; }
+.live-sensors-panel, .live-methods { margin-top: 20px; }
+#live-sensors { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0 28px; }
+.live-sensor { display: grid; gap: 9px; padding: 18px 0; border-top: 1px solid var(--line); }
+.live-sensor strong { font-size: 13px; font-weight: 500; }
+.live-sensor span { font: 14px var(--mono); overflow-wrap: anywhere; }
+.live-sensor small { font-size: 11px; color: var(--muted); }
+.live-methods p { max-width: 850px; color: var(--muted); line-height: 1.65; font-size: 13px; }
+.live-methods .provenance-list dd { overflow-wrap: anywhere; }
+.live-methods details { border-top: 1px solid var(--line); padding-top: 20px; margin-top: 22px; }
+.live-methods summary { cursor: pointer; font-size: 13px; }
+.live-command { display: block; white-space: normal; overflow-wrap: anywhere; padding: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; font-size: 12px; }
+#live .btn, #live select, #live input[type="number"] { min-height: 44px; }
+@media(max-width:1050px) { .live-grid { grid-template-columns: minmax(0,1fr); } }
+@media(max-width:600px) {
+  .live-stats { grid-template-columns: minmax(0,1fr); gap: 10px; }
+  .live-stats > div { padding: 16px; }
+  .live-stats strong { font-size: 27px; }
+  #live-sensors { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 14px; }
+  #live-graph-stage { height: 350px; }
+  .live-network, .live-inspector, .live-sensors-panel, .live-methods, .live-connection { padding: 16px; }
+  .live-empty { min-height: 210px; padding: 20px; }
+  .live-connection h2 { font-size: 20px; overflow-wrap: anywhere; }
+}
