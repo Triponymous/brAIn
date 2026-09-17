@@ -21,11 +21,12 @@ uv pip install -e ".[dev]"
 uv pip check
 ```
 
-Python must satisfy `>=3.11,<3.13`. The manifest requires `torch>=2.13`;
-the old local environment used for the documented tests still has 2.11.0 and
-does not satisfy that requirement. Do not mistake those tests for a clean-install
-verification. Dependency migration needs its own compatibility test; do not
-downgrade requirements or alter an existing working environment silently.
+Python must satisfy `>=3.11,<3.13`. The manifest requires `torch>=2.13`.
+A separate macOS/Python 3.11.13 environment with `torch==2.13.0` was installed
+and dependency-checked on 2026-09-17. See [test scope](VERIFICATION.md).
+This does not automatically upgrade an existing environment: the maintainer's
+older `.venv` still has 2.11.0 and was deliberately left untouched.
+Do not downgrade requirements or alter a running research environment silently.
 
 ## Opt-in observer: recommended first runtime
 

@@ -61,8 +61,8 @@ uv pip check
 
 Dependency constraints are in [pyproject.toml](pyproject.toml), including
 `torch>=2.13`. Do not silently lower that requirement to make installation pass.
-A fresh installation with the current constraints has not been verified in this
-documentation update; see [verification notes](docs/VERIFICATION.md).
+A separate macOS/Python 3.11 environment with PyTorch 2.13.0 was installed and
+dependency-checked on 2026-09-17; see [verification scope](docs/VERIFICATION.md).
 
 ### 3. Optionally observe real model steps
 

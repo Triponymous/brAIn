@@ -1,5 +1,9 @@
 """Tests for the daemon control server — lifecycle with injected spawn/killer."""
 import os
+import signal
+import time
+
+import pytest
 
 from fastapi.testclient import TestClient
 
@@ -156,10 +160,20 @@ def test_running_pid_reaps_a_crashed_child(monkeypatch, tmp_path):
     child = os.fork()
     if child == 0:
         os._exit(0)
-    os.waitid(os.P_PID, child, os.WEXITED | os.WNOWAIT)  # exited, deliberately NOT reaped
     pidfile.write_text(str(child))
-
-    assert control._running_pid() is None
-    import pytest
-    with pytest.raises(ChildProcessError):  # and it has been reaped
-        os.waitpid(child, os.WNOHANG)
+    try:
+        # Let the actual probe reap the child; waitid/WNOWAIT is unavailable on macOS.
+        deadline = time.monotonic() + 5
+        while control._running_pid() is not None:
+            assert time.monotonic() < deadline, "exited child was not reaped"
+            time.sleep(0.01)
+        with pytest.raises(ChildProcessError):
+            os.waitpid(child, os.WNOHANG)
+    finally:
+        try:
+            remaining, _ = os.waitpid(child, os.WNOHANG)
+            if remaining == 0:
+                os.kill(child, signal.SIGKILL)
+                os.waitpid(child, 0)
+        except ChildProcessError:
+            pass

@@ -1,24 +1,49 @@
 # Verification and known gaps
 
-Documentation review: **2026-09-15**. Runtime code was not changed in this pass.
+Verification update: **2026-09-17**. Runtime code was not changed; the control
+test now exercises child reaping without the unavailable macOS `os.waitid` API.
 These checks validate selected contracts, not product readiness or scientific claims.
 
 ## Current results
 
 | Check | Result |
 | --- | --- |
-| Capture, telemetry, audio pipeline, brain tools, HTTP/MCP, experience and episode tests | 85 passed, 1 skipped |
+| Python suite in clean PyTorch-2.13 environment | 682 passed, 1 skipped, 3 native sensor tests deselected |
 | Observatory, live/capture UI contracts and bilingual tour | 37 passed |
 | 3D structural checks | PASS: 1,000 units, shared Circuit palette, atlas placement and asset consistency |
-| Known macOS control test | 1 failed: this Python lacks `os.waitid` |
-| Fresh installation satisfying current dependency constraints | Not verified |
+| macOS control tests | 11 passed after portable test repair |
+| Fresh installation satisfying current dependency constraints | Installed with PyTorch 2.13.0; `uv pip check` passed |
 | Real sensor, wearable, cloud model, voice recording or personal checkpoint run | Not performed |
 | Longitudinal study or real speech/music accuracy evaluation | Not performed |
 
-Environment: Python package versions PyTorch **2.11.0**, snnTorch **0.9.4**,
-MCP **2.2.0**, pytest **9.0.3**. The existing environment does **not** meet the
-current `torch>=2.13` requirement. Passing tests here do not verify that new floor.
-No dependency downgrade or environment migration was performed.
+The earlier 2026-09-15 scoped run (85 passed, 1 skipped) used PyTorch **2.11.0**, snnTorch
+**0.9.4**, MCP **2.2.0** and pytest **9.0.3**. That existing `.venv` does not meet
+the current `torch>=2.13` requirement and was left untouched.
+
+On 2026-09-17 a separate temporary environment was created with Python **3.11.13**,
+PyTorch **2.13.0**, snnTorch **1.0.0**, MCP **2.2.0**, pytest **9.1.1** and
+Anthropic SDK **1.6.0**. All 90 installed distributions passed `uv pip check`.
+The install used the declared project dependencies with an explicit
+`torch==2.13.0` constraint to exercise the minimum, not an in-place downgrade.
+Package source: [official PyTorch distribution on PyPI](https://pypi.org/project/torch/).
+This verifies this macOS/Python combination, not every supported platform.
+The full selected Python run took 77.02 seconds and emitted one upstream
+Starlette/AnyIO `BlockingPortal` deprecation warning. There were no test failures.
+The 37 JavaScript tests were rerun in the existing environment; their Python
+telemetry subprocess still uses the repository's older `.venv`.
+
+Reproduce the isolated installation and selected full suite:
+
+```sh
+brain_check_dir=$(mktemp -d)
+uv venv --python 3.11 "$brain_check_dir/venv"
+uv pip install --python "$brain_check_dir/venv/bin/python" -e ".[dev]" "torch==2.13.0"
+uv pip check --python "$brain_check_dir/venv/bin/python"
+"$brain_check_dir/venv/bin/python" -m pytest -q --override-ini addopts= \
+  --deselect=tests/test_sensor_keymouse.py::test_keystroke_construction \
+  --deselect=tests/test_sensor_keymouse.py::test_mouse_construction \
+  --deselect=tests/test_sensor_mic.py::test_construction
+```
 
 ## Reproduce the scoped checks
 
@@ -59,10 +84,11 @@ sensor-free execution. In particular, these constructors can touch native APIs:
 - `tests/test_sensor_keymouse.py::test_mouse_construction`
 - `tests/test_sensor_mic.py::test_construction`
 
-`tests/test_control.py::test_running_pid_reaps_a_crashed_child` currently fails
-on this macOS interpreter at `os.waitid`, before its intended assertion. It was
-reproduced separately; it is not counted among passing checks. Cross-platform
-test repair and clean-environment validation remain engineering work.
+`tests/test_control.py::test_running_pid_reaps_a_crashed_child` now lets the
+actual `_running_pid()` probe reap its own exited test child, with a bounded
+deadline and cleanup on failure. It still asserts that the child was reaped;
+the test is not skipped or replaced with a mock. Production supervision logic
+and running services were not changed.
 
 ## Scientific evidence boundary
 
