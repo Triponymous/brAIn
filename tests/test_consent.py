@@ -74,7 +74,9 @@ def test_the_choice_survives_a_restart(tmp_path):
     json.dumps({"schema": "brain.consent.v1", "revision": 3, "sources": ["mic"]}),
     json.dumps({"schema": "brain.consent.v1",
                 "sources": {"mic": {"enabled": True, "changed_at": 1}}}),       # no revision
-])
+    '{"schema": "brain.consent.v1", "revision": 1e400, "sources": {}}',       # int(inf) overflows
+    "[" * 100_000,                                                             # too deep for the parser
+], ids=["not-json", "foreign-schema", "string-true", "sources-list", "no-revision", "overflow", "deep-nesting"])
 def test_unreadable_consent_means_nothing_is_shared(tmp_path, content):
     path = tmp_path / "consent.json"
     path.write_text(content)
@@ -319,5 +321,110 @@ def test_consent_api_reports_an_unsaved_stop(tmp_path, monkeypatch):
 
     monkeypatch.setattr(store, "_save", read_only)
     r = c.post("/api/consent", json={"revision": 1, "enabled": {"mic": False}})
-    assert r.status_code == 500 and "stay off" in r.json()["detail"]
+    assert r.status_code == 500 and "restart would bring back" in r.json()["detail"]
     assert adapter.enabled["mic"] is False and adapter.enabled["idle"] is True
+
+
+# ── review follow-ups: what must not happen at the edges ─────────────
+
+class _Listener:
+    def __init__(self):
+        self.alive = True
+
+    def is_alive(self):
+        return self.alive
+
+    def stop(self):
+        self.alive = False
+
+
+def test_a_listener_that_cannot_observe_is_missing_not_silence(monkeypatch):
+    """Without Input Monitoring macOS refuses the event tap and pynput's thread ends quietly."""
+    adapter = MacDesktopAdapter(mock_mode=False)
+    listener = _Listener()
+    monkeypatch.setattr(adapter, "_start_listener", lambda name: adapter._listeners.__setitem__(name, listener))
+    adapter.apply({"keystroke_rate": True})
+    adapter._on_key()
+    adapter.encode()
+    assert adapter.bus.snapshot()["keystroke_rate"]["count"] == 1
+    assert adapter.status()["keystroke_rate"] == "available"
+    listener.alive = False
+    vec = adapter.encode()
+    assert "keystroke_rate" not in adapter.bus.snapshot()
+    assert adapter.status()["keystroke_rate"] == "waiting"
+    assert vec[60:80].sum() == 0 and vec[161] == 0          # neither a rate nor "not doing much"
+
+
+async def test_after_a_pause_the_trend_and_signature_start_afresh():
+    from bridge.felt_state import FeltState
+    from bridge.state_detector import StateDetector
+    from server.main import push_loop
+    brain = Brain(num_sensory=8, num_concept=4, num_wm=4)
+    brain.felt_state = FeltState()
+    brain._last_signature = [0.1] * 6                        # from before the pause
+    adapter = MacDesktopAdapter(mock_mode=True)              # nothing shared
+    detector = StateDetector()
+    resets = []
+    reset = detector.reset
+    detector.reset = lambda: (resets.append(1), reset())
+    task = asyncio.create_task(push_loop(brain, WSPusher(rate_hz=100.0), adapter=adapter, detector=detector))
+    await asyncio.sleep(0.2)
+    assert brain._last_signature is None and len(detector._history) == 0   # a frozen state is no moment
+    adapter.apply({"idle": True})
+    await _until(lambda: brain._last_signature is not None)
+    assert resets == [1]
+    await _cancel(task)
+
+
+async def test_a_pause_breaks_an_unknown_stretch():
+    brain = Brain(num_sensory=8, num_concept=4, num_wm=4)
+    brain._adapter = MacDesktopAdapter(mock_mode=True)      # nothing shared
+    engine = ProactiveEngine(brain, BrainStateExporter(brain), WSPusher())
+    engine._felt_watcher.observe(None, now=0.0)              # unknown since t=0
+    task = asyncio.create_task(engine.run(check_interval=0.01))
+    await asyncio.sleep(0.05)
+    await _cancel(task)
+    assert engine._felt_watcher.should_ask(now=3600.0) is False   # would ask at once after the pause
+
+
+def test_live_labeling_needs_a_shared_source_but_a_pending_ask_can_be_answered():
+    from bridge.felt_state import FeltState
+    from bridge.state_detector import StateDetector
+    from server.feel import build_feel_router
+    brain = Brain(num_sensory=8, num_concept=4, num_wm=4)
+    brain.felt_state = FeltState()
+    brain._adapter = MacDesktopAdapter(mock_mode=True)      # paused
+    app = FastAPI()
+    app.include_router(build_feel_router(brain, StateDetector()))
+    c = TestClient(app)
+    assert c.post("/api/feel", json={"label": "flow"}).status_code == 409
+    brain._pending_ask = {"signature": [0.02] * 6, "cluster": -1, "at": time.time()}
+    assert c.post("/api/feel", json={"label": "flow"}).status_code == 200   # that moment was observed
+    assert brain.felt_state.known_labels() == ["flow"]
+
+
+async def test_without_the_idle_source_sleep_is_left_alone():
+    brain = Brain()
+    brain.enter_sleep()
+    adapter = MacDesktopAdapter(mock_mode=True, enabled={"keystroke_rate": True})
+    loop = asyncio.create_task(brain_tick_loop(brain, adapter, hz=200.0))
+    await _until(lambda: brain.tick_count > 20)
+    assert brain.sleep_mode is True          # a missing idle timer used to read as 0 s and wake it
+    await _cancel(loop)
+
+
+def test_a_recording_is_discarded_if_the_microphone_is_switched_off_meanwhile(monkeypatch):
+    shared = {"mic": True}
+
+    def wait():
+        shared["mic"] = False                # switched off while the worker thread records
+
+    monkeypatch.setitem(sys.modules, "sounddevice", types.SimpleNamespace(
+        rec=lambda frames, **_: np.zeros((frames, 1), dtype=np.float32), wait=wait))
+    transcribed = []
+    app = FastAPI()
+    app.include_router(build_voice_router(
+        tts_engine=None, chat_fn=None, mic_shared=lambda: shared["mic"],
+        stt_engine=types.SimpleNamespace(transcribe=lambda audio, sample_rate: transcribed.append(1) or "x")))
+    assert TestClient(app).post("/api/stt/record", json={"duration": 1}).status_code == 403
+    assert transcribed == []

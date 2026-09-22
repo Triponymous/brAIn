@@ -86,7 +86,8 @@ brain_trial_dir=$(mktemp -d)
 ```
 
 Mock mode replaces desktop acquisition with synthetic values, but sources
-still start off. Share them to get data:
+still start off. Its choice is kept in `consent-mock.json`, so agreeing to
+synthetic data never switches on real capture later. Share them to get data:
 
 ```sh
 curl -s http://127.0.0.1:8010/api/consent        # shows the current revision
@@ -95,9 +96,9 @@ curl -s -X POST http://127.0.0.1:8010/api/consent \
   -d '{"revision": 0, "enabled": {"idle": true, "active_app": true}}'
 ```
 
-Voice recording is refused unless the microphone source is shared. Mock mode
-does not disable network-capable tools or the optional LLM path; do not invoke
-them in a sensor-free test. Stop with Ctrl-C.
+Voice recording is refused unless the microphone source is shared, and always
+in mock mode. Mock mode does not disable network-capable tools or the optional
+LLM path; do not invoke them in a sensor-free test. Stop with Ctrl-C.
 Do not connect the standard training console to this custom port without
 checking its configuration; this command is intended for isolated API testing.
 

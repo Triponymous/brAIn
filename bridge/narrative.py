@@ -69,8 +69,11 @@ class NarrativeBuilder:
             if said:
                 parts.append(f"{hour}h: {said}")
 
-        # Cap at 8 hourly blocks for conciseness
-        return " | ".join(parts[:8]) if parts else "Keine Aktivitaet."
+        # Cap at 8 hourly blocks for conciseness. Episodes that observed neither
+        # app nor keyboard are "no data", not "no activity".
+        if parts:
+            return " | ".join(parts[:8])
+        return "Keine Daten." if episodes else "Keine Aktivitaet."
 
 
 def _local_midnight_ts(offset_days: int = 0) -> float:

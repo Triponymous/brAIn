@@ -8,7 +8,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from bridge.experience import state_of
@@ -56,6 +56,10 @@ def build_feel_router(brain, detector) -> APIRouter:
             brain._pending_ask = None
             answered = pending
         else:
+            adapter = getattr(brain, "_adapter", None)
+            if adapter is not None and not adapter.acquiring:
+                # Paused: the trend is from before the pause, not how the user is now.
+                raise HTTPException(409, "Nothing is shared, so there is no current state to label")
             sig = _current_sig()
             cluster = _current_cluster()
         brain.felt_state.label(req.label, sig, cluster)

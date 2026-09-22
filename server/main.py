@@ -101,13 +101,15 @@ async def brain_tick_loop(brain: Any, adapter: Any, hz: float = 100.0, exporter:
                 continue
             vec = adapter.encode()
 
-            # Auto sleep/wake based on user idle time
-            idle_snap = adapter.bus.snapshot().get("idle", {})
-            idle_secs = idle_snap.get("seconds", 0) if idle_snap else 0
-            if idle_secs > sleep_idle_threshold and not brain.sleep_mode:
-                brain.enter_sleep()
-            elif idle_secs < sleep_idle_threshold and brain.sleep_mode:
-                brain.exit_sleep()
+            # Auto sleep/wake based on user idle time. Without the idle source
+            # there is nothing to decide on, so sleep stays as it is (a missing
+            # timer used to read as 0 s and woke a sleeping brain at once).
+            idle_secs = (adapter.bus.snapshot().get("idle") or {}).get("seconds")
+            if idle_secs is not None:
+                if idle_secs > sleep_idle_threshold and not brain.sleep_mode:
+                    brain.enter_sleep()
+                elif idle_secs < sleep_idle_threshold and brain.sleep_mode:
+                    brain.exit_sleep()
 
             out = brain.tick(vec)
             # Record concept spikes WITH sensor context for auto-correlation
@@ -165,6 +167,7 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter:
     _smooth_mic = 0.0
     _decay = 0.85  # exponential smoothing: keeps ~1s of history
     _felt_tick = 0
+    _was_paused = False
 
     try:
         while True:
@@ -220,7 +223,16 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter:
 
             # Felt-state: update the trend detector ~1Hz, recognize the learned state,
             # ride it on the push so the training console shows it live.
-            if detector is not None and getattr(brain, "felt_state", None) is not None:
+            paused = adapter is not None and not adapter.acquiring
+            if paused:
+                # Nothing observed: frozen modulators must not enter the trend as
+                # if they were new moments, and there is no current state to name.
+                brain._last_signature = None
+                _was_paused = True
+            elif detector is not None and getattr(brain, "felt_state", None) is not None:
+                if _was_paused:
+                    detector.reset()  # a pause breaks continuity; the trend starts afresh
+                    _was_paused = False
                 from bridge.felt_state import signature_from_trend
                 _felt_tick += 1
                 if _felt_tick == 1 or _felt_tick % max(1, int(pusher.rate_hz)) == 0:

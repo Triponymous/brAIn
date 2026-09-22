@@ -161,7 +161,8 @@ class CompactState:
             elif states.get("flow"):
                 needs_break = f" | im Flow seit {states['flow_duration_min']}min"
 
-        return f"SESSION: {active_min:.0f}min aktiv{needs_break} | Gewohnheit: {habit_ctx or 'noch keine gelernt'}"
+        active = "Dauer ohne Leerlauf-Daten unbekannt" if active_min is None else f"{active_min:.0f}min aktiv"
+        return f"SESSION: {active}{needs_break} | Gewohnheit: {habit_ctx or 'noch keine gelernt'}"
 
     def _brain_line(self) -> str:
         syn = self.brain.synapses.get("sensory_concept")

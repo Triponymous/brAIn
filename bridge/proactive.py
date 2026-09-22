@@ -181,9 +181,11 @@ class ProactiveEngine:
                             pass
 
                 # Nothing shared: the brain is paused and its state frozen. A frozen
-                # state looks "held", so the watcher would ask about a moment that never was.
+                # state looks "held", so the watcher would ask about a moment that never
+                # was, and an unknown stretch from before the pause must not count after it.
                 adapter = getattr(self.brain, "_adapter", None)
                 if adapter is not None and not adapter.acquiring:
+                    self._felt_watcher.interrupt()
                     continue
 
                 # Felt-state active-learning: ask Leon to label a sustained unknown state.

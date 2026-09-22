@@ -59,7 +59,7 @@ class MemoryResult:
 @dataclass
 class SessionResult:
     """Response payload for brain.session."""
-    active_minutes: float = 0.0
+    active_minutes: float | None = 0.0  # None: the idle source is not shared
     needs_break: bool = False
     in_flow: bool = False
     in_meeting: bool = False

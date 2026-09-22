@@ -42,6 +42,17 @@ def build_voice_router(
         if not mic_shared():
             raise HTTPException(403, "The microphone source is not shared")
 
+    async def _record(sd: Any, duration: float, sample_rate: int = 16000) -> np.ndarray:
+        """Record in a worker thread, so a consent change is handled meanwhile.
+        If the microphone was switched off during the recording, it is discarded."""
+        def rec() -> np.ndarray:
+            audio = sd.rec(int(sample_rate * duration), samplerate=sample_rate, channels=1, dtype="float32")
+            sd.wait()
+            return audio
+        audio = await asyncio.to_thread(rec)
+        _require_mic()
+        return audio[:, 0]
+
     @api.post("/api/tts")
     async def tts(req: TTSRequest) -> Response:
         wav_bytes = await tts_engine.synthesize(req.text)
@@ -56,12 +67,8 @@ def build_voice_router(
         except ImportError:
             return {"text": "", "error": "sounddevice not available"}
 
-        sample_rate = 16000
-        frames = int(sample_rate * req.duration)
-        audio = sd.rec(frames, samplerate=sample_rate, channels=1, dtype="float32")
-        sd.wait()
-        audio_flat = audio[:, 0]
-        text = stt_engine.transcribe(audio_flat, sample_rate=sample_rate)
+        audio_flat = await _record(sd, req.duration)
+        text = stt_engine.transcribe(audio_flat, sample_rate=16000)
         return {"text": text}
 
     @api.post("/api/voice-chat")
@@ -73,15 +80,9 @@ def build_voice_router(
         except ImportError:
             return Response(content=b"", media_type="audio/wav")
 
-        # Record
-        sample_rate = 16000
-        frames = int(sample_rate * req.duration)
-        audio = sd.rec(frames, samplerate=sample_rate, channels=1, dtype="float32")
-        sd.wait()
-        audio_flat = audio[:, 0]
-
-        # Transcribe
-        user_text = stt_engine.transcribe(audio_flat, sample_rate=sample_rate)
+        # Record, then transcribe
+        audio_flat = await _record(sd, req.duration)
+        user_text = stt_engine.transcribe(audio_flat, sample_rate=16000)
         if not user_text.strip():
             return Response(content=b"", media_type="audio/wav")
 

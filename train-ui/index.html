@@ -136,6 +136,7 @@
       <span id="sources-pill" class="pill"><span class="dot"></span><span id="sources-text">…</span></span>
     </div>
     <div id="sources" class="sources"></div>
+    <p id="sources-error" class="hint" style="color:var(--tt-danger); font-weight:600" role="alert" hidden></p>
     <p class="hint">Nothing is captured until you switch a source on, and the brain does not learn while nothing is shared. Your choice is saved and survives restarts. Switching a source off stops its capture at once; it does not erase what the brain already learned.</p>
   </div>
 
@@ -223,10 +224,24 @@
     try {
       const r = await fetch(BRAIN + "/api/consent", {method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({revision:state.consent.revision, enabled:{[name]:on}})});
-      if (r.ok) state.consent = await r.json();
-      else await consentRead();  // e.g. 409: changed in another tab; show what is actually in force
-    } catch (_) {}
+      if (r.ok) {
+        state.consent = await r.json();
+        sourcesError("");
+      } else {
+        let detail = "";
+        try { detail = (await r.json()).detail || ""; } catch (_) {}
+        // 409: another window changed it. 500: a stop holds for now but was not saved.
+        sourcesError(r.status === 409 ? "Changed in another window. Showing the choice now in force."
+                                      : (detail || "Could not change the source (HTTP " + r.status + ")."));
+        await consentRead();
+      }
+    } catch (_) { sourcesError("The daemon did not answer. Nothing was changed."); }
     renderSources(); render();
+  }
+  function sourcesError(text) {
+    const el = document.getElementById("sources-error");
+    el.textContent = text;
+    el.hidden = !text;
   }
 
   async function daemonStart() { try { await fetch("/daemon/start", {method:"POST", headers:{"Content-Type":"application/json"}, body:"{}"}); } catch(_){} daemonStatus(); }
@@ -265,6 +280,12 @@
     document.getElementById("daemon-text").textContent = running ? ("running · pid " + state.daemon.pid) : "off";
     document.getElementById("btn-start").disabled = !!running;
     document.getElementById("btn-stop").disabled = !running;
+
+    // While nothing is shared there is no current state to confirm or name;
+    // answering a pending ask in the banner stays possible (that moment was observed).
+    const paused = !!(state.consent && state.consent.paused);
+    document.getElementById("btn-learn").disabled = paused;
+    document.getElementById("new-label").disabled = paused;
 
     // felt state
     const felt = state.felt;
@@ -314,6 +335,7 @@
       const b = document.createElement("button");
       b.className = "btn btn-secondary";
       b.textContent = lab;
+      b.disabled = paused;
       b.onclick = () => teach(lab);
       kl.appendChild(b);
     }

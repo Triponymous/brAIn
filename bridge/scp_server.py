@@ -451,8 +451,9 @@ class BrainServer:
             raw_anomalies = interpreter.anomaly.check(sd)
             anomalies = [a.get("description", "") for a in raw_anomalies if a.get("description")]
 
+        active = states.get("active_minutes", 0)  # None: the idle source is not shared
         result = SessionResult(
-            active_minutes=round(states.get("active_minutes", 0), 1),
+            active_minutes=None if active is None else round(active, 1),
             needs_break=states.get("needs_break", False),
             in_flow=states.get("flow", False),
             in_meeting=states.get("meeting", False),

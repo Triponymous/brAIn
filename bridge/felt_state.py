@@ -94,6 +94,10 @@ class FeltStateWatcher:
         else:                                  # recognized → not a moment to ask
             self._unknown_since = None
 
+    def interrupt(self) -> None:
+        """Nothing was observed for a while (paused): an unknown stretch starts over."""
+        self._unknown_since = None
+
     def should_ask(self, now: float) -> bool:
         if self._unknown_since is None:
             return False

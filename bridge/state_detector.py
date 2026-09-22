@@ -45,7 +45,10 @@ class StateDetector:
         self.break_after_minutes = break_after_minutes
         self.break_reset_idle = break_reset_idle
 
-        # Rolling state
+        self.reset()
+
+    def reset(self) -> None:
+        """Forget the rolling history, e.g. after a pause in which nothing was observed."""
         self._history: deque[dict] = deque(maxlen=7200)  # 2h at 1/sec
         self._last_app: str = ""
         self._same_app_since: int = 0   # snapshot index when app last changed
@@ -100,7 +103,7 @@ class StateDetector:
             meeting         - bool: user appears to be in a video call
             meeting_duration_min - float: minutes in current meeting (0 if not)
             needs_break     - bool: user has been active >90min without a break
-            active_minutes  - float: minutes since last idle reset
+            active_minutes  - float: minutes since last idle reset (None without the idle source)
         """
         if not self._history:
             return self._empty()
@@ -159,7 +162,8 @@ class StateDetector:
             "meeting": meeting,
             "meeting_duration_min": round(meeting_secs / 60, 1) if meeting else 0,
             "needs_break": needs_break,
-            "active_minutes": round(active_min, 1),
+            # How long without a break is unknown without the idle source.
+            "active_minutes": round(active_min, 1) if latest["idle"] is not None else None,
         }
 
     def emotional_trend(self, window_seconds: int = 180) -> dict[str, float]:

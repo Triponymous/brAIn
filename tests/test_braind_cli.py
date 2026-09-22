@@ -110,6 +110,21 @@ def test_sigterm_ends_with_a_saved_checkpoint(tmp_path):
                 pytest.fail(f"the brain never stepped after sharing a source:\n{log.read_text()}")
             time.sleep(0.2)
 
+        # Consent to synthetic data lives apart from real consent, and the
+        # synthetic microphone never unlocks real voice recording.
+        assert (tmp_path / "consent-mock.json").exists() and not (tmp_path / "consent.json").exists()
+        mic = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/consent", method="POST",
+            data=json.dumps({"revision": 1, "enabled": {"mic": True}}).encode(),
+            headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(mic, timeout=5).close()
+        record = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/stt/record", method="POST",
+            data=json.dumps({"duration": 1}).encode(), headers={"Content-Type": "application/json"})
+        with pytest.raises(urllib.error.HTTPError) as refused:
+            urllib.request.urlopen(record, timeout=5)
+        assert refused.value.code == 403
+
         proc.terminate()  # SIGTERM, exactly what the console Stop button sends
         rc = proc.wait(timeout=60)
     finally:

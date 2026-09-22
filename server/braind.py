@@ -72,7 +72,8 @@ def erase_plan(checkpoint: Path) -> list[Path]:
         plan.append(d / "braind.pid")
     for name in (checkpoint.name, "episodes.db", "experience.db", "grants.sqlite"):
         plan += [d / (name + side) for side in _SQLITE_FILES]
-    plan += [d / (checkpoint.name + ".tmp"), d / "consent.json", d / "consent.json.tmp"]
+    plan += [d / (checkpoint.name + ".tmp")]
+    plan += [d / (c + t) for c in ("consent.json", "consent-mock.json") for t in ("", ".tmp")]
     plan += sorted((d / "backups").glob(f"{checkpoint.stem}-*{checkpoint.suffix}"))
     if d.resolve() == (_PROJ / "checkpoints").resolve():
         plan += [_PROJ / "logs" / "brain.out.log", _PROJ / "logs" / "brain.err.log"]
@@ -210,7 +211,9 @@ async def _run_daemon(args: argparse.Namespace) -> None:
 
     # Consent decides what is captured; nothing is, until the user shares a source.
     from server.consent import ConsentStore, build_consent_router
-    consent = ConsentStore(checkpoint.parent / "consent.json")
+    # Mock mode keeps its own file: agreeing to synthetic data is not agreeing
+    # to real capture when the same directory later runs a real daemon.
+    consent = ConsentStore(checkpoint.parent / ("consent-mock.json" if args.mock_sensors else "consent.json"))
     shared = [name for name, on in consent.enabled().items() if on]
     print(f"Shared sources: {', '.join(shared) if shared else 'none (the brain waits)'}")
 
@@ -326,7 +329,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
         tts_engine=tts_engine,
         stt_engine=stt_engine,
         chat_fn=_chat_fn,
-        mic_shared=lambda: adapter.enabled["mic"],
+        mic_shared=lambda: adapter.enabled["mic"] and not adapter.mock_mode,  # the synthetic mic is not a real one
     )
     app.include_router(voice_router)
 
@@ -347,8 +350,11 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     # Interpreter tick loop — updates state detector + personality at 1 Hz
     async def interpreter_tick_loop():
         while True:
-            interpreter.tick()
-            scp_server.tick()  # check for events (pattern changes, etc.)
+            # Paused: frozen modulators must not move the persisted personality
+            # or raise pattern events; nothing new was observed.
+            if adapter.acquiring:
+                interpreter.tick()
+                scp_server.tick()  # check for events (pattern changes, etc.)
             # Paused (nothing shared): no new observation, so no consequence to
             # write; due events expire without one instead of getting a frozen state.
             experience.settle(time.time(), getattr(brain, "_last_signature", None) if adapter.acquiring else None)

@@ -216,8 +216,15 @@ class MacDesktopAdapter:
             # mid-tick is not written back onto the bus.
             with self._lock:
                 for name, times in (("keystroke_rate", self._key_times), ("mouse_rate", self._mouse_times)):
-                    if not self.enabled[name] or name not in self._listeners:
-                        continue  # not shared, or no listener: nothing was counted
+                    if not self.enabled[name]:
+                        continue
+                    listener = self._listeners.get(name)
+                    if listener is None or not listener.is_alive():
+                        # Shared, but nothing listens: on macOS without Input
+                        # Monitoring the event tap is refused and pynput's thread
+                        # ends quietly. A zero rate would read as "not typing".
+                        self.bus.discard(name)
+                        continue
                     while times and times[0] < cutoff:
                         times.popleft()
                     rate = _rate_and_rhythm(list(times), now, window=1.0)

@@ -53,8 +53,10 @@ class ConsentStore:
                     sources[name] = {"enabled": entry["enabled"] is True,
                                      "changed_at": None if at is None else float(at)}
             return max(0, int(data["revision"])), sources
-        except (OSError, ValueError, KeyError, TypeError, AttributeError):
-            return 0, _all_off()  # unreadable counts as "never agreed"
+        except Exception:
+            # Anything unreadable counts as "never agreed" (a huge number or deep
+            # nesting raises OverflowError/RecursionError, not only ValueError).
+            return 0, _all_off()
 
     def _save(self, revision: int, sources: dict[str, dict[str, Any]]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -125,8 +127,9 @@ def build_consent_router(store: ConsentStore, adapter: Any) -> APIRouter:
             store.update(change, time.time())
         except OSError:
             adapter.apply(store.enabled())
-            raise HTTPException(500, "Could not save the choice. Sources switched off stay off "
-                                     "until the daemon restarts; the others are unchanged.") from None
+            raise HTTPException(500, "Could not save the choice. What you switched off is off now, but a "
+                                     "restart would bring back the last saved choice. Is the checkpoint "
+                                     "folder full or read-only?") from None
         adapter.apply(store.enabled())
         return state()
 

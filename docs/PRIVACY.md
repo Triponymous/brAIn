@@ -11,7 +11,7 @@ not a legal certification or a promise that derived data is anonymous.
 | Observer (`server.observe`) | Four opt-in coarse desktop metadata channels; model output | 512-frame server ring, up to 200 per response/UI window; no checkpoint; export is explicit |
 | Persistent daemon (`server.braind`) | Five sources, each off until shared: key and pointer event rates, idle time, app names (front and open apps), microphone features; taught labels | Per-source consent in the training console, saved in `consent.json`; checkpoint and companion SQLite databases; not governed by Observatory switches |
 | Daemon chat | Submitted text, supplied history and model/app context | Sent to the selected LLM backend; the experience event records a character count, not the submitted chat body |
-| Voice endpoints | Explicitly requested microphone recording/transcription and synthesized output | Refused unless the microphone source is shared; at most 30 s per request. Processes actual speech; therefore a repository-wide “no transcripts/content” claim would be false |
+| Voice endpoints | Explicitly requested microphone recording/transcription and synthesized output | Refused unless the microphone source is shared, and always in mock mode; at most 30 s per request; discarded if the microphone is switched off while recording. Processes actual speech; therefore a repository-wide “no transcripts/content” claim would be false |
 | External MCP | State, labels, app information, patterns and query results | Host can store/disclose returned data; daemon logs query name, arguments and source |
 | Optional action tools | Granted search, shell and file operations | Experimental trust boundary; see [SECURITY.md](../SECURITY.md) |
 
@@ -32,7 +32,7 @@ By default, the daemon uses the `checkpoints/` directory:
 - `grants.sqlite`: capability permissions.
 - `consent.json`: which sources are shared, when each choice changed, and a
   revision number. The daemon reads it on start; if it is missing or
-  unreadable, nothing is shared.
+  unreadable, nothing is shared. Mock mode uses `consent-mock.json` instead.
 - Checkpoint backups and runtime logs may also remain.
 
 Removing the main checkpoint alone is not complete erasure. `python -m

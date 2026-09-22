@@ -52,7 +52,7 @@ def test_detector_claims_no_flow_or_break_without_keyboard_and_idle():
         detector.update(brain)
     states = detector.detect()
     assert states["flow"] is False and states["needs_break"] is False
-    assert states["active_minutes"] == 0                        # continuous work is unknown without idle
+    assert states["active_minutes"] is None                     # continuous work is unknown without idle
 
 
 def test_anomalies_need_the_data_they_compare():
@@ -82,5 +82,19 @@ def test_narrative_does_not_call_an_unobserved_hour_quiet(tmp_path):
                 "active_concepts": [], "sensor_summary": summary, "sleep_mode": False}
     nb = NarrativeBuilder(MagicMock())
     assert nb._build_narrative([episode({"app": "Editor"})]) == f"{hour}h: in Editor"
-    assert nb._build_narrative([episode({})]) == "Keine Aktivitaet."
+    assert nb._build_narrative([episode({})]) == "Keine Daten."      # not "no activity"
     assert nb._build_narrative([episode({"app": "Editor", "keys": 1})]) == f"{hour}h: ruhig in Editor"
+
+
+@pytest.mark.parametrize("model", ["qwen", "gemma", "claude", "generic"])
+def test_prompts_claim_no_session_minutes_without_idle(tmp_path, model):
+    from bridge.episode_log import EpisodeLogger
+    from bridge.interpreter import BrainInterpreter
+    from bridge.scp import CompactState
+    brain = _brain({"app": "Editor", "keys": 5})
+    brain._interpreter = BrainInterpreter(brain, EpisodeLogger(tmp_path / "episodes.db"))
+    for _ in range(600):                                        # ten minutes of typing, idle not shared
+        brain._interpreter.state_detector.update(brain)
+    prompt = SCPClient(BrainServer(brain), model_type=model).build_prompt("wie ist es?")
+    assert "Session: keine Daten" in prompt and "min aktiv" not in prompt
+    assert "unbekannt" in CompactState(brain)._session_line()

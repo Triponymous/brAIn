@@ -35,6 +35,12 @@ def _shown(sensors: dict[str, Any], key: str) -> str:
     return "keine Daten" if value is None or value == "" else str(value)
 
 
+def _minutes_active(session: dict[str, Any]) -> str:
+    """Time without a break is only known with the idle source."""
+    minutes = session.get("active_minutes", 0)
+    return "keine Daten" if minutes is None else f"{minutes:.0f}min aktiv"
+
+
 # ═══════════════════════════════════════════════════════════════════
 # Brain Server -- wraps SNN runtime, exposes SCP query/action API
 # ═══════════════════════════════════════════════════════════════════
@@ -244,7 +250,7 @@ class BrainServer:
             anomalies = [a["description"] for a in anomaly_list[:3]]
 
         return {
-            "active_minutes": round(active_minutes, 1),
+            "active_minutes": None if active_minutes is None else round(active_minutes, 1),
             "needs_break": needs_break,
             "in_flow": in_flow,
             "in_meeting": in_meeting,
@@ -519,8 +525,7 @@ class QwenAdapter(_BaseAdapter):
         lines.append(f"  Muster: {label} (Sicherheit: {conf:.0%})")
         lines.append(f"  App: {_shown(sensors, 'app')}, Tastatur: {_shown(sensors, 'keyboard')}, Maus: {_shown(sensors, 'mouse')}")
 
-        active_min = session.get("active_minutes", 0)
-        lines.append(f"  Session: {active_min:.0f}min aktiv")
+        lines.append(f"  Session: {_minutes_active(session)}")
 
         if session.get("in_flow"):
             lines.append("  Status: im Flow")
@@ -562,7 +567,7 @@ class GemmaAdapter(_BaseAdapter):
             f"  Stimmung: {emotion.get('state', 'content')}",
             f"  Muster: {label}",
             f"  App: {app}, Tastatur: {keyboard}",
-            f"  Session: {session.get('active_minutes', 0):.0f}min aktiv",
+            f"  Session: {_minutes_active(session)}",
             "",
             "Beispiel gute Antwort: 'Hier ist es gerade ruhig -- du bist in Claude und tippst wenig. Sieht nach einer Denkpause aus.'",
             "Beispiel schlechte Antwort: 'Ich erkenne Muster #5! DA=0.006!'",
@@ -602,7 +607,7 @@ class ClaudeAdapter(_BaseAdapter):
         conf = pattern.get("confidence", 0)
         parts.append(f"Muster: {label} (Sicherheit: {conf:.0%})")
         parts.append(f"Sensoren: App={_shown(sensors, 'app')}, Tastatur={_shown(sensors, 'keyboard')}, Maus={_shown(sensors, 'mouse')}")
-        parts.append(f"Session: {session.get('active_minutes', 0):.0f}min aktiv")
+        parts.append(f"Session: {_minutes_active(session)}")
 
         habit = session.get("habit_context", "")
         if habit:
@@ -646,7 +651,7 @@ class GenericAdapter(_BaseAdapter):
             f"Stimmung: {emotion.get('state', 'content')}",
             f"Muster: {pattern.get('label') or 'unbekannt'}",
             f"App: {_shown(sensors, 'app')}, Tastatur: {_shown(sensors, 'keyboard')}",
-            f"Session: {session.get('active_minutes', 0):.0f}min aktiv",
+            f"Session: {_minutes_active(session)}",
         ]
 
         if context:
