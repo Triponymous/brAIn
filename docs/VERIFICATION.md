@@ -8,14 +8,20 @@ the launch agent and a real microphone were not exercised.
 
 | Check (Linux, Python 3.11.15, PyTorch 2.14.0, snnTorch 1.0.0, MCP 2.2.0, pytest 9.1.1) | Result |
 | --- | --- |
-| Full Python suite, unfiltered | 739 passed, 1 skipped |
+| Full Python suite, unfiltered | 752 passed, 1 skipped |
 | Observatory, live/capture UI contracts and bilingual tour | 37 passed |
 | 3D structural checks | PASS |
-| Training console in headless Chromium against a mock-sensor daemon | First start paused with 0 steps; sharing idle time started steps; microphone switch on and off; a page on another local origin was blocked for POST, GET and WebSocket; a restart restored exactly the saved choice |
-| `server.braind erase` against a mock-sensor daemon | Refused while running; dry run listed 6 files; `--yes` deleted them including the backup; the next start was fresh and shared nothing |
+| Training console in headless Chromium against a mock-sensor daemon | First start paused with 0 steps and live labeling locked; sharing idle time started steps; microphone switch on and off; a stop that could not be saved stayed off and was reported; a page on another local origin was blocked for POST, GET and WebSocket; a restart restored exactly the saved choice |
+| `server.braind erase` against a mock-sensor daemon on port 8012 | Refused while running although erase checks port 8000 by default; a second daemon on the same checkpoint did not start; dry run listed 6 files; `--yes` deleted them including the backup; the next start was fresh and shared nothing |
 
 The new consent, origin and missing-data tests fail against the previous code
-and pass now. The 2026-09-17 record below is unchanged.
+and pass now. An independent review of the change found edge cases that are
+now fixed and tested the same way: a keyboard listener without Input Monitoring
+counted as live, mock-mode consent carried over to real capture, a paused
+brain asked at once after resuming, erase missed a daemon on another port, and
+backup matching by prefix reached another checkpoint's backups. Real macOS
+behaviour of the listener check is inferred from pynput's source, not observed.
+The 2026-09-17 record below is unchanged.
 
 Verification update: **2026-09-17**. Runtime code was not changed; the control
 test now exercises child reaping without the unavailable macOS `os.waitid` API.
