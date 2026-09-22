@@ -53,8 +53,8 @@ evidence about biological sleep or clinical benefit.
 - `bridge/episode_log.py` persists episode summaries and prunes rows older than
   90 days by default. App information and labels may be personal data.
 - `bridge/experience.py` records events and response links, then settles a
-  consequence signature approximately 120 seconds later. Its default does not
-  implement the episode log's 90-day retention policy.
+  consequence signature approximately 120 seconds later. Like the episode log,
+  it prunes rows older than 90 days by default (on open and daily).
 - `server/tools.py` records external query names, arguments and provenance in
   the experience log. “Read-only” refers to model/action access, not zero disk writes.
 

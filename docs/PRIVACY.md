@@ -27,8 +27,8 @@ By default, the daemon uses the `checkpoints/` directory:
 - `braind.sqlite`: model state, learned labels and associated persistent state.
 - `episodes.db`: activity summaries, including app/label information; default
   episode pruning is 90 days.
-- `experience.db`: event metadata, model signatures, responses and tool arguments.
-  No corresponding automatic 90-day retention policy is implemented here.
+- `experience.db`: event metadata, model signatures, responses and tool arguments;
+  events older than 90 days are pruned when the daemon starts and once a day.
 - `grants.sqlite`: capability permissions.
 - `consent.json`: which sources are shared, when each choice changed, and a
   revision number. The daemon reads it on start; if it is missing or

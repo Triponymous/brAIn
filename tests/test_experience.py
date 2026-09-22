@@ -105,3 +105,33 @@ def test_state_of_before_any_signature():
     brain = Brain(num_sensory=8, num_concept=4, num_wm=4)
     s = state_of(brain)
     assert s["felt_label"] is None and s["signature"] is None and s["cluster"] is None
+
+
+# ── Retention: rows hold labels, app names and tool arguments ────────
+
+def test_prune_removes_events_older_than_retention(tmp_path):
+    lg = ExperienceLog(tmp_path / "experience.db", retention_days=30)
+    now = 100 * 86400.0
+    lg.record("pet", "notify", {}, state=_state(), now=now - 40 * 86400)
+    lg.record("pet", "notify", {}, state=_state(), now=now - 10 * 86400)
+    assert lg.prune(now) == 1
+    assert [r["ts"] for r in lg.recent()] == [now - 10 * 86400]
+    lg.close()
+
+
+def test_prune_runs_when_the_log_is_opened(tmp_path):
+    lg = ExperienceLog(tmp_path / "experience.db", retention_days=30)
+    lg.record("pet", "notify", {}, state=_state(), now=1.0)      # 1970: far beyond any retention
+    lg.close()
+    assert ExperienceLog(tmp_path / "experience.db", retention_days=30).recent() == []
+
+
+def test_a_running_daemon_prunes_once_a_day_via_settle(tmp_path):
+    lg = ExperienceLog(tmp_path / "experience.db", retention_days=30)
+    start = lg._pruned_at
+    lg.record("pet", "notify", {}, state=_state(), now=start - 29.5 * 86400)
+    lg.settle(start + 3600, signature=None)                        # same day: no prune
+    assert len(lg.recent()) == 1
+    lg.settle(start + 86400, signature=None)                       # a day later the row is 30.5 days old
+    assert lg.recent() == [] and lg._pruned_at == start + 86400
+    lg.close()

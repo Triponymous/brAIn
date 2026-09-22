@@ -66,17 +66,30 @@ def state_of(brain: Any) -> dict[str, Any]:
 
 
 class ExperienceLog:
-    def __init__(self, path: Path, settle_after: float = 120.0) -> None:
+    def __init__(self, path: Path, settle_after: float = 120.0, retention_days: float = 90.0) -> None:
         self.path = Path(path)
         # How long after an action its consequence is read. 120 s: long enough
         # for the 180 s modulator trend to move, short enough to still be about
         # this action rather than the next thing that happened.
         self.settle_after = settle_after
+        # Same horizon as the episode log: rows hold labels, app names and tool
+        # arguments, and nothing reads further back than a week.
+        self.retention_days = retention_days
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(str(self.path), check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
+        self.prune()
+
+    def prune(self, now: float | None = None) -> int:
+        """Delete events older than retention_days; returns rows removed."""
+        now = time.time() if now is None else now
+        self._pruned_at = now
+        cur = self._conn.execute("DELETE FROM experiences WHERE ts < ?",
+                                 (now - self.retention_days * 86400,))
+        self._conn.commit()
+        return cur.rowcount
 
     def record(self, actor: str, kind: str, payload: dict | None = None, *,
                state: dict | None = None, now: float | None = None) -> int:
@@ -110,6 +123,8 @@ class ExperienceLog:
         settle timestamp: today's mood is not what followed that action.
         Returns the number of rows settled.
         """
+        if now - self._pruned_at >= 86400:  # the daemon runs for months; this is its daily tick
+            self.prune(now)
         due = now - self.settle_after
         stale = now - 2 * self.settle_after
         n = 0
