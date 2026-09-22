@@ -52,3 +52,16 @@ def test_websocket_from_another_website_is_closed(client):
     assert refused.value.code == 1008                                        # closed before accept: never streamed
     with client.websocket_connect(WS, headers={"Origin": CONSOLE}):
         pass                                                                 # the console streams
+
+
+def test_a_configured_origin_may_call_the_daemon():
+    """daemon.allowed_origins in config.json, e.g. a new dashboard on its own port."""
+    from server.main import CONSOLE_ORIGINS
+    app = build_app(brain=None, adapter=None, pusher=None, origins=CONSOLE_ORIGINS + ("http://localhost:4321",))
+    c = TestClient(app, base_url="http://127.0.0.1:8000")
+    r = c.get("/healthz", headers={"Origin": "http://localhost:4321"})
+    assert r.status_code == 200 and r.headers["access-control-allow-origin"] == "http://localhost:4321"
+    refused = c.get("/healthz", headers={"Origin": EVIL})
+    assert refused.status_code == 403 and "allowed_origins" in refused.json()["detail"]
+    with c.websocket_connect(WS, headers={"Origin": "http://localhost:4321"}):
+        pass

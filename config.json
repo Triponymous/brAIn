@@ -25,7 +25,8 @@
     "port": 8000,
     "push_hz": 30,
     "save_interval_sec": 60,
-    "checkpoint_path": "checkpoints/braind.sqlite"
+    "checkpoint_path": "checkpoints/braind.sqlite",
+    "allowed_origins": []
   },
   "voice": {
     "tts_model": "models/de_DE-thorsten-medium.onnx",

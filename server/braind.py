@@ -273,8 +273,14 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     load_config()
     config_router = build_config_router()
 
-    # Build FastAPI app
-    app = build_app(brain=brain, adapter=adapter, pusher=pusher)
+    # Build FastAPI app. Web pages other than the training console (say, a new
+    # dashboard on its own port) must be listed explicitly to call the daemon.
+    from server.main import CONSOLE_ORIGINS
+    extra = get("daemon", "allowed_origins", [])
+    extra = tuple(o for o in extra if isinstance(o, str)) if isinstance(extra, list) else ()
+    if extra:
+        print(f"Also allowed to call the daemon: {', '.join(extra)}")
+    app = build_app(brain=brain, adapter=adapter, pusher=pusher, origins=CONSOLE_ORIGINS + extra)
     app.include_router(chat_router)
     app.include_router(grants_router)
     app.include_router(config_router)
