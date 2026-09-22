@@ -52,12 +52,13 @@ class BrainTools:
     })
 
     def __init__(self, brain: Brain, *, episodes: Any = None, experience: Any = None,
-                 interpreter: Any = None, narrator: Any = None) -> None:
+                 interpreter: Any = None, narrator: Any = None, adapter: Any = None) -> None:
         self.brain = brain
         self.episodes = episodes          # EpisodeLogger: one snapshot per ~10 s
         self.experience = experience      # ExperienceLog: what happened between us
         self.interpreter = interpreter    # BrainInterpreter: habits, anomalies, explainer
         self.narrator = narrator          # SNNNarrator: the brain's own words
+        self.adapter = adapter            # MacDesktopAdapter: which sources the user shares
 
     # ------------------------------------------------------------------ tools
 
@@ -89,6 +90,9 @@ class BrainTools:
             "senses": {"app": sd.get("app"), "keys_per_s": sd.get("keys"), "mouse_per_s": sd.get("mouse"),
                        "idle_s": sd.get("idle"), "mic_rms": sd.get("mic_rms"),
                        "app_switches_per_min": sd.get("switch_rate")},
+            # A sense that reads null is either not shared or not observed yet; this says which.
+            "sources": self.adapter.status() if self.adapter is not None else None,
+            "paused": (not self.adapter.acquiring) if self.adapter is not None else None,
             "working_memory_active": wm_active,
             "sleeping": bool(b.sleep_mode),
             "age": {"ticks": b.tick_count, "days": _r(b.tick_count / (_TICK_HZ * 86400), 2)},
@@ -263,8 +267,9 @@ class BrainTools:
             {"name": "brain_state",
              "description": "How I am right now: my felt-state and how sure I am, my chemistry (DA NE ACh 5HT) "
                             "with its 180-second trend and the prediction error behind it, the behaviour pattern "
-                            "I recognise, what my senses show, whether I am asleep, my age. Call this before "
-                            "answering anything about my current state.",
+                            "I recognise, what my senses show and which of them the user shares (an unshared sense "
+                            "reads null, never zero; paused means nothing is shared and I am not learning), whether "
+                            "I am asleep, my age. Call this before answering anything about my current state.",
              "input_schema": no_args},
             {"name": "brain_history",
              "description": "What happened over the last N hours, in steps: the dominant pattern, apps, average "

@@ -9,9 +9,9 @@ not a legal certification or a promise that derived data is anonymous.
 | --- | --- | --- |
 | Static Observatory demo | Synthetic fixtures; user-entered demo annotations | Demo annotations stay in the tab and explicit exports; tour-seen flag and language are stored in the browser |
 | Observer (`server.observe`) | Four opt-in coarse desktop metadata channels; model output | 512-frame server ring, up to 200 per response/UI window; no checkpoint; export is explicit |
-| Persistent daemon (`server.braind`) | Broader desktop metadata, app information, microphone-derived features, taught labels | Checkpoint and companion SQLite databases; not governed by Observatory switches |
+| Persistent daemon (`server.braind`) | Five sources, each off until shared: key and pointer event rates, idle time, app names (front and open apps), microphone features; taught labels | Per-source consent in the training console, saved in `consent.json`; checkpoint and companion SQLite databases; not governed by Observatory switches |
 | Daemon chat | Submitted text, supplied history and model/app context | Sent to the selected LLM backend; the experience event records a character count, not the submitted chat body |
-| Voice endpoints | Explicitly requested microphone recording/transcription and synthesized output | Processes actual speech; therefore a repository-wide “no transcripts/content” claim would be false |
+| Voice endpoints | Explicitly requested microphone recording/transcription and synthesized output | Refused unless the microphone source is shared; at most 30 s per request. Processes actual speech; therefore a repository-wide “no transcripts/content” claim would be false |
 | External MCP | State, labels, app information, patterns and query results | Host can store/disclose returned data; daemon logs query name, arguments and source |
 | Optional action tools | Granted search, shell and file operations | Experimental trust boundary; see [SECURITY.md](../SECURITY.md) |
 
@@ -30,17 +30,24 @@ By default, the daemon uses the `checkpoints/` directory:
 - `experience.db`: event metadata, model signatures, responses and tool arguments.
   No corresponding automatic 90-day retention policy is implemented here.
 - `grants.sqlite`: capability permissions.
+- `consent.json`: which sources are shared, when each choice changed, and a
+  revision number. The daemon reads it on start; if it is missing or
+  unreadable, nothing is shared.
 - Checkpoint backups and runtime logs may also remain.
 
 SQLite auxiliary files, backups and explicit exports need to be included in a
 real deletion plan. Removing the main checkpoint alone is not complete erasure.
-The repository does not currently provide a unified consent/retention/deletion UI
-for the daemon. Do not delete files while the writer is running.
+The training console sets per-source consent for the daemon. There is no
+unified retention/deletion UI yet. Do not delete files while the writer is running.
 No personal data is removed by this documentation update.
 
 ## Stop is not erase
 
 - Observer **Stop all capture** stops its source acquisition and further steps.
+- Daemon **Data sources**: switching a source off stops its listener, audio
+  stream or polling and drops its last value; with nothing shared the model
+  does not step. A stop holds for the running daemon even if saving the choice
+  fails, and the console reports that failure.
 - **Disconnect view**, freezing and closing the tab do not stop collection.
 - Stopping a source does not erase historical frames, learned weights or exports.
 - Observer process termination releases its model/ring buffer; this is not a

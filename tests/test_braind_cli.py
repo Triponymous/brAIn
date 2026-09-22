@@ -4,6 +4,7 @@ We test the argument parser and the high-level run flow with mock sensors.
 The actual long-running daemon is exercised by the E2E smoke test in Task 11.
 """
 import argparse
+import json
 import subprocess
 import sys
 import time
@@ -97,6 +98,17 @@ def test_sigterm_ends_with_a_saved_checkpoint(tmp_path):
             if time.monotonic() > deadline:
                 pytest.fail(f"daemon never became healthy:\n{log.read_text()}")
             time.sleep(0.5)
+
+        # Nothing is learned until a source is shared (synthetic data in mock mode).
+        share = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/consent", method="POST",
+            data=json.dumps({"revision": 0, "enabled": {"idle": True}}).encode(),
+            headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(share, timeout=5).close()
+        while json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}/healthz", timeout=1))["brain_tick_count"] == 0:
+            if time.monotonic() > deadline:
+                pytest.fail(f"the brain never stepped after sharing a source:\n{log.read_text()}")
+            time.sleep(0.2)
 
         proc.terminate()  # SIGTERM, exactly what the console Stop button sends
         rc = proc.wait(timeout=60)

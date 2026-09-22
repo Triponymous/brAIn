@@ -8,6 +8,9 @@ Tracks:
   - Window switch (same app but different window — detected via window title/ID)
   - Space switch (macOS Spaces/Desktops — detected via frontmost window change)
 - Switch RATE: how many context switches in the last 30 seconds
+
+Without AppKit (not macOS, or the import failed) the sample is None. It used
+to fall back to mock mode, which reported a rotating list of invented apps.
 """
 from __future__ import annotations
 import sys
@@ -39,7 +42,7 @@ class ActiveAppSensor(Sensor):
                 self._workspace = NSWorkspace.sharedWorkspace()
                 self._regular_policy = NSApplicationActivationPolicyRegular
             except ImportError:
-                self.mock_mode = True
+                pass
             try:
                 import Quartz
                 self._cg = Quartz
@@ -74,7 +77,7 @@ class ActiveAppSensor(Sensor):
         self._switch_times = [t for t in self._switch_times if t > cutoff]
         return len(self._switch_times) / (self._switch_window / 60.0)
 
-    async def sample(self) -> dict[str, Any]:
+    async def sample(self) -> dict[str, Any] | None:
         if self.mock_mode:
             name = _MOCK_APPS[self._mock_idx % len(_MOCK_APPS)]
             self._mock_idx += 1
@@ -88,6 +91,9 @@ class ActiveAppSensor(Sensor):
                 "switched": switched,
                 "switch_rate": round(switch_rate, 1),
             }
+
+        if self._workspace is None:
+            return None
 
         # Real macOS path — use CGWindowList instead of NSWorkspace.
         # NSWorkspace.frontmostApplication() returns the daemon's own app (Terminal)

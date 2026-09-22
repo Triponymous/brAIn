@@ -51,25 +51,23 @@ class NarrativeBuilder:
         for hour in sorted(hourly.keys()):
             eps = hourly[hour]
             # Determine dominant app
-            apps = [
-                ep.get("sensor_summary", {}).get("app", "?")
-                for ep in eps
-            ]
-            top_app = max(set(apps), key=apps.count) if apps else "?"
-            # Average keystroke rate
-            avg_keys = (
-                sum(ep.get("sensor_summary", {}).get("keys", 0) for ep in eps)
-                / max(len(eps), 1)
-            )
-            # Map to activity description
-            if avg_keys > 15:
-                activity = "intensiv gearbeitet"
-            elif avg_keys > 3:
-                activity = "leicht aktiv"
-            else:
-                activity = "ruhig"
-
-            parts.append(f"{hour}h: {activity} in {top_app}")
+            # Only what was observed: an hour without the app or keyboard source
+            # says nothing about either (it used to read as "ruhig in ?").
+            apps = [a for ep in eps if (a := ep.get("sensor_summary", {}).get("app"))]
+            top_app = max(set(apps), key=apps.count) if apps else None
+            keys = [k for ep in eps if (k := ep.get("sensor_summary", {}).get("keys")) is not None]
+            activity = None
+            if keys:
+                avg_keys = sum(keys) / len(keys)
+                if avg_keys > 15:
+                    activity = "intensiv gearbeitet"
+                elif avg_keys > 3:
+                    activity = "leicht aktiv"
+                else:
+                    activity = "ruhig"
+            said = " ".join(x for x in (activity, f"in {top_app}" if top_app else None) if x)
+            if said:
+                parts.append(f"{hour}h: {said}")
 
         # Cap at 8 hourly blocks for conciseness
         return " | ".join(parts[:8]) if parts else "Keine Aktivitaet."

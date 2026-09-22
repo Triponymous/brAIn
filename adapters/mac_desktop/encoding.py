@@ -183,14 +183,17 @@ def encode_snapshot(snap: dict[str, Any]) -> torch.Tensor:
             vec[159] = _DRIVE_CTX   # frantic switching
 
     # ── COMPOSITE ACTIVITY LEVEL: 160-163 ──
-    # Derived from keyboard + mouse + idle to give a clean "how active is the user" signal
-    ks_count = snap.get("keystroke_rate", {}).get("count", 0) if snap.get("keystroke_rate") else 0
-    ms_count = snap.get("mouse_rate", {}).get("count", 0) if snap.get("mouse_rate") else 0
-    idle_secs = snap.get("idle", {}).get("seconds", 999) if snap.get("idle") else 999
-    total_activity = ks_count + ms_count * 0.1
+    # Derived from keyboard + mouse + idle to give a clean "how active is the user" signal.
+    # Only from what was observed: an unshared idle timer used to default to 999 s
+    # and fire "dormant" while the user was typing.
+    ks, ms = snap.get("keystroke_rate"), snap.get("mouse_rate")
+    idle_secs = (snap.get("idle") or {}).get("seconds")
+    total_activity = (ks or {}).get("count", 0) + (ms or {}).get("count", 0) * 0.1
 
-    if idle_secs > 300:
+    if idle_secs is not None and idle_secs > 300:
         vec[160] = _DRIVE_CTX   # dormant
+    elif ks is None and ms is None:
+        pass                    # no input counts: how active is unknown
     elif total_activity < 1:
         vec[161] = _DRIVE_CTX   # idle (present but not doing much)
     elif total_activity < 15:

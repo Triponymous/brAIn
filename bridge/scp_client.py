@@ -28,6 +28,13 @@ from bridge.emotional_prompt import detect_emotional_state
 from bridge.model_adapter import _UNIVERSAL_RULES
 
 
+def _shown(sensors: dict[str, Any], key: str) -> str:
+    """A sensor reading for the prompt. Unshared or not yet observed says so;
+    a default such as "still" would be a reading nobody took."""
+    value = sensors.get(key)
+    return "keine Daten" if value is None or value == "" else str(value)
+
+
 # ═══════════════════════════════════════════════════════════════════
 # Brain Server -- wraps SNN runtime, exposes SCP query/action API
 # ═══════════════════════════════════════════════════════════════════
@@ -152,12 +159,13 @@ class BrainServer:
         # Build suggested label from sensors
         suggested = self._suggest_label(sd) if current >= 0 and not label else None
 
+        # None = not shared or not observed yet; a default would be an invented reading.
         sensors = {
-            "app": sd.get("app", ""),
-            "keyboard": "still",
-            "mouse": "gelegentlich",
-            "mic": "still",
-            "idle_seconds": int(sd.get("idle", 0)),
+            "app": sd.get("app"),
+            "keyboard": "still" if "keys" in sd else None,
+            "mouse": "gelegentlich" if "mouse" in sd else None,
+            "mic": "still" if "mic_rms" in sd else None,
+            "idle_seconds": int(sd["idle"]) if "idle" in sd else None,
         }
         keys = sd.get("keys", 0)
         if keys > 10:
@@ -509,7 +517,7 @@ class QwenAdapter(_BaseAdapter):
         label = pattern.get("label") or "unbekannt"
         conf = pattern.get("confidence", 0)
         lines.append(f"  Muster: {label} (Sicherheit: {conf:.0%})")
-        lines.append(f"  App: {sensors.get('app', '?')}, Tastatur: {sensors.get('keyboard', '?')}, Maus: {sensors.get('mouse', '?')}")
+        lines.append(f"  App: {_shown(sensors, 'app')}, Tastatur: {_shown(sensors, 'keyboard')}, Maus: {_shown(sensors, 'mouse')}")
 
         active_min = session.get("active_minutes", 0)
         lines.append(f"  Session: {active_min:.0f}min aktiv")
@@ -541,8 +549,8 @@ class GemmaAdapter(_BaseAdapter):
         session = full_state.get("session", {})
 
         sensors = pattern.get("sensors", {})
-        app = sensors.get("app", "")
-        keyboard = sensors.get("keyboard", "still")
+        app = _shown(sensors, "app")
+        keyboard = _shown(sensors, "keyboard")
         label = pattern.get("label") or "unbekannt"
 
         parts = [
@@ -593,7 +601,7 @@ class ClaudeAdapter(_BaseAdapter):
         label = pattern.get("label") or "unbekannt"
         conf = pattern.get("confidence", 0)
         parts.append(f"Muster: {label} (Sicherheit: {conf:.0%})")
-        parts.append(f"Sensoren: App={sensors.get('app', '?')}, Tastatur={sensors.get('keyboard', '?')}, Maus={sensors.get('mouse', '?')}")
+        parts.append(f"Sensoren: App={_shown(sensors, 'app')}, Tastatur={_shown(sensors, 'keyboard')}, Maus={_shown(sensors, 'mouse')}")
         parts.append(f"Session: {session.get('active_minutes', 0):.0f}min aktiv")
 
         habit = session.get("habit_context", "")
@@ -637,7 +645,7 @@ class GenericAdapter(_BaseAdapter):
             "",
             f"Stimmung: {emotion.get('state', 'content')}",
             f"Muster: {pattern.get('label') or 'unbekannt'}",
-            f"App: {sensors.get('app', '?')}, Tastatur: {sensors.get('keyboard', '?')}",
+            f"App: {_shown(sensors, 'app')}, Tastatur: {_shown(sensors, 'keyboard')}",
             f"Session: {session.get('active_minutes', 0):.0f}min aktiv",
         ]
 

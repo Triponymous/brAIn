@@ -51,11 +51,13 @@ class HabitMiner:
                     apps[app] += 1
 
             top_app = apps.most_common(1)[0][0] if apps else None
-            avg_keys = sum(ep.get("sensor_summary", {}).get("keys", 0) for ep in eps) / len(eps)
+            # Only episodes that observed the keyboard: an unshared one is not zero typing.
+            keys = [k for ep in eps if (k := ep.get("sensor_summary", {}).get("keys")) is not None]
+            avg_keys = round(sum(keys) / len(keys), 1) if keys else None
 
             profile[hour] = {
                 "top_app": top_app,
-                "avg_activity": round(avg_keys, 1),
+                "avg_activity": avg_keys,
                 "episodes": len(eps),
                 "app_distribution": dict(apps.most_common(5)),
             }

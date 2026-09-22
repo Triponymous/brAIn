@@ -370,12 +370,13 @@ class BrainServer:
 
         # Sensors from brain._last_sensor_display
         sd = getattr(self.brain, '_last_sensor_display', {})
+        # None = not shared or not observed yet; a default would be an invented reading.
         sensors = {
-            "app": sd.get("app", ""),
-            "keyboard": _keyboard_level(sd.get("keys", 0)),
-            "mouse": _mouse_level(sd.get("mouse", 0)),
-            "mic": _mic_level(sd.get("mic_rms", 0)),
-            "idle_seconds": sd.get("idle", 0),
+            "app": sd.get("app"),
+            "keyboard": _keyboard_level(sd["keys"]) if "keys" in sd else None,
+            "mouse": _mouse_level(sd["mouse"]) if "mouse" in sd else None,
+            "mic": _mic_level(sd["mic_rms"]) if "mic_rms" in sd else None,
+            "idle_seconds": sd.get("idle"),
         }
 
         # Suggested label

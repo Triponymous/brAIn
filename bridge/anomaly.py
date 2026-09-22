@@ -37,10 +37,12 @@ class AnomalyDetector:
             h for h in habits
             if h["hour"] == hour and h["day_of_week"] == dow
         ]
-        current_app = current_sensor.get("app", "")
+        # Without the app source (or the keyboard below) there is nothing to compare:
+        # "usually VSCode, today not" would be a claim about data never observed.
+        current_app = current_sensor.get("app")
 
         for habit in expected_at_hour:
-            if habit["app"] != current_app and habit["confidence"] > 0.6:
+            if current_app is not None and habit["app"] != current_app and habit["confidence"] > 0.6:
                 anomalies.append({
                     "type": "missing_habit",
                     "description": (
@@ -55,10 +57,10 @@ class AnomalyDetector:
         # --- Check: unusual inactivity ---
         hourly = self.habit_miner.hourly_profile()
         usual = hourly.get(hour, {})
-        usual_activity = usual.get("avg_activity", 0)
-        current_keys = current_sensor.get("keys", 0)
+        usual_activity = usual.get("avg_activity") or 0
+        current_keys = current_sensor.get("keys")
 
-        if usual_activity > 10 and current_keys < 2:
+        if current_keys is not None and usual_activity > 10 and current_keys < 2:
             anomalies.append({
                 "type": "unusual_quiet",
                 "description": (

@@ -28,7 +28,7 @@ Starting MCP does not start a model, create learned history or enable capture.
 
 | Tool | Query |
 | --- | --- |
-| `brain_state` | Current model state, labels, activity metadata and modulators |
+| `brain_state` | Current model state, labels, activity metadata and modulators; which sources are shared and whether the model is paused |
 | `brain_history` | Time-bucketed episode summaries |
 | `brain_concept` | A concept profile |
 | `brain_felt` | Learned label prototypes |
@@ -49,6 +49,7 @@ adapter. **Query calls are nevertheless logged** with tool arguments and the
 `mcp` source tag in the daemon's experience database.
 
 Results may contain personal labels, app names, activity patterns and numbers.
+A sense the user does not share is reported as `null`, never as zero.
 A host can forward them to its model provider. The internal daemon cloud setting
 does not govern an external client. Review the host's consent/storage behaviour.
 

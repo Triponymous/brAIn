@@ -4,6 +4,8 @@ Uses Quartz CGEventSourceSecondsSinceLastEventType which is a free macOS
 API (no permission required). Returns 0 immediately after any input.
 
 Mock mode returns whatever is in `_mock_idle_seconds` (default 0.0).
+Without Quartz (not macOS, or the import failed) the sample is None: an
+unknown idle time must not read as "the user is active".
 """
 from __future__ import annotations
 import sys
@@ -25,11 +27,13 @@ class IdleSensor(Sensor):
                 import Quartz  # type: ignore
                 self._cg = Quartz
             except ImportError:
-                self.mock_mode = True
+                pass
 
-    async def sample(self) -> dict[str, float]:
+    async def sample(self) -> dict[str, float] | None:
         if self.mock_mode:
             return {"seconds": float(self._mock_idle_seconds)}
+        if self._cg is None:
+            return None
         # kCGAnyInputEventType = ~ -1 (all event types)
         seconds = self._cg.CGEventSourceSecondsSinceLastEventType(
             self._cg.kCGEventSourceStateHIDSystemState,

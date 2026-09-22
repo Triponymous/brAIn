@@ -21,7 +21,7 @@ Manager” is the intended direction, not an existing autonomous product.
 | HTTP | 127.0.0.1:8001 | 127.0.0.1:8000 |
 | Interface | Observatory Live session | Training console via control server on 8900 |
 | Model | Fresh seeded instance | Loaded checkpoint or fresh model |
-| Capture | Four sources, off by default | Broader desktop sensors including microphone features |
+| Capture | Four sources, off by default | Five sources including microphone features, each off until shared; the choice persists across restarts |
 | Storage | Bounded RAM window, explicit export | Checkpoints, episodes, experience and grants |
 | External model | None | Optional internal LLM; external stdio MCP proxy |
 | Shared controls | None | Observatory stop switches do not govern this daemon |

@@ -1,11 +1,14 @@
 """MicSensor — 32-band mel-spectrogram + RMS loudness from microphone.
 
-Continuous audio capture via sounddevice in real mode. The sample() method
-returns the latest mel-band activation snapshot. In mock mode, audio is
-fed via _inject_audio() instead of opening the device.
+Continuous audio capture via sounddevice in real mode, opened by start()
+and closed by stop() — the daemon calls them when the microphone source is
+switched on or off, so constructing the sensor never touches the device.
+The sample() method returns the latest mel-band activation snapshot, or None
+while no stream is open. In mock mode, audio is fed via _inject_audio() or
+simulated instead of opening the device.
 
 Privacy: only spectral features and RMS are extracted. The raw audio buffer
-is overwritten each call. Nothing is written to disk.
+is overwritten each call and cleared on stop. Nothing is written to disk.
 """
 from __future__ import annotations
 import sys
@@ -61,21 +64,30 @@ class MicSensor(Sensor):
         self._has_injected = False
         self._filterbank = _mel_filterbank(_NUM_MEL_BANDS, _FRAME_SIZE, _SAMPLE_RATE)
         self._stream = None
-        if not mock_mode and sys.platform == "darwin":
-            try:
-                import sounddevice as sd  # type: ignore
-                self._stream = sd.InputStream(
-                    samplerate=_SAMPLE_RATE,
-                    channels=1,
-                    dtype="float32",
-                    blocksize=_FRAME_SIZE,
-                    callback=self._sd_callback,
-                )
-                self._stream.start()
-                print("[MicSensor] Audio stream opened")
-            except Exception as e:
-                print(f"[MicSensor] failed to open mic: {e}")
-                self.mock_mode = True
+
+    def start(self) -> None:
+        """Open the microphone (real mode, macOS). Idempotent.
+
+        A failure leaves the microphone unavailable. It used to switch the
+        sensor into mock mode, which fed simulated room noise to the brain as
+        if it had been heard.
+        """
+        if self.mock_mode or self._stream is not None or sys.platform != "darwin":
+            return
+        try:
+            import sounddevice as sd  # type: ignore
+            stream = sd.InputStream(
+                samplerate=_SAMPLE_RATE,
+                channels=1,
+                dtype="float32",
+                blocksize=_FRAME_SIZE,
+                callback=self._sd_callback,
+            )
+            stream.start()
+            self._stream = stream
+            print("[MicSensor] Audio stream opened")
+        except Exception as e:
+            print(f"[MicSensor] failed to open mic: {e}")
 
     def _sd_callback(self, indata, frames, time_info, status) -> None:
         with self._lock:
@@ -124,6 +136,8 @@ class MicSensor(Sensor):
                 t = np.arange(_FRAME_SIZE, dtype=np.float32) / _SAMPLE_RATE
                 noise += 0.2 * np.sin(2 * np.pi * freq * t).astype(np.float32)
             return self._encode(noise)
+        if self._stream is None:
+            return None  # no open stream, nothing heard
         with self._lock:
             audio = self._latest_audio.copy()
         return self._encode(audio)
@@ -136,3 +150,5 @@ class MicSensor(Sensor):
             except Exception:
                 pass
             self._stream = None
+        with self._lock:
+            self._latest_audio = np.zeros(_FRAME_SIZE, dtype=np.float32)

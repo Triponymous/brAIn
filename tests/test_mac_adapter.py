@@ -20,7 +20,9 @@ import asyncio
 import math
 import pytest
 import torch
-from adapters.mac_desktop.adapter import MacDesktopAdapter, _rate_and_rhythm
+from adapters.mac_desktop.adapter import SOURCES, MacDesktopAdapter, _rate_and_rhythm
+
+SHARE_ALL = dict.fromkeys(SOURCES, True)
 
 
 def test_construction_mock_mode():
@@ -31,17 +33,20 @@ def test_construction_mock_mode():
     assert names == {"active_app", "keystroke_rate", "mouse_rate", "idle", "mic", "time_tonic"}
 
 
-def test_encode_empty_bus_returns_mostly_zero():
+def test_encode_empty_bus_is_all_zero():
+    """Nothing observed, nothing encoded. The "dormant" neuron (160) used to fire
+    here because a missing idle timer defaulted to 999 s."""
     adapter = MacDesktopAdapter(mock_mode=True)
     vec = adapter.encode()
     assert vec.shape == (200,)
-    # With empty bus, only the "dormant" activity neuron (160) fires
-    # because idle defaults to 999s → dormant state. This is correct behavior.
-    assert vec[160] > 0  # dormant activity
-    # App/keyboard/mouse/mic ranges should be zero
-    assert vec[0:40].sum() == 0  # no app
-    assert vec[60:76].sum() == 0  # no keystrokes
-    assert vec[80:96].sum() == 0  # no mouse
+    assert vec.sum() == 0
+
+
+def test_unshared_idle_is_not_read_as_dormant():
+    adapter = MacDesktopAdapter(mock_mode=True)
+    adapter.bus.write("keystroke_rate", {"count": 12})
+    vec = adapter.encode()
+    assert vec[160] == 0 and vec[162] > 0   # typing reads as active, not as away
 
 
 def test_encode_with_active_app_fires_app_neuron():
@@ -162,18 +167,19 @@ def test_encode_reserve_range_always_zero():
 
 @pytest.mark.asyncio
 async def test_run_sensors_briefly():
-    adapter = MacDesktopAdapter(mock_mode=True)
+    adapter = MacDesktopAdapter(mock_mode=True, enabled=SHARE_ALL)
     task = asyncio.create_task(adapter.run())
     await asyncio.sleep(0.3)
+    snap = adapter.bus.snapshot()
     adapter.stop()
     task.cancel()
     try:
         await task
     except asyncio.CancelledError:
         pass
-    snap = adapter.bus.snapshot()
     assert "time_tonic" in snap
     assert "active_app" in snap
+    assert set(adapter.bus.snapshot()) <= {"time_tonic"}  # stopped sources are forgotten
 
 
 def test_hash_app_to_index_deterministic_pinned():

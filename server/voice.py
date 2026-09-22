@@ -3,15 +3,18 @@
 /api/tts: text -> WAV audio via Piper
 /api/stt/record: records from mic for N seconds -> transcribed text
 /api/voice-chat: records -> transcribes -> chats -> synthesizes -> returns audio response
+
+Both recording endpoints refuse while the microphone source is not shared:
+switching the microphone off means no recording at all, not only no features.
 """
 from __future__ import annotations
 import asyncio
 from typing import Any, Callable, Awaitable
 
 import numpy as np
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TTSRequest(BaseModel):
@@ -19,19 +22,25 @@ class TTSRequest(BaseModel):
 
 
 class RecordRequest(BaseModel):
-    duration: float = 5.0
+    duration: float = Field(5.0, gt=0, le=30)  # seconds; unbounded, one request could record for hours
 
 
 def build_voice_router(
     tts_engine: Any,
     stt_engine: Any,
     chat_fn: Callable[[str], Awaitable[dict[str, Any]]],
+    mic_shared: Callable[[], bool] = lambda: False,
 ) -> APIRouter:
     """Build voice API router.
 
     chat_fn should accept a user message string and return a dict with 'text' key.
+    mic_shared reports whether the user currently shares the microphone.
     """
     api = APIRouter()
+
+    def _require_mic() -> None:
+        if not mic_shared():
+            raise HTTPException(403, "The microphone source is not shared")
 
     @api.post("/api/tts")
     async def tts(req: TTSRequest) -> Response:
@@ -41,6 +50,7 @@ def build_voice_router(
     @api.post("/api/stt/record")
     async def stt_record(req: RecordRequest) -> dict[str, str]:
         """Record from mic and transcribe."""
+        _require_mic()
         try:
             import sounddevice as sd
         except ImportError:
@@ -57,6 +67,7 @@ def build_voice_router(
     @api.post("/api/voice-chat")
     async def voice_chat(req: RecordRequest) -> Response:
         """Record -> STT -> Chat -> TTS -> return audio."""
+        _require_mic()
         try:
             import sounddevice as sd
         except ImportError:

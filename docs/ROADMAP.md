@@ -6,11 +6,12 @@ Reviewed **2026-09-15**. This is a proposal, not a release schedule.
 ## 1. Establish trustworthy sessions
 
 **Current:** opt-in ephemeral observation, persistent daemon logs, visible
-capture controls in Observatory, explicit observed-window export.
+capture controls in Observatory, explicit observed-window export. The persistent
+daemon has per-source consent: every source starts off, the choice survives
+restarts without widening, and switching a source off stops its acquisition.
 
 **Next:** consent-bound recording, stable session identifiers, timestamps,
 versioned labels, restart behaviour, retention and deletion across derived data.
-Bring the broader daemon up to explicit per-source consent before expanding capture.
 
 **Acceptance:** disabling a source stops acquisition; restarting never silently
 widens consent; exported provenance matches the model; deletion covers documented

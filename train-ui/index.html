@@ -77,6 +77,21 @@
   .section-title { font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:var(--tt-muted);
     font-weight:600; margin-bottom:4px; }
   .hint { font-size:12px; color:var(--tt-muted); margin-top:10px; line-height:1.5; }
+
+  .sources { display:flex; flex-direction:column; gap:12px; margin-top:14px; }
+  .source { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:12px; cursor:pointer; }
+  .source-name { font-weight:600; font-size:14px; }
+  .source-what { font-size:12px; color:var(--tt-muted); margin-top:2px; line-height:1.4; }
+  .switch { appearance:none; -webkit-appearance:none; margin:0; width:38px; height:22px; border-radius:9999px;
+    position:relative; cursor:pointer; flex-shrink:0; transition:background .15s ease;
+    background:linear-gradient(145deg,#e8ebf0,#f5f7fa);
+    box-shadow:inset 2px 2px 4px rgb(163 177 198/.45), inset -2px -2px 4px rgb(255 255 255/.8); }
+  .switch::after { content:""; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:9999px;
+    background:#fff; box-shadow:1px 1px 3px rgb(15 23 42/.25); transition:transform .15s ease; }
+  .switch:checked { background:linear-gradient(145deg,#3ba8d6,#1670a0); }
+  .switch:checked::after { transform:translateX(16px); }
+  .switch:disabled { opacity:.45; cursor:not-allowed; }
+  .switch:focus-visible { outline:2px solid var(--tt-accent); outline-offset:2px; }
 </style>
 </head>
 <body>
@@ -114,6 +129,16 @@
     </div>
   </div>
 
+  <!-- Data sources: what the daemon may capture (consent, saved in checkpoints/consent.json) -->
+  <div class="surface mt">
+    <div class="row between">
+      <span class="section-title" style="margin:0">Data sources</span>
+      <span id="sources-pill" class="pill"><span class="dot"></span><span id="sources-text">…</span></span>
+    </div>
+    <div id="sources" class="sources"></div>
+    <p class="hint">Nothing is captured until you switch a source on, and the brain does not learn while nothing is shared. Your choice is saved and survives restarts. Switching a source off stops its capture at once; it does not erase what the brain already learned.</p>
+  </div>
+
   <!-- Felt-state hero -->
   <div class="neu-hero mt">
     <div class="row between">
@@ -143,7 +168,17 @@
   const MODS = [["DA","Curiosity"],["NE","Arousal"],["ACh","Focus"],["5HT","Calm"]];
   const MOD_MAX = 0.07;
 
-  let state = { connected:false, felt:null, modulators:{}, daemon:null };
+  let state = { connected:false, felt:null, modulators:{}, daemon:null, consent:null };
+
+  // Plain words for what each source captures. Keep in sync with docs/PRIVACY.md.
+  const SOURCES = [
+    ["keystroke_rate", "Keyboard rhythm", "Keys per second and typing rhythm, never which keys."],
+    ["mouse_rate", "Pointer activity", "Pointer events per second, no positions."],
+    ["idle", "Idle time", "Seconds since your last input."],
+    ["active_app", "Apps", "Name of the app in front, other open apps, how often you switch."],
+    ["mic", "Microphone", "Loudness and 32 frequency bands, computed live and never stored. Also needed for explicit voice recording."],
+  ];
+  const SOURCE_STATUS = { disabled:"off", waiting:"on · no data yet", available:"on · live" };
 
   // ---- WebSocket: live brain state (modulators + felt) ----
   let ws = null;
@@ -175,6 +210,25 @@
     } catch (_) { state.daemon = null; }
     render();
   }
+  // ---- Consent (daemon) ----
+  async function consentRead() {
+    try {
+      const r = await fetch(BRAIN + "/api/consent");
+      state.consent = r.ok ? await r.json() : null;
+    } catch (_) { state.consent = null; }
+    renderSources(); render();
+  }
+  async function consentSet(name, on) {
+    if (!state.consent) return;
+    try {
+      const r = await fetch(BRAIN + "/api/consent", {method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({revision:state.consent.revision, enabled:{[name]:on}})});
+      if (r.ok) state.consent = await r.json();
+      else await consentRead();  // e.g. 409: changed in another tab; show what is actually in force
+    } catch (_) {}
+    renderSources(); render();
+  }
+
   async function daemonStart() { try { await fetch("/daemon/start", {method:"POST", headers:{"Content-Type":"application/json"}, body:"{}"}); } catch(_){} daemonStatus(); }
   async function daemonStop()  { try { await fetch("/daemon/stop",  {method:"POST"}); } catch(_){} daemonStatus(); }
 
@@ -216,7 +270,11 @@
     const felt = state.felt;
     const labelEl = document.getElementById("felt-label");
     const confEl = document.getElementById("felt-conf");
-    if (felt && felt.label) {
+    if (state.consent && state.consent.paused) {
+      labelEl.textContent = "paused · nothing shared";  // a frozen state is not how you are now
+      labelEl.className = "feltlabel unknown";
+      confEl.style.display = "none";
+    } else if (felt && felt.label) {
       labelEl.textContent = felt.label;
       labelEl.className = "feltlabel";
       confEl.style.display = "inline-flex";
@@ -261,6 +319,50 @@
     }
   }
 
+  // Built once, then updated in place: render() runs on every /ws push (~30 Hz)
+  // and rebuilding would steal focus and swallow clicks on the switches.
+  function renderSources() {
+    const c = state.consent;
+    const box = document.getElementById("sources");
+    if (!box.children.length) {
+      for (const [key, name, what] of SOURCES) {
+        const row = document.createElement("label");
+        row.className = "source";
+        const sw = document.createElement("input");
+        sw.type = "checkbox"; sw.className = "switch"; sw.id = "src-" + key;
+        sw.setAttribute("role", "switch");
+        sw.onchange = () => consentSet(key, sw.checked);
+        const text = document.createElement("div");
+        const n = document.createElement("div"); n.className = "source-name"; n.textContent = name;
+        const w = document.createElement("div"); w.className = "source-what"; w.textContent = what;
+        text.append(n, w);
+        const st = document.createElement("span");
+        st.id = "src-status-" + key;
+        row.append(sw, text, st);
+        box.appendChild(row);
+      }
+    }
+    for (const [key] of SOURCES) {
+      const s = c && c.sources[key];
+      const sw = document.getElementById("src-" + key);
+      sw.checked = !!(s && s.enabled);
+      sw.disabled = !c;
+      const st = document.getElementById("src-status-" + key);
+      st.className = "pill" + (s && s.status === "available" ? " pill-success" : "");
+      st.textContent = s ? SOURCE_STATUS[s.status] : "—";
+    }
+    const pill = document.getElementById("sources-pill");
+    const txt = document.getElementById("sources-text");
+    if (!c) {
+      pill.className = "pill"; txt.textContent = "start the daemon to choose";
+    } else if (c.paused) {
+      pill.className = "pill pill-danger"; txt.textContent = "paused · nothing shared";
+    } else {
+      const shared = SOURCES.filter(([k]) => c.sources[k].enabled).length;
+      pill.className = "pill pill-success"; txt.textContent = shared + " of " + SOURCES.length + " shared";
+    }
+  }
+
   // ---- Wire up ----
   document.getElementById("btn-start").onclick = daemonStart;
   document.getElementById("btn-stop").onclick = daemonStop;
@@ -286,7 +388,8 @@
   render();
   connectWS();
   daemonStatus();
-  setInterval(daemonStatus, 3000);
+  consentRead();
+  setInterval(() => { daemonStatus(); consentRead(); }, 3000);
 </script>
 </body>
 </html>

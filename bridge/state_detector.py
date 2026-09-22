@@ -61,13 +61,15 @@ class StateDetector:
         sd = getattr(brain, '_last_sensor_display', {})
         mods = brain.modulators.snapshot()
 
+        # None = source not shared (or not observed yet). Each state below needs
+        # the sources it reasons about; it is never inferred from a default 0.
         snap = {
             "app": sd.get("app", ""),
-            "keys": sd.get("keys", 0),
-            "mouse": sd.get("mouse", 0),
-            "mic_rms": sd.get("mic_rms", 0),
-            "idle": sd.get("idle", 0),
-            "switch_rate": sd.get("switch_rate", 0),
+            "keys": sd.get("keys"),
+            "mouse": sd.get("mouse"),
+            "mic_rms": sd.get("mic_rms"),
+            "idle": sd.get("idle"),
+            "switch_rate": sd.get("switch_rate"),
             "da": mods.get("DA", 0),
             "ne": mods.get("NE", 0),
             "ach": mods.get("ACh", 0),
@@ -82,8 +84,9 @@ class StateDetector:
             self._last_app = snap["app"]
             self._same_app_since = self._snapshot_count - 1
 
-        # Track active time (reset on long idle)
-        if snap["idle"] > self.break_reset_idle:
+        # Track active time (reset on long idle). Without the idle source a
+        # continuous stretch of work cannot be known, so it never accumulates.
+        if snap["idle"] is None or snap["idle"] > self.break_reset_idle:
             self._active_since = self._snapshot_count
 
     def detect(self) -> dict[str, Any]:
@@ -109,7 +112,8 @@ class StateDetector:
         same_app_secs = self._snapshot_count - self._same_app_since
         same_app_min = same_app_secs / 60.0
         flow = (
-            same_app_min >= self.flow_min_minutes
+            latest["keys"] is not None and latest["switch_rate"] is not None
+            and same_app_min >= self.flow_min_minutes
             and latest["switch_rate"] <= self.flow_max_switch_rate
             and latest["keys"] >= self.flow_min_keys
         )
@@ -117,7 +121,8 @@ class StateDetector:
         # --- Stress: high NE + low 5HT + high switch rate for >2 min ---
         stress_window = list(recent)[-int(self.stress_min_seconds):]
         stress = False
-        if len(stress_window) >= self.stress_min_seconds:
+        if len(stress_window) >= self.stress_min_seconds and all(
+                s["switch_rate"] is not None for s in stress_window):
             avg_ne = sum(s["ne"] for s in stress_window) / len(stress_window)
             avg_sht = sum(s["sht"] for s in stress_window) / len(stress_window)
             avg_switch = sum(s["switch_rate"] for s in stress_window) / len(stress_window)
@@ -130,20 +135,21 @@ class StateDetector:
         if is_meeting_app:
             for s in reversed(list(recent)):
                 s_app = (s["app"] or "").lower()
-                if any(m in s_app for m in _MEETING_APPS) and s["mic_rms"] > 0.005:
+                if any(m in s_app for m in _MEETING_APPS) and (s["mic_rms"] or 0) > 0.005:
                     meeting_secs += 1
                 else:
                     break
         meeting = (
             is_meeting_app
-            and latest["mic_rms"] > 0.005
+            and (latest["mic_rms"] or 0) > 0.005
             and meeting_secs >= self.meeting_min_seconds
         )
 
         # --- Break needed: active for 90+ min without 5-min idle pause ---
         active_secs = self._snapshot_count - self._active_since
         active_min = active_secs / 60.0
-        needs_break = active_min >= self.break_after_minutes and latest["idle"] < 30
+        needs_break = (active_min >= self.break_after_minutes
+                       and latest["idle"] is not None and latest["idle"] < 30)
 
         return {
             "flow": flow,

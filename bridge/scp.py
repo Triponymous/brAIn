@@ -84,12 +84,13 @@ class CompactState:
         app = sd.get("app", "")
         if app:
             sensors.append(f"{app} offen")
-        if sd.get("mic_rms", 0) > 0.015:
-            sensors.append("laut")
-        elif sd.get("mic_rms", 0) > 0.005:
-            sensors.append("Hintergrundgeraeusche")
-        else:
-            sensors.append("leise")
+        if "mic_rms" in sd:  # an unshared microphone is not "leise"
+            if sd["mic_rms"] > 0.015:
+                sensors.append("laut")
+            elif sd["mic_rms"] > 0.005:
+                sensors.append("Hintergrundgeraeusche")
+            else:
+                sensors.append("leise")
 
         if current < 0:
             return f"PATTERN: kein Muster erkannt | Sensoren: {', '.join(sensors)}"

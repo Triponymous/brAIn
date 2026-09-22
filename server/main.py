@@ -94,6 +94,11 @@ async def brain_tick_loop(brain: Any, adapter: Any, hz: float = 100.0, exporter:
         period = 1.0 / hz
         sleep_idle_threshold = 300.0  # 5 minutes idle → enter sleep
         while not stop_event.is_set():
+            if not adapter.acquiring:
+                # No source is shared: nothing is observed, so the brain does not
+                # step (and cannot drift) on an empty input. Resumes on consent.
+                time.sleep(period)
+                continue
             vec = adapter.encode()
 
             # Auto sleep/wake based on user idle time

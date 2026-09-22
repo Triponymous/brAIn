@@ -7,8 +7,9 @@ Usage:
 
 `start` runs the daemon in the foreground. The daemon:
 - Loads the brain from the checkpoint file (or creates fresh if missing)
-- Starts the MacDesktopAdapter with all 6 sensors
-- Runs brain.tick() at ~100 Hz on incoming sensor data
+- Starts the MacDesktopAdapter with the sources the user has shared
+  (consent.json next to the checkpoint; none on first start, see server/consent.py)
+- Runs brain.tick() at ~100 Hz on incoming sensor data, paused while nothing is shared
 - Pushes brain state to /ws clients at ~30 Hz
 - Auto-saves the brain to checkpoint every 60s
 - Listens on the configured port
@@ -47,8 +48,11 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _check_permissions() -> None:
-    """Check macOS privacy permissions and print clear warnings."""
+def _check_permissions(enabled: dict[str, bool]) -> None:
+    """Check macOS privacy permissions of the shared sources and print clear warnings.
+
+    Unshared sources are not probed: the microphone check records 0.1 s of audio.
+    """
     import sys
     if sys.platform != "darwin":
         return
@@ -56,55 +60,53 @@ def _check_permissions() -> None:
     print("\n╔══════════════════════════════════════════╗")
     print("║       brAIn Permission Diagnostics       ║")
     print("╚══════════════════════════════════════════╝")
+    if not any(enabled.values()):
+        print("No source is shared yet: nothing is captured and the brain waits.")
+        print("   → Switch sources on in the training console (http://127.0.0.1:8900)\n")
+        return
 
     # 1. Input Monitoring (keyboard, mouse, idle)
-    try:
-        import Quartz
-        import time
-
-        before = Quartz.CGEventSourceCounterForEventType(
-            Quartz.kCGEventSourceStateHIDSystemState, 10)  # keydown
-        time.sleep(0.1)
-        after = Quartz.CGEventSourceCounterForEventType(
-            Quartz.kCGEventSourceStateHIDSystemState, 10)
-
-        idle = Quartz.CGEventSourceSecondsSinceLastEventType(
-            Quartz.kCGEventSourceStateHIDSystemState, int(0xFFFFFFFF))
-
-        # If idle > 300s AND counters didn't change, permission is missing
-        # (user was presumably just typing to start this daemon)
-        if idle > 120:
-            print("[WARN] INPUT MONITORING: NOT GRANTED")
-            print("   → Keyboard, mouse, and idle sensors will NOT work!")
-            print("   → Fix: System Settings → Privacy & Security → Input Monitoring")
-            print("   → Add Terminal.app (or your terminal) and RESTART this daemon")
-            print()
-        else:
-            print("[OK] Input Monitoring: OK")
-    except ImportError:
-        print("[WARN] Quartz framework not available")
+    if any(enabled[s] for s in ("keystroke_rate", "mouse_rate", "idle")):
+        try:
+            import Quartz
+            idle = Quartz.CGEventSourceSecondsSinceLastEventType(
+                Quartz.kCGEventSourceStateHIDSystemState, int(0xFFFFFFFF))
+            # A long idle right after the user started this daemon means the
+            # HID counters are hidden from this process.
+            if idle > 120:
+                print("[WARN] INPUT MONITORING: NOT GRANTED")
+                print("   → Keyboard, mouse, and idle sensors will NOT work!")
+                print("   → Fix: System Settings → Privacy & Security → Input Monitoring")
+                print("   → Add Terminal.app (or your terminal) and RESTART this daemon")
+                print()
+            else:
+                print("[OK] Input Monitoring: OK")
+        except ImportError:
+            print("[WARN] Quartz framework not available")
 
     # 2. Microphone
-    try:
-        import sounddevice as sd
-        rec = sd.rec(int(0.1 * 16000), samplerate=16000, channels=1, dtype='float32')
-        sd.wait()
-        rms = float((rec ** 2).mean() ** 0.5)
-        if rms < 0.0001:
-            print("[WARN] MICROPHONE: May not be granted (RMS=0)")
-            print("   → Fix: System Settings → Privacy & Security → Microphone")
-        else:
-            print(f"[OK] Microphone: OK (RMS={rms:.6f})")
-    except Exception as e:
-        print(f"[WARN] Microphone: Error ({e})")
+    if enabled["mic"]:
+        try:
+            import sounddevice as sd
+            rec = sd.rec(int(0.1 * 16000), samplerate=16000, channels=1, dtype='float32')
+            sd.wait()
+            rms = float((rec ** 2).mean() ** 0.5)
+            if rms < 0.0001:
+                print("[WARN] MICROPHONE: May not be granted (RMS=0)")
+                print("   → Fix: System Settings → Privacy & Security → Microphone")
+            else:
+                print(f"[OK] Microphone: OK (RMS={rms:.6f})")
+        except Exception as e:
+            print(f"[WARN] Microphone: Error ({e})")
 
     # 3. Active app (no permission needed)
-    try:
-        from AppKit import NSWorkspace
-        app = NSWorkspace.sharedWorkspace().frontmostApplication()
-        print(f"[OK] Active App: OK (currently: {app.localizedName()})")
-    except Exception:
-        print("[WARN] Active App: NSWorkspace unavailable")
+    if enabled["active_app"]:
+        try:
+            from AppKit import NSWorkspace
+            app = NSWorkspace.sharedWorkspace().frontmostApplication()
+            print(f"[OK] Active App: OK (currently: {app.localizedName()})")
+        except Exception:
+            print("[WARN] Active App: NSWorkspace unavailable")
 
     print()
 
@@ -137,13 +139,19 @@ async def _run_daemon(args: argparse.Namespace) -> None:
         print("Creating fresh brain")
         brain = Brain()
 
+    # Consent decides what is captured; nothing is, until the user shares a source.
+    from server.consent import ConsentStore, build_consent_router
+    consent = ConsentStore(checkpoint.parent / "consent.json")
+    shared = [name for name, on in consent.enabled().items() if on]
+    print(f"Shared sources: {', '.join(shared) if shared else 'none (the brain waits)'}")
+
     # ═══ PERMISSION CHECK ═══
     # Without Input Monitoring, keyboard/mouse/idle sensors are blind.
     if not args.mock_sensors:
-        _check_permissions()
+        _check_permissions(consent.enabled())
 
     # Create adapter — store on brain for chat endpoint access
-    adapter = MacDesktopAdapter(mock_mode=args.mock_sensors)
+    adapter = MacDesktopAdapter(mock_mode=args.mock_sensors, enabled=consent.enabled())
     brain._adapter = adapter  # chat endpoint reads live sensor bus from this
     pusher = WSPusher(rate_hz=args.push_hz)
 
@@ -195,7 +203,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     # The brain as tools: what the LLM calls while it reasons (README, The Thesis)
     from bridge.brain_tools import BrainTools
     brain_tools = BrainTools(brain, episodes=episode_logger, experience=experience,
-                             interpreter=interpreter, narrator=narrator)
+                             interpreter=interpreter, narrator=narrator, adapter=adapter)
     tool_registry = ToolRegistry(brain, exporter, grant_store, brain_tools=brain_tools)
     llm_router = HybridLLMRouter()
     chat_router = build_chat_router(brain, exporter, tool_registry, llm_router)
@@ -222,6 +230,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     app.include_router(config_router)
     app.include_router(feel_router)
     app.include_router(build_experience_router(experience))
+    app.include_router(build_consent_router(consent, adapter))
     from server.tools import build_tools_router
     app.include_router(build_tools_router(brain, brain_tools))  # read-only, for server/mcp.py and scripts
 
@@ -248,6 +257,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
         tts_engine=tts_engine,
         stt_engine=stt_engine,
         chat_fn=_chat_fn,
+        mic_shared=lambda: adapter.enabled["mic"],
     )
     app.include_router(voice_router)
 
@@ -270,7 +280,9 @@ async def _run_daemon(args: argparse.Namespace) -> None:
         while True:
             interpreter.tick()
             scp_server.tick()  # check for events (pattern changes, etc.)
-            experience.settle(time.time(), getattr(brain, "_last_signature", None))
+            # Paused (nothing shared): no new observation, so no consequence to
+            # write; due events expire without one instead of getting a frozen state.
+            experience.settle(time.time(), getattr(brain, "_last_signature", None) if adapter.acquiring else None)
             await asyncio.sleep(1.0)
     interpreter_task = asyncio.create_task(interpreter_tick_loop())
 

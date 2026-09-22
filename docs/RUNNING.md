@@ -53,9 +53,14 @@ the observer does not save a checkpoint.
 
 ## Persistent daemon: separate experimental runtime
 
-Read the [data inventory](PRIVACY.md) first. Normal Start uses real desktop
-sensors, including microphone features. Observatory capture switches do not
-control this process.
+Read the [data inventory](PRIVACY.md) first. The daemon captures nothing until
+you share a source under **Data sources** in the training console: keyboard
+rhythm, pointer activity, idle time, apps and microphone features, each on its
+own. The choice is saved in `checkpoints/consent.json` and restored on restart;
+a missing or unreadable file means nothing is shared, and a source added in a
+later version starts off. While nothing is shared the model does not step.
+Switching a source off stops its listener, stream or polling at once and
+removes its last value. Observatory capture switches do not control this process.
 
 ```sh
 .venv/bin/python -m server.control
@@ -80,9 +85,19 @@ brain_trial_dir=$(mktemp -d)
   --checkpoint "$brain_trial_dir/brain.sqlite"
 ```
 
-Mock mode replaces desktop acquisition; it is not a blanket disable switch for
-the daemon's voice endpoints, network-capable tools or optional LLM path.
-Do not invoke them in a sensor-free test. Stop with Ctrl-C.
+Mock mode replaces desktop acquisition with synthetic values, but sources
+still start off. Share them to get data:
+
+```sh
+curl -s http://127.0.0.1:8010/api/consent        # shows the current revision
+curl -s -X POST http://127.0.0.1:8010/api/consent \
+  -H 'Content-Type: application/json' \
+  -d '{"revision": 0, "enabled": {"idle": true, "active_app": true}}'
+```
+
+Voice recording is refused unless the microphone source is shared. Mock mode
+does not disable network-capable tools or the optional LLM path; do not invoke
+them in a sensor-free test. Stop with Ctrl-C.
 Do not connect the standard training console to this custom port without
 checking its configuration; this command is intended for isolated API testing.
 

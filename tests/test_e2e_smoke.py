@@ -14,7 +14,7 @@ from pathlib import Path
 import tempfile
 
 from brain.core import Brain
-from adapters.mac_desktop.adapter import MacDesktopAdapter
+from adapters.mac_desktop.adapter import SOURCES, MacDesktopAdapter
 from server.main import build_app, brain_tick_loop, push_loop
 from server.ws import WSPusher
 
@@ -25,7 +25,7 @@ async def _running_server(port: int):
     import uvicorn
 
     brain = Brain(num_sensory=200)  # default size
-    adapter = MacDesktopAdapter(mock_mode=True)
+    adapter = MacDesktopAdapter(mock_mode=True, enabled=dict.fromkeys(SOURCES, True))  # synthetic data only
     pusher = WSPusher(rate_hz=30.0)
     app = build_app(brain=brain, adapter=adapter, pusher=pusher)
 

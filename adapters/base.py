@@ -10,8 +10,12 @@ Architecture:
 
 Sensors are independent: each runs at its own rate, the bus holds the
 last value (sample-and-hold). The brain tick reads the snapshot — sensors
-that haven't updated yet still have their previous value (or `None` if
-they've never sampled).
+that haven't updated yet still have their previous value, and a sensor that
+has never sampled (or whose source was switched off) is absent.
+
+A sample of `None` means "nothing observed" (device unavailable, source not
+shared) and is not written: missing data stays missing instead of turning
+into a zero the brain would learn from.
 
 The `mock_mode` constructor flag is the convention for test-friendly
 sensors: in mock mode, the sensor returns a deterministic synthetic value
@@ -20,21 +24,44 @@ without touching the OS.
 from __future__ import annotations
 import asyncio
 import copy
+import threading
+import time
 from typing import Any
 
 
 class SensorBus:
-    """Thread-safe (asyncio) sample-and-hold store."""
+    """Sample-and-hold store shared by the event loop and the tick thread.
+
+    Locked because sources are switched on and off at runtime: a key added or
+    removed while the tick thread deep-copies the dict would raise
+    "dictionary changed size during iteration" and kill the tick thread.
+    """
 
     def __init__(self) -> None:
         self._values: dict[str, Any] = {}
+        self._written_at: dict[str, float] = {}
+        self._lock = threading.Lock()
 
     def write(self, name: str, value: Any) -> None:
-        self._values[name] = value
+        with self._lock:
+            self._values[name] = value
+            self._written_at[name] = time.monotonic()
+
+    def discard(self, name: str) -> None:
+        """Forget a source entirely, so readers see it as missing, not as its last value."""
+        with self._lock:
+            self._values.pop(name, None)
+            self._written_at.pop(name, None)
+
+    def written_at(self) -> dict[str, float]:
+        """Monotonic time of each source's last write."""
+        with self._lock:
+            return dict(self._written_at)
 
     def snapshot(self) -> dict[str, Any]:
         """Return a deep copy of the current bus state."""
-        return copy.deepcopy(self._values)
+        with self._lock:
+            return copy.deepcopy(self._values)
 
 
 class Sensor:
@@ -60,7 +87,8 @@ class Sensor:
         while True:
             try:
                 value = await self.sample()
-                bus.write(self.name, value)
+                if value is not None:
+                    bus.write(self.name, value)
             except asyncio.CancelledError:
                 raise
             except Exception as e:

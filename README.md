@@ -19,7 +19,7 @@ validated emotion detector, autonomous desktop manager or production security bo
 | SNN core | PyTorch LIF steps, fixed expansion, STDP/BCM, competitive concepts, working memory and model modulators | Online learning is implemented; real-world usefulness still needs controlled evaluation |
 | Observatory | Interactive 3D atlas, Circuit view, inspectors, timelines and an 18-step English/German introduction | Five pages use synthetic demonstration data; only **Live session** reads observed model steps |
 | Opt-in observation | Four individually switchable desktop-metadata sources, stop control, captured frames and JSON export | Separate fresh model; no persisted checkpoint, microphone, LLM or wearable access |
-| Research daemon | Persistent model, learned labels, episode/experience logs, training console and optional LLM/voice paths | Broader data access than Observatory; its sensors are not controlled by Observatory switches |
+| Research daemon | Persistent model, learned labels, episode/experience logs, training console and optional LLM/voice paths | Broader data access than Observatory: five sources, each off until shared in the training console; not controlled by Observatory switches |
 | MCP context interface | Nine query tools over stdio, backed by the daemon | Reads can expose personal metadata to the client and are logged locally |
 | Audio experiment | Offline Mel/RMS versus Mel/RMS + VAD evaluation pipeline | No established improvement on real recordings; not integrated into live capture |
 
@@ -88,8 +88,9 @@ and [capture details](docs/dashboard-concepts/LIVE-DATA.md).
 
 For persistent learning, use the separate training console and daemon described
 in [Running brAIn](docs/RUNNING.md). Review [privacy boundaries](docs/PRIVACY.md)
-before starting: this path includes microphone features, app metadata, disk
-persistence, chat and optional voice/cloud functionality.
+before sharing sources: once switched on, this path can include microphone
+features and app metadata, plus disk persistence, chat and optional voice/cloud
+functionality. The daemon captures nothing until a source is shared.
 
 The `brain-mcp` executable exposes nine query tools from that daemon:
 state, history, concepts, learned labels, habits, anomalies, explanations,

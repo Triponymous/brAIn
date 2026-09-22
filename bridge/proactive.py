@@ -180,6 +180,12 @@ class ProactiveEngine:
                             # Already handled by _select_topic, skip
                             pass
 
+                # Nothing shared: the brain is paused and its state frozen. A frozen
+                # state looks "held", so the watcher would ask about a moment that never was.
+                adapter = getattr(self.brain, "_adapter", None)
+                if adapter is not None and not adapter.acquiring:
+                    continue
+
                 # Felt-state active-learning: ask Leon to label a sustained unknown state.
                 ask = self._check_felt_state(time.time())
                 if ask:
@@ -276,14 +282,16 @@ class ProactiveEngine:
         app = sd.get("app")
         if app:
             parts.append(f"App: {app}")
-        keys = sd.get("keys", 0)
+        # Unshared sources are absent from sd and stay unmentioned ("Tastatur still" would be invented).
+        if "keys" in sd:
+            keys = sd["keys"]
+            if keys > 10:
+                parts.append("Tastatur sehr aktiv")
+            elif keys > 2:
+                parts.append("Tastatur aktiv")
+            else:
+                parts.append("Tastatur still")
         mouse = sd.get("mouse", 0)
-        if keys > 10:
-            parts.append("Tastatur sehr aktiv")
-        elif keys > 2:
-            parts.append("Tastatur aktiv")
-        else:
-            parts.append("Tastatur still")
         if mouse > 20:
             parts.append("Maus sehr aktiv")
         elif mouse > 3:
