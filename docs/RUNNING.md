@@ -101,6 +101,19 @@ them in a sensor-free test. Stop with Ctrl-C.
 Do not connect the standard training console to this custom port without
 checking its configuration; this command is intended for isolated API testing.
 
+### Erase the daemon's data
+
+```sh
+.venv/bin/python -m server.braind erase          # lists what would be deleted
+.venv/bin/python -m server.braind erase --yes    # deletes it
+```
+
+Stop the daemon in the console first; the command refuses while it runs.
+It covers the stores in the [data inventory](PRIVACY.md#persistent-files),
+their SQLite side files, the daily backups and the consent choice. Add
+`--checkpoint PATH` for a non-default location. The next start is a fresh
+brain that shares nothing.
+
 ### Optional login service
 
 `scripts/install_launchd.sh` installs an always-on control server that can

@@ -9,6 +9,8 @@ Reviewed **2026-09-15**. This is a proposal, not a release schedule.
 capture controls in Observatory, explicit observed-window export. The persistent
 daemon has per-source consent: every source starts off, the choice survives
 restarts without widening, and switching a source off stops its acquisition.
+Its experience log is pruned after 90 days like the episode log, and
+`server.braind erase` deletes its stores, side files and backups.
 
 **Next:** consent-bound recording, stable session identifiers, timestamps,
 versioned labels, restart behaviour, retention and deletion across derived data.

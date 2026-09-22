@@ -35,11 +35,13 @@ By default, the daemon uses the `checkpoints/` directory:
   unreadable, nothing is shared.
 - Checkpoint backups and runtime logs may also remain.
 
-SQLite auxiliary files, backups and explicit exports need to be included in a
-real deletion plan. Removing the main checkpoint alone is not complete erasure.
-The training console sets per-source consent for the daemon. There is no
-unified retention/deletion UI yet. Do not delete files while the writer is running.
-No personal data is removed by this documentation update.
+Removing the main checkpoint alone is not complete erasure. `python -m
+server.braind erase` lists every file above with its SQLite side files, the
+backups, the consent choice and, for the default directory, the pidfile and the
+login service's logs; `--yes` deletes them. It refuses while the daemon runs.
+Explicit exports, copies an MCP host or LLM provider received, and OS-level
+backups are outside its reach. The training console sets per-source consent;
+there is no deletion button in a UI yet.
 
 ## Stop is not erase
 
@@ -48,6 +50,8 @@ No personal data is removed by this documentation update.
   stream or polling and drops its last value; with nothing shared the model
   does not step. A stop holds for the running daemon even if saving the choice
   fails, and the console reports that failure.
+- Erasing is a separate, explicit step: `python -m server.braind erase --yes`
+  with the daemon stopped.
 - **Disconnect view**, freezing and closing the tab do not stop collection.
 - Stopping a source does not erase historical frames, learned weights or exports.
 - Observer process termination releases its model/ring buffer; this is not a

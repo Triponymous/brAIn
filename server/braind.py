@@ -3,6 +3,7 @@
 Usage:
     braind start [--mock-sensors] [--port 8000] [--checkpoint PATH]
     braind status
+    braind erase [--checkpoint PATH] [--port 8000] [--yes]
     braind --help
 
 `start` runs the daemon in the foreground. The daemon:
@@ -45,7 +46,75 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("status", help="Print daemon status")
 
+    erase = sub.add_parser("erase", help="Delete everything the daemon stored (lists first; --yes deletes)")
+    erase.add_argument("--checkpoint", type=str, default="checkpoints/braind.sqlite")
+    erase.add_argument("--port", type=int, default=8000, help="port to check for a running daemon")
+    erase.add_argument("--yes", action="store_true", help="actually delete the listed files")
+
     return parser
+
+
+_PROJ = Path(__file__).resolve().parents[1]
+_SQLITE_FILES = ("", "-wal", "-shm", "-journal")  # a database is its main file plus these
+
+
+def erase_plan(checkpoint: Path) -> list[Path]:
+    """Every file the daemon keeps about its user next to this checkpoint.
+
+    The stores listed in docs/PRIVACY.md with their SQLite side files, the
+    daily backups, the consent choice and leftover temp files. For the default
+    checkpoints/ directory also the pidfile (removed first, so the control
+    server does not respawn the daemon mid-erase) and the login service's logs.
+    """
+    d = checkpoint.parent
+    plan: list[Path] = []
+    if d.resolve() == (_PROJ / "checkpoints").resolve():
+        plan.append(d / "braind.pid")
+    for name in (checkpoint.name, "episodes.db", "experience.db", "grants.sqlite"):
+        plan += [d / (name + side) for side in _SQLITE_FILES]
+    plan += [d / (checkpoint.name + ".tmp"), d / "consent.json", d / "consent.json.tmp"]
+    plan += sorted((d / "backups").glob(f"{checkpoint.stem}-*{checkpoint.suffix}"))
+    if d.resolve() == (_PROJ / "checkpoints").resolve():
+        plan += [_PROJ / "logs" / "brain.out.log", _PROJ / "logs" / "brain.err.log"]
+    return [f for f in plan if f.is_file()]
+
+
+def _daemon_running(port: int) -> bool:
+    """A live pidfile process or anything answering on the daemon's port."""
+    from server.control import _running_pid
+    if _running_pid() is not None:
+        return True
+    import urllib.request
+    try:
+        urllib.request.urlopen(f"http://127.0.0.1:{port}/healthz", timeout=1).close()
+        return True
+    except OSError:
+        return False
+
+
+def erase(checkpoint: Path, port: int = 8000, yes: bool = False) -> int:
+    """List (and with yes=True delete) what the daemon stored. Refuses while it runs."""
+    if _daemon_running(port):
+        print("The daemon is running. Stop it in the training console first; "
+              "a running daemon would keep writing what you are deleting.")
+        return 1
+    plan = erase_plan(Path(checkpoint))
+    if not plan:
+        print(f"Nothing to erase next to {checkpoint}.")
+        return 0
+    for f in plan:
+        print(f"  {f}  ({f.stat().st_size:,} bytes)")
+    if not yes:
+        print(f"{len(plan)} files would be deleted. Run again with --yes to delete them. "
+              "Explicit exports and copies made by other tools are not included.")
+        return 0
+    for f in plan:
+        f.unlink(missing_ok=True)
+    backups = Path(checkpoint).parent / "backups"
+    if backups.is_dir() and not any(backups.iterdir()):
+        backups.rmdir()
+    print(f"Deleted {len(plan)} files. The next start begins with a fresh brain that shares nothing.")
+    return 0
 
 
 def _check_permissions(enabled: dict[str, bool]) -> None:
@@ -323,6 +392,8 @@ def main(argv: list[str] | None = None) -> int:
         except KeyboardInterrupt:
             print("\nbraind stopped by user")
         return 0
+    elif args.command == "erase":
+        return erase(Path(args.checkpoint), port=args.port, yes=args.yes)
     elif args.command == "status":
         # Phase 3a: just print a stub. Real status check via /healthz comes later.
         print("braind status — use `curl http://localhost:8000/healthz` for live status")
