@@ -1,5 +1,22 @@
 # Verification and known gaps
 
+Verification update: **2026-09-22**. Runtime code changed: the daemon and
+control server refuse other web origins, the daemon has per-source consent,
+`experience.db` is pruned after 90 days and `server.braind erase` exists.
+This run used a Linux container, not macOS: real sensors, OS permissions,
+the launch agent and a real microphone were not exercised.
+
+| Check (Linux, Python 3.11.15, PyTorch 2.14.0, snnTorch 1.0.0, MCP 2.2.0, pytest 9.1.1) | Result |
+| --- | --- |
+| Full Python suite, unfiltered | 739 passed, 1 skipped |
+| Observatory, live/capture UI contracts and bilingual tour | 37 passed |
+| 3D structural checks | PASS |
+| Training console in headless Chromium against a mock-sensor daemon | First start paused with 0 steps; sharing idle time started steps; microphone switch on and off; a page on another local origin was blocked for POST, GET and WebSocket; a restart restored exactly the saved choice |
+| `server.braind erase` against a mock-sensor daemon | Refused while running; dry run listed 6 files; `--yes` deleted them including the backup; the next start was fresh and shared nothing |
+
+The new consent, origin and missing-data tests fail against the previous code
+and pass now. The 2026-09-17 record below is unchanged.
+
 Verification update: **2026-09-17**. Runtime code was not changed; the control
 test now exercises child reaping without the unavailable macOS `os.waitid` API.
 These checks validate selected contracts, not product readiness or scientific claims.
@@ -82,7 +99,10 @@ sensor-free execution. In particular, these constructors can touch native APIs:
 
 - `tests/test_sensor_keymouse.py::test_keystroke_construction`
 - `tests/test_sensor_keymouse.py::test_mouse_construction`
-- `tests/test_sensor_mic.py::test_construction`
+
+Since 2026-09-22 `MicSensor` opens the microphone only when its source is
+shared, so `tests/test_sensor_mic.py::test_construction` no longer opens an
+audio stream. Deselecting it, as the 2026-09-17 command above does, is harmless.
 
 `tests/test_control.py::test_running_pid_reaps_a_crashed_child` now lets the
 actual `_running_pid()` probe reap its own exited test child, with a bounded
