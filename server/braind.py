@@ -58,30 +58,48 @@ _PROJ = Path(__file__).resolve().parents[1]
 _SQLITE_FILES = ("", "-wal", "-shm", "-journal")  # a database is its main file plus these
 
 
+def lock_checkpoint(checkpoint: Path):
+    """Hold an exclusive lock on <checkpoint>.lock, or return None if a process already does.
+
+    One daemon per checkpoint, and the way erase knows a daemon is using these
+    files whatever port it serves. The kernel drops the lock when the holder
+    exits, crash included. Keep the returned file open for as long as needed.
+    """
+    import fcntl
+    checkpoint.parent.mkdir(parents=True, exist_ok=True)
+    f = open(checkpoint.with_name(checkpoint.name + ".lock"), "a")
+    try:
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        f.close()
+        return None
+    return f
+
+
 def erase_plan(checkpoint: Path) -> list[Path]:
     """Every file the daemon keeps about its user next to this checkpoint.
 
     The stores listed in docs/PRIVACY.md with their SQLite side files, the
-    daily backups, the consent choice and leftover temp files. For the default
+    daily backups, the consent choices and leftover temp files. For the default
     checkpoints/ directory also the pidfile (removed first, so the control
     server does not respawn the daemon mid-erase) and the login service's logs.
     """
+    from brain.persistence import backup_pattern
     d = checkpoint.parent
-    plan: list[Path] = []
-    if d.resolve() == (_PROJ / "checkpoints").resolve():
-        plan.append(d / "braind.pid")
+    default_dir = d.resolve() == (_PROJ / "checkpoints").resolve()
+    plan: list[Path] = [d / "braind.pid"] if default_dir else []
     for name in (checkpoint.name, "episodes.db", "experience.db", "grants.sqlite"):
         plan += [d / (name + side) for side in _SQLITE_FILES]
     plan += [d / (checkpoint.name + ".tmp")]
     plan += [d / (c + t) for c in ("consent.json", "consent-mock.json") for t in ("", ".tmp")]
-    plan += sorted((d / "backups").glob(f"{checkpoint.stem}-*{checkpoint.suffix}"))
-    if d.resolve() == (_PROJ / "checkpoints").resolve():
+    plan += sorted((d / "backups").glob(backup_pattern(checkpoint)))
+    if default_dir:
         plan += [_PROJ / "logs" / "brain.out.log", _PROJ / "logs" / "brain.err.log"]
     return [f for f in plan if f.is_file()]
 
 
-def _daemon_running(port: int) -> bool:
-    """A live pidfile process or anything answering on the daemon's port."""
+def _default_daemon_up(port: int) -> bool:
+    """A daemon from before the checkpoint lock existed: the pidfile or the port tells."""
     from server.control import _running_pid
     if _running_pid() is not None:
         return True
@@ -94,91 +112,44 @@ def _daemon_running(port: int) -> bool:
 
 
 def erase(checkpoint: Path, port: int = 8000, yes: bool = False) -> int:
-    """List (and with yes=True delete) what the daemon stored. Refuses while it runs."""
-    if _daemon_running(port):
-        print("The daemon is running. Stop it in the training console first; "
-              "a running daemon would keep writing what you are deleting.")
-        return 1
-    plan = erase_plan(Path(checkpoint))
-    if not plan:
+    """List (and with yes=True delete) what the daemon stored. Refuses while one uses it."""
+    checkpoint = Path(checkpoint)
+    if not checkpoint.parent.is_dir():
         print(f"Nothing to erase next to {checkpoint}.")
         return 0
-    for f in plan:
-        print(f"  {f}  ({f.stat().st_size:,} bytes)")
-    if not yes:
-        print(f"{len(plan)} files would be deleted. Run again with --yes to delete them. "
-              "Explicit exports and copies made by other tools are not included.")
+    lock_path = checkpoint.with_name(checkpoint.name + ".lock")
+    had_lock_file = lock_path.exists()
+    lock = lock_checkpoint(checkpoint)  # held while deleting: a daemon starting meanwhile gives up
+    default_dir = checkpoint.parent.resolve() == (_PROJ / "checkpoints").resolve()
+    if lock is None or (default_dir and _default_daemon_up(port)):
+        if lock is not None:
+            lock.close()
+        print("A daemon is using these files. Stop it first (training console, or Ctrl-C); "
+              "a running daemon would keep writing what you are deleting.")
+        return 1
+    try:
+        plan = erase_plan(checkpoint)
+        if not plan:
+            print(f"Nothing to erase next to {checkpoint}.")
+        for f in plan:
+            print(f"  {f}  ({f.stat().st_size:,} bytes)")
+        if plan and not yes:
+            print(f"{len(plan)} files would be deleted. Run again with --yes to delete them. "
+                  "Explicit exports and copies made by other tools are not included.")
+        if not (plan and yes):
+            if not had_lock_file:
+                lock_path.unlink(missing_ok=True)  # a look should leave nothing behind
+            return 0
+        for f in plan:
+            f.unlink(missing_ok=True)
+        backups = checkpoint.parent / "backups"
+        if backups.is_dir() and not any(backups.iterdir()):
+            backups.rmdir()
+        lock_path.unlink(missing_ok=True)  # last: every data file is already gone
+        print(f"Deleted {len(plan)} files. The next start begins with a fresh brain that shares nothing.")
         return 0
-    for f in plan:
-        f.unlink(missing_ok=True)
-    backups = Path(checkpoint).parent / "backups"
-    if backups.is_dir() and not any(backups.iterdir()):
-        backups.rmdir()
-    print(f"Deleted {len(plan)} files. The next start begins with a fresh brain that shares nothing.")
-    return 0
-
-
-def _check_permissions(enabled: dict[str, bool]) -> None:
-    """Check macOS privacy permissions of the shared sources and print clear warnings.
-
-    Unshared sources are not probed: the microphone check records 0.1 s of audio.
-    """
-    import sys
-    if sys.platform != "darwin":
-        return
-
-    print("\n╔══════════════════════════════════════════╗")
-    print("║       brAIn Permission Diagnostics       ║")
-    print("╚══════════════════════════════════════════╝")
-    if not any(enabled.values()):
-        print("No source is shared yet: nothing is captured and the brain waits.")
-        print("   → Switch sources on in the training console (http://127.0.0.1:8900)\n")
-        return
-
-    # 1. Input Monitoring (keyboard, mouse, idle)
-    if any(enabled[s] for s in ("keystroke_rate", "mouse_rate", "idle")):
-        try:
-            import Quartz
-            idle = Quartz.CGEventSourceSecondsSinceLastEventType(
-                Quartz.kCGEventSourceStateHIDSystemState, int(0xFFFFFFFF))
-            # A long idle right after the user started this daemon means the
-            # HID counters are hidden from this process.
-            if idle > 120:
-                print("[WARN] INPUT MONITORING: NOT GRANTED")
-                print("   → Keyboard, mouse, and idle sensors will NOT work!")
-                print("   → Fix: System Settings → Privacy & Security → Input Monitoring")
-                print("   → Add Terminal.app (or your terminal) and RESTART this daemon")
-                print()
-            else:
-                print("[OK] Input Monitoring: OK")
-        except ImportError:
-            print("[WARN] Quartz framework not available")
-
-    # 2. Microphone
-    if enabled["mic"]:
-        try:
-            import sounddevice as sd
-            rec = sd.rec(int(0.1 * 16000), samplerate=16000, channels=1, dtype='float32')
-            sd.wait()
-            rms = float((rec ** 2).mean() ** 0.5)
-            if rms < 0.0001:
-                print("[WARN] MICROPHONE: May not be granted (RMS=0)")
-                print("   → Fix: System Settings → Privacy & Security → Microphone")
-            else:
-                print(f"[OK] Microphone: OK (RMS={rms:.6f})")
-        except Exception as e:
-            print(f"[WARN] Microphone: Error ({e})")
-
-    # 3. Active app (no permission needed)
-    if enabled["active_app"]:
-        try:
-            from AppKit import NSWorkspace
-            app = NSWorkspace.sharedWorkspace().frontmostApplication()
-            print(f"[OK] Active App: OK (currently: {app.localizedName()})")
-        except Exception:
-            print("[WARN] Active App: NSWorkspace unavailable")
-
-    print()
+    finally:
+        lock.close()
 
 
 def build_uvicorn_config(app, port: int) -> uvicorn.Config:
@@ -199,8 +170,15 @@ def build_uvicorn_config(app, port: int) -> uvicorn.Config:
 
 
 async def _run_daemon(args: argparse.Namespace) -> None:
-    # Load or create brain
     checkpoint = Path(args.checkpoint)
+    # One daemon per checkpoint: two would overwrite each other's saves, and
+    # erase needs to see that these files are in use. Held until the process ends.
+    lock = lock_checkpoint(checkpoint)
+    if lock is None:
+        print(f"Another daemon is already using {checkpoint}; not starting a second one.")
+        raise SystemExit(1)
+
+    # Load or create brain
     if checkpoint.exists():
         print(f"Loading brain from {checkpoint}")
         brain = load_brain(checkpoint)

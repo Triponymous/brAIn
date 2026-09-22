@@ -196,6 +196,15 @@ def save_brain(brain: Brain, path: Path) -> None:
     os.replace(tmp, path)
 
 
+def backup_pattern(path: Path) -> str:
+    """Glob for this checkpoint's own daily backups, <stem>-YYYY-MM-DD<suffix>.
+
+    Not "<stem>-*": that also matches another checkpoint's backups
+    (braind-exp-2026-09-21.sqlite for braind.sqlite) and pruned or erased them.
+    """
+    return f"{path.stem}-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]{path.suffix}"
+
+
 def backup_checkpoint(path: Path, keep: int = 7) -> Path | None:
     """Copy the checkpoint to <dir>/backups/<name>-YYYY-MM-DD<suffix>.
 
@@ -211,7 +220,7 @@ def backup_checkpoint(path: Path, keep: int = 7) -> Path | None:
     bdir.mkdir(parents=True, exist_ok=True)
     dest = bdir / f"{path.stem}-{time.strftime('%Y-%m-%d')}{path.suffix}"
     shutil.copy2(path, dest)
-    for old in sorted(bdir.glob(f"{path.stem}-*{path.suffix}"))[:-keep]:
+    for old in sorted(bdir.glob(backup_pattern(path)))[:-keep]:
         old.unlink()
     return dest
 

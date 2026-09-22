@@ -38,7 +38,8 @@ By default, the daemon uses the `checkpoints/` directory:
 Removing the main checkpoint alone is not complete erasure. `python -m
 server.braind erase` lists every file above with its SQLite side files, the
 backups, the consent choice and, for the default directory, the pidfile and the
-login service's logs; `--yes` deletes them. It refuses while the daemon runs.
+login service's logs; `--yes` deletes them. It refuses while a daemon uses
+those files: every daemon holds a lock on its checkpoint, whatever its port.
 Explicit exports, copies an MCP host or LLM provider received, and OS-level
 backups are outside its reach. The training console sets per-source consent;
 there is no deletion button in a UI yet.

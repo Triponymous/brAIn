@@ -219,3 +219,18 @@ async def test_persistence_loop_saves_and_backs_up_once_per_day(tmp_path):
     backups = list((tmp_path / "backups").glob("braind-*.sqlite"))
     assert len(backups) == 1
     assert load_brain(backups[0]).tick_count == 4
+
+
+def test_backup_pruning_leaves_other_checkpoints_backups(tmp_path):
+    """braind-* also matches braind-exp-*: pruning braind's copies must not delete another checkpoint's."""
+    path = tmp_path / "braind.sqlite"
+    save_brain(Brain(num_sensory=8, num_concept=4, num_wm=4), path)
+    bdir = tmp_path / "backups"
+    bdir.mkdir()
+    foreign = bdir / "braind-exp-2026-01-01.sqlite"
+    foreign.write_text("another checkpoint's backup")
+    for day in ("2026-01-02", "2026-01-03"):
+        (bdir / f"braind-{day}.sqlite").write_text("old")
+    backup_checkpoint(path, keep=1)
+    assert foreign.exists()
+    assert len(list(bdir.glob("braind-2*.sqlite"))) == 1

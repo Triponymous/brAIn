@@ -109,7 +109,8 @@ checking its configuration; this command is intended for isolated API testing.
 .venv/bin/python -m server.braind erase --yes    # deletes it
 ```
 
-Stop the daemon in the console first; the command refuses while it runs.
+Stop the daemon in the console first; the command refuses while a daemon uses
+the checkpoint, on any port. A second daemon on the same checkpoint does not start.
 It covers the stores in the [data inventory](PRIVACY.md#persistent-files),
 their SQLite side files, the daily backups and the consent choice. Add
 `--checkpoint PATH` for a non-default location. The next start is a fresh
