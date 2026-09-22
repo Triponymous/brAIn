@@ -20,10 +20,12 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Request
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
+
+from server.main import LOCAL_HOSTS
 
 _PROJ = Path(__file__).resolve().parents[1]
 _PIDFILE = _PROJ / "checkpoints" / "braind.pid"
@@ -119,8 +121,18 @@ def build_control_app(spawn=None, killer=None, *, autostart: bool = False,
             task.cancel()
 
     app = FastAPI(title="braind-control", lifespan=lifespan)
-    app.add_middleware(CORSMiddleware, allow_origins=["*"],
-                       allow_methods=["*"], allow_headers=["*"])
+    # The console is served from here, so its own requests are same-origin and
+    # need no CORS. Allowing every origin let any website start or stop the
+    # daemon. The host check keeps a DNS-rebinding page from posing as same-origin.
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(LOCAL_HOSTS))
+
+    @app.middleware("http")
+    async def same_origin_only(request: Request, call_next):
+        origin = request.headers.get("origin")
+        if origin is not None and origin != f"http://{request.headers.get('host', '')}":
+            return JSONResponse({"detail": "Only the console served here may control the daemon"},
+                                status_code=403)
+        return await call_next(request)
 
     @app.get("/daemon/status")
     async def status() -> dict:

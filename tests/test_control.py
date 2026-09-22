@@ -9,6 +9,8 @@ from fastapi.testclient import TestClient
 
 import server.control as control
 
+LOCAL = "http://127.0.0.1:8900"  # the control server binds loopback only
+
 
 def test_daemon_lifecycle(monkeypatch, tmp_path):
     monkeypatch.setattr(control, "_PIDFILE", tmp_path / "braind.pid")
@@ -17,7 +19,7 @@ def test_daemon_lifecycle(monkeypatch, tmp_path):
         spawn=lambda mock: os.getpid(),                 # a real, running pid → probe succeeds
         killer=lambda pid, sig: killed.append(pid),     # don't actually kill anything
     )
-    c = TestClient(app)
+    c = TestClient(app, base_url=LOCAL)
 
     assert c.get("/daemon/status").json()["running"] is False
 
@@ -36,7 +38,7 @@ def test_daemon_lifecycle(monkeypatch, tmp_path):
 
 def test_serves_console(tmp_path, monkeypatch):
     monkeypatch.setattr(control, "_PIDFILE", tmp_path / "braind.pid")
-    c = TestClient(control.build_control_app(spawn=lambda m: 0, killer=lambda p, s: None))
+    c = TestClient(control.build_control_app(spawn=lambda m: 0, killer=lambda p, s: None), base_url=LOCAL)
     r = c.get("/")
     assert r.status_code == 200
     assert "Felt-State" in r.text
@@ -83,7 +85,7 @@ def test_respawn_if_down_respects_stop(monkeypatch, tmp_path):
     killed: list[int] = []
     app = control.build_control_app(spawn=lambda mock: os.getpid(),
                                     killer=lambda pid, sig: killed.append(pid))
-    c = TestClient(app)
+    c = TestClient(app, base_url=LOCAL)
     c.post("/daemon/start", json={})
     c.post("/daemon/stop")
     spawned: list[bool] = []
@@ -100,7 +102,7 @@ def test_autostart_brings_the_daemon_up_on_launch(monkeypatch, tmp_path):
     app = control.build_control_app(spawn=lambda mock: spawned.append(mock) or os.getpid(),
                                     killer=lambda pid, sig: None, autostart=True, mock=True)
 
-    with TestClient(app) as c:  # the context manager runs the lifespan
+    with TestClient(app, base_url=LOCAL) as c:  # the context manager runs the lifespan
         assert spawned == [True]
         assert c.get("/daemon/status").json() == {"running": True, "pid": os.getpid()}
 
@@ -113,7 +115,7 @@ def test_autostart_does_not_double_start(monkeypatch, tmp_path):
     app = control.build_control_app(spawn=lambda mock: spawned.append(mock) or 1,
                                     killer=lambda pid, sig: None, autostart=True)
 
-    with TestClient(app):
+    with TestClient(app, base_url=LOCAL):
         assert spawned == []
 
 
@@ -123,7 +125,7 @@ def test_without_autostart_nothing_is_spawned_on_launch(monkeypatch, tmp_path):
     app = control.build_control_app(spawn=lambda mock: spawned.append(mock) or 1,
                                     killer=lambda pid, sig: None)
 
-    with TestClient(app):
+    with TestClient(app, base_url=LOCAL):
         assert spawned == []
 
 
@@ -177,3 +179,15 @@ def test_running_pid_reaps_a_crashed_child(monkeypatch, tmp_path):
                 os.waitpid(child, 0)
         except ChildProcessError:
             pass
+
+
+def test_only_the_console_served_here_may_control_the_daemon(monkeypatch, tmp_path):
+    monkeypatch.setattr(control, "_PIDFILE", tmp_path / "braind.pid")
+    killed = []
+    app = control.build_control_app(spawn=lambda m: 0, killer=lambda p, s: killed.append(p))
+    c = TestClient(app, base_url=LOCAL)
+    assert c.post("/daemon/stop", headers={"Origin": "https://evil.example"}).status_code == 403
+    assert c.post("/daemon/start", headers={"Origin": "https://evil.example"}, json={}).status_code == 403
+    assert c.post("/daemon/stop", headers={"Origin": LOCAL}).status_code == 200   # the console itself
+    rebound = TestClient(app, base_url="http://evil.example:8900")                  # DNS rebinding
+    assert rebound.post("/daemon/stop", headers={"Origin": "http://evil.example:8900"}).status_code == 400

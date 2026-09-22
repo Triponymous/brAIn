@@ -51,8 +51,10 @@ No personal data is removed by this documentation update.
 
 ## Local does not mean inaccessible
 
-Origin/Host checks in the observer protect a limited browser boundary.
-Other authorized local processes are outside that protection.
+Origin/Host checks in the observer, the daemon and the control server protect
+a limited browser boundary: other websites and DNS-rebinding pages are refused,
+and the daemon accepts browser requests only from the training console on
+port 8900. Other authorized local processes are outside that protection.
 The broader daemon/control APIs are trusted-local research interfaces, not
 authenticated multi-user services.
 

@@ -12,10 +12,17 @@ import asyncio
 import time
 from typing import Any, Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
 
 from server.ws import WSPusher
+
+# The training console, served by the control server, is the only web page
+# that talks to the daemon. Scripts and the MCP proxy send no Origin and pass.
+CONSOLE_ORIGINS = ("http://127.0.0.1:8900", "http://localhost:8900")
+LOCAL_HOSTS = ("127.0.0.1", "localhost", "[::1]")
 
 
 def build_app(
@@ -25,13 +32,21 @@ def build_app(
 ) -> FastAPI:
     app = FastAPI(title="braind", version="3.0.0")
 
-    # Allow browser WebSocket connections from Vite dev server
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # CORS used to allow every origin, so any website open in a browser could
+    # grant the shell tool, teach labels, chat, or read the live state. Refuse
+    # foreign origins outright, and hosts other than loopback (DNS rebinding:
+    # a page whose own name resolves to 127.0.0.1 sends no foreign Origin on GET).
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(LOCAL_HOSTS))
+    app.add_middleware(CORSMiddleware, allow_origins=list(CONSOLE_ORIGINS),
+                       allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
+
+    @app.middleware("http")
+    async def console_only(request: Request, call_next):
+        origin = request.headers.get("origin")
+        if origin is not None and origin not in CONSOLE_ORIGINS:
+            return JSONResponse({"detail": "Only the local training console may call the daemon"},
+                                status_code=403)
+        return await call_next(request)
 
     @app.get("/healthz")
     async def healthz() -> dict:
@@ -44,6 +59,12 @@ def build_app(
 
     @app.websocket("/ws")
     async def ws_endpoint(ws: WebSocket) -> None:
+        # HTTP middleware does not see websocket upgrades, and browsers do not
+        # apply CORS to them: without this check any page could stream the live state.
+        origin = ws.headers.get("origin")
+        if origin is not None and origin not in CONSOLE_ORIGINS:
+            await ws.close(code=1008)
+            return
         await ws.accept()
         if pusher is not None:
             await pusher.register(ws)

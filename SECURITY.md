@@ -6,6 +6,11 @@ product. No supported public or multi-user deployment is offered.
 ## Current boundaries
 
 - Keep observer, daemon and control endpoints on loopback.
+- The daemon and control server refuse requests from other web origins and
+  from non-loopback `Host` names; the daemon's only browser client is the
+  training console on port 8900. Before this check they allowed every origin,
+  so any website open in the same browser could grant tools or stop the daemon.
+  Local processes are still not authenticated.
 - Do not expose them via a public tunnel, wildcard bind or reverse proxy.
 - Observatory capture controls govern only the observer, not the broader daemon.
 - Model weights, activity metadata and user labels may be sensitive.

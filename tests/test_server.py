@@ -15,7 +15,7 @@ from server.ws import WSPusher
 async def test_healthz_endpoint():
     app = build_app(brain=None, adapter=None, pusher=None)
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url="http://127.0.0.1:8000") as client:
         response = await client.get("/healthz")
     assert response.status_code == 200
     body = response.json()
