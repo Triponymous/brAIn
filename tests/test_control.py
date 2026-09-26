@@ -1,6 +1,8 @@
 """Tests for the daemon control server — lifecycle with injected spawn/killer."""
 import os
 import signal
+import subprocess
+import sys
 import time
 
 import pytest
@@ -18,6 +20,7 @@ def test_daemon_lifecycle(monkeypatch, tmp_path):
     app = control.build_control_app(
         spawn=lambda mock: os.getpid(),                 # a real, running pid → probe succeeds
         killer=lambda pid, sig: killed.append(pid),     # don't actually kill anything
+        stop_wait=0,                                    # ...so it never exits
     )
     c = TestClient(app, base_url=LOCAL)
 
@@ -36,12 +39,67 @@ def test_daemon_lifecycle(monkeypatch, tmp_path):
     assert c.get("/daemon/status").json()["running"] is False
 
 
-def test_serves_console(tmp_path, monkeypatch):
+def test_serves_the_dashboard(tmp_path, monkeypatch):
+    """The dashboard is the one UI; the control server hands it out next to /daemon/*."""
     monkeypatch.setattr(control, "_PIDFILE", tmp_path / "braind.pid")
     c = TestClient(control.build_control_app(spawn=lambda m: 0, killer=lambda p, s: None), base_url=LOCAL)
-    r = c.get("/")
-    assert r.status_code == 200
-    assert "Felt-State" in r.text
+    r = c.get("/", follow_redirects=False)
+    assert r.status_code in (302, 307) and r.headers["location"] == "/observatory.html"
+    page = c.get("/observatory.html")
+    assert page.status_code == 200 and "text/html" in page.headers["content-type"]
+    assert c.get("/live-data.js").status_code == 200
+    assert c.get("/daemon/status").json() == {"running": False, "pid": None}   # routes win over files
+
+
+def test_stop_answers_once_the_daemon_has_exited(monkeypatch, tmp_path):
+    """Until it exits the daemon saves and holds its checkpoint; a Start meanwhile would fail."""
+    monkeypatch.setattr(control, "_PIDFILE", tmp_path / "braind.pid")
+    saving = ("import signal, sys, time\n"
+              "signal.signal(signal.SIGTERM, lambda *_: (time.sleep(0.5), sys.exit(0)))\n"
+              "print('ready', flush=True)\n"
+              "time.sleep(60)\n")
+    children = []
+
+    def spawn(mock):
+        child = subprocess.Popen([sys.executable, "-c", saving], stdout=subprocess.PIPE, text=True)
+        children.append(child)
+        child.stdout.readline()  # the SIGTERM handler is in place
+        return child.pid
+
+    c = TestClient(control.build_control_app(spawn=spawn), base_url=LOCAL)
+    try:
+        pid = c.post("/daemon/start", json={}).json()["pid"]
+        began = time.monotonic()
+        assert c.post("/daemon/stop").json() == {"running": False}
+        assert time.monotonic() - began >= 0.4
+        with pytest.raises(ChildProcessError):
+            os.waitpid(pid, os.WNOHANG)  # exited and reaped before the answer
+    finally:
+        for child in children:
+            if child.poll() is None:
+                child.kill()
+            child.stdout.close()
+
+
+def test_start_keeps_the_sensor_mode_unless_asked(monkeypatch, tmp_path):
+    """The dashboard sends no mode: Stop then Start must not swap mock for real sensors."""
+    monkeypatch.setattr(control, "_PIDFILE", tmp_path / "braind.pid")
+    spawned: list[bool] = []
+    c = TestClient(control.build_control_app(spawn=lambda mock: spawned.append(mock) or os.getpid(),
+                                             killer=lambda pid, sig: None, mock=True, stop_wait=0),
+                   base_url=LOCAL)
+    for body in ({}, {"mock": False}, {}):
+        c.post("/daemon/start", json=body)
+        c.post("/daemon/stop")
+    assert spawned == [True, False, False]
+
+
+def test_the_dashboard_preview_may_control_the_daemon(tmp_path, monkeypatch):
+    monkeypatch.setattr(control, "_PIDFILE", tmp_path / "braind.pid")
+    c = TestClient(control.build_control_app(spawn=lambda m: 0, killer=lambda p, s: None), base_url=LOCAL)
+    r = c.get("/daemon/status", headers={"Origin": "http://127.0.0.1:4178"})
+    assert r.status_code == 200 and r.headers["access-control-allow-origin"] == "http://127.0.0.1:4178"
+    assert c.post("/daemon/stop", headers={"Origin": "http://localhost:4178"}).status_code == 200
 
 
 # ── Supervision ──────────────────────────────────────────────────────────────
@@ -84,7 +142,7 @@ def test_respawn_if_down_respects_stop(monkeypatch, tmp_path):
     monkeypatch.setattr(control, "_PIDFILE", tmp_path / "braind.pid")
     killed: list[int] = []
     app = control.build_control_app(spawn=lambda mock: os.getpid(),
-                                    killer=lambda pid, sig: killed.append(pid))
+                                    killer=lambda pid, sig: killed.append(pid), stop_wait=0)
     c = TestClient(app, base_url=LOCAL)
     c.post("/daemon/start", json={})
     c.post("/daemon/stop")
@@ -181,13 +239,13 @@ def test_running_pid_reaps_a_crashed_child(monkeypatch, tmp_path):
             pass
 
 
-def test_only_the_console_served_here_may_control_the_daemon(monkeypatch, tmp_path):
+def test_only_the_dashboard_may_control_the_daemon(monkeypatch, tmp_path):
     monkeypatch.setattr(control, "_PIDFILE", tmp_path / "braind.pid")
     killed = []
     app = control.build_control_app(spawn=lambda m: 0, killer=lambda p, s: killed.append(p))
     c = TestClient(app, base_url=LOCAL)
     assert c.post("/daemon/stop", headers={"Origin": "https://evil.example"}).status_code == 403
     assert c.post("/daemon/start", headers={"Origin": "https://evil.example"}, json={}).status_code == 403
-    assert c.post("/daemon/stop", headers={"Origin": LOCAL}).status_code == 200   # the console itself
+    assert c.post("/daemon/stop", headers={"Origin": LOCAL}).status_code == 200   # the dashboard served here
     rebound = TestClient(app, base_url="http://evil.example:8900")                  # DNS rebinding
     assert rebound.post("/daemon/stop", headers={"Origin": "http://evil.example:8900"}).status_code == 400

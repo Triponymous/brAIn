@@ -1,7 +1,12 @@
 const LiveWorkspace = (() => {
   let store, cursor, selected = 'c42', connected = false, following = false;
   let timer, abort, epoch = 0, received = 0, failures = 0, status = 'Not connected';
-  const endpoint = 'http://127.0.0.1:8001/api/telemetry';
+  // Two local models, one contract: the persistent brain (braind) and the opt-in session runner.
+  const endpoints = { daemon: 'http://127.0.0.1:8000/api/telemetry', runner: 'http://127.0.0.1:8001/api/telemetry' };
+  const sourceKey = 'brain.observatory.live-source';
+  let source = (() => { try { return localStorage.getItem(sourceKey) === 'runner' ? 'runner' : 'daemon'; } catch { return 'daemon'; } })();
+  const daemon = () => source === 'daemon';
+  const choices = () => document.querySelectorAll('button[data-live-source]');  // not <body>, which carries the choice
   const node = () => ({ key: selected[0], index: Number(selected.slice(1)) });
   const text = (id, value) => { const el = document.getElementById(id); if (el.textContent !== value) el.textContent = value; };
 
@@ -27,7 +32,7 @@ const LiveWorkspace = (() => {
     abort = new AbortController();
     const timeout = setTimeout(() => abort?.abort(), 4000);
     try {
-      const url = new URL(endpoint);
+      const url = new URL(endpoints[source]);
       if (store) { url.searchParams.set('session', store.meta.session_id); url.searchParams.set('after', store.frames.at(-1)?.tick ?? 0); }
       const response = await fetch(url, { signal: abort.signal, cache: 'no-store', credentials: 'omit', redirect: 'error' });
       if (!response.ok) throw Error('Telemetry endpoint returned HTTP ' + response.status);
@@ -39,9 +44,9 @@ const LiveWorkspace = (() => {
       store = next; received = performance.now(); failures = 0;
       if (store.meta.status !== 'streaming') following = false;
       if (changed) { cursor = null; following = false; status = 'New session · inspect before following'; }
-      else status = { waiting: 'Waiting for an enabled input', streaming: 'Receiving model observations',
-        stale: 'Stale · no recent model steps', error: 'Capture stopped after an error',
-        paused: 'Capture paused · no new model steps' }[store.meta.status];
+      else status = { waiting: daemon() ? 'Waiting for a shared source' : 'Waiting for an enabled input',
+        streaming: 'Receiving model observations', stale: 'Stale · no recent model steps', error: 'Capture stopped after an error',
+        paused: daemon() ? 'Paused · nothing shared, so the brain does not learn' : 'Capture paused · no new model steps' }[store.meta.status];
       if (!cursor || following) cursor = store.frames.at(-1);
       if (node().index >= store.meta.architecture[node().key]) selected = node().key + '0';
       render();
@@ -49,7 +54,7 @@ const LiveWorkspace = (() => {
       if (generation !== epoch) return;
       failures++;
       status = error.name === 'AbortError' ? 'Connection timed out · last sample retained' :
-        error instanceof TypeError ? 'Unavailable · start the local observation service' : error.message;
+        error instanceof TypeError ? (daemon() ? 'Unavailable · start the daemon' : 'Unavailable · start the local observation service') : error.message;
       following = false;
       render();
     } finally {
@@ -65,14 +70,30 @@ const LiveWorkspace = (() => {
     connected = false; following = false; epoch++; clearTimeout(timer); abort?.abort();
     status = 'Disconnected · retained window is historical'; render();
   }
+  function setSource(next) {
+    if (!endpoints[next] || next === source) return;
+    // Each model is its own history: never mix frames, and never keep reading the other one.
+    connected = false; following = false; epoch++; clearTimeout(timer); abort?.abort();
+    store = undefined; cursor = undefined; failures = 0; status = 'Not connected';
+    source = next;
+    try { localStorage.setItem(sourceKey, next); } catch {}
+    onPageChange();
+  }
   function onPageChange() {
     const live = state.page === 'live';
-    $('.source-pill').textContent = live ? 'LOCAL OBSERVATION' : 'SYNTHETIC DATA';
-    $('.connection-state h3').textContent = live ? 'Local, opt-in observation' : 'Example dataset';
-    $('.connection-state p').textContent = live ? 'No microphone, cloud or desktop actions in this runner.' : 'Browser-only study. No live sensors or OS control.';
+    document.body.dataset.liveSource = source;
+    for (const button of choices()) {
+      button.setAttribute('aria-checked', String(button.dataset.liveSource === source));
+      button.tabIndex = button.dataset.liveSource === source ? 0 : -1;  // one tab stop; arrows move within
+    }
+    $('.source-pill').textContent = live ? (daemon() ? 'PERSISTENT BRAIN' : 'LOCAL OBSERVATION') : 'SYNTHETIC DATA';
+    $('.connection-state h3').textContent = live ? (daemon() ? 'Your persistent brain' : 'Local, opt-in observation') : 'Example dataset';
+    $('.connection-state p').textContent = live ? (daemon() ? 'Saved checkpoint. Every source stays off until you share it.' :
+      'No microphone, cloud or desktop actions in this runner.') : 'Browser-only study. No live sensors or OS control.';
     $('.app-footer span').textContent = 'brAIn / OBSERVATORY';
-    $('.app-footer span:nth-child(2)').textContent = live ? 'LOCAL OBSERVATION · USER-CONTROLLED INPUTS' : 'RESEARCH WORKSPACE 03 · EXAMPLE DATA';
-    CaptureControls.refresh();
+    $('.app-footer span:nth-child(2)').textContent = live ? (daemon() ? 'PERSISTENT BRAIN · USER-CONTROLLED SOURCES' :
+      'LOCAL OBSERVATION · USER-CONTROLLED INPUTS') : 'RESEARCH WORKSPACE 03 · EXAMPLE DATA';
+    CaptureControls.refresh(); DaemonControls.refresh(); FeltPanel.refresh();
     clearTimeout(timer); epoch++; abort?.abort();
     if (!live) { following = false; return; }
     render();
@@ -88,12 +109,13 @@ const LiveWorkspace = (() => {
     $('#live-follow').setAttribute('aria-pressed', String(following));
     $('#live-export').disabled = !store?.frames.length;
     text('live-source', store?.meta.status === 'paused' ? (store.frames.length ?
-      'CAPTURE OFF · HISTORICAL MODEL DATA' : 'CAPTURE OFF · NO OBSERVATIONS') : store ? store.meta.source.input_kind === 'desktop_metadata' ?
-      'ACTUAL MODEL · DESKTOP METADATA' : store.meta.source.input_kind === 'test_fixture' ?
-      'ACTUAL MODEL · TEST INPUTS' : 'SENSORS DISABLED' : 'NO DATA SOURCE');
+      'CAPTURE OFF · HISTORICAL MODEL DATA' : 'CAPTURE OFF · NO OBSERVATIONS') : store ? { desktop_metadata: 'ACTUAL MODEL · DESKTOP METADATA',
+      desktop_sensors: 'ACTUAL MODEL · DESKTOP SENSORS', test_fixture: 'ACTUAL MODEL · TEST INPUTS' }[store.meta.source.input_kind] ??
+      'SENSORS DISABLED' : 'NO DATA SOURCE');
     text('live-session', store?.meta.session_id ?? 'No session');
     text('live-input-note', store?.meta.source.input_kind === 'test_fixture' ?
-      'Test inputs are not a desktop recording. They only verify the model-to-dashboard pipeline.' :
+      'Test inputs are not a desktop recording. They only verify the model-to-dashboard pipeline.' : daemon() ?
+      'This view reads your persistent brain. Missing inputs stay missing; it never falls back to the demo.' :
       'This view reads a local model. Missing inputs stay missing; it never falls back to the demo.');
     text('live-window-count', String(store?.frames.length ?? 0));
     text('live-gap', store?.gaps ? 'History gap detected · showing retained samples only' : 'Rolling window · not a complete recording');
@@ -135,8 +157,9 @@ const LiveWorkspace = (() => {
       const sensor = cursor?.sensors[key], row = document.createElement('div'); row.className = 'live-sensor';
       const title = document.createElement('strong'); title.textContent = name;
       const value = document.createElement('span');
+      // Small readings such as microphone loudness keep two significant digits instead of rounding to 0.0.
       value.textContent = !sensor ? 'No data' : sensor.status !== 'available' ? sensor.status.replaceAll('_', ' ') :
-        typeof sensor.value === 'number' ? sensor.value.toFixed(1) + ' ' + sensor.unit : sensor.value;
+        typeof sensor.value === 'number' ? (sensor.value >= 1 || !sensor.value ? sensor.value.toFixed(1) : sensor.value.toPrecision(2)) + ' ' + sensor.unit : sensor.value;
       const detail = document.createElement('small');
       detail.textContent = sensor?.status === 'available' ? 'Observed ' + new Date(sensor.observed_at * 1000).toLocaleTimeString('en-GB') +
         (sensor.window_s ? ' · ' + sensor.window_s.toFixed(2) + ' s window' : '') : 'Never replaced with zero';
@@ -169,6 +192,15 @@ const LiveWorkspace = (() => {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     notify('Observed-window download requested. Contains local activity metadata; keep it private.');
   }
+  for (const button of choices()) {
+    button.addEventListener('click', () => setSource(button.dataset.liveSource));
+    button.addEventListener('keydown', event => {
+      if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+      event.preventDefault();
+      const other = [...choices()].find(b => b !== button);
+      setSource(other.dataset.liveSource); other.focus();
+    });
+  }
   $('#live-connect').addEventListener('click', connect);
   $('#live-disconnect').addEventListener('click', disconnect);
   $('#live-follow').addEventListener('click', () => { following = !following; if (following) cursor = store.frames.at(-1); render(); });
@@ -180,6 +212,6 @@ const LiveWorkspace = (() => {
   document.addEventListener('brain-capture-change', onPageChange);
   reduced.addEventListener('change', () => { if (reduced.matches) { following = false; render(); } });
   window.addEventListener('pagehide', disconnect);
-  return { onPageChange, brainSnapshot, select, exportWindow, compatible };
+  return { onPageChange, brainSnapshot, select, exportWindow, compatible, setSource, source: () => source };
 })();
 LiveWorkspace.onPageChange();

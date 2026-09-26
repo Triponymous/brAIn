@@ -19,9 +19,11 @@ from fastapi.responses import JSONResponse
 
 from server.ws import WSPusher
 
-# The training console, served by the control server, is the only web page
-# that talks to the daemon. Scripts and the MCP proxy send no Origin and pass.
-CONSOLE_ORIGINS = ("http://127.0.0.1:8900", "http://localhost:8900")
+# The dashboard is the web page that talks to the daemon: served by the control
+# server on 8900, or by a static preview server on 4178. Scripts and the MCP
+# proxy send no Origin and pass.
+DASHBOARD_ORIGINS = ("http://127.0.0.1:8900", "http://localhost:8900",
+                     "http://127.0.0.1:4178", "http://localhost:4178")
 LOCAL_HOSTS = ("127.0.0.1", "localhost", "[::1]")
 
 
@@ -29,7 +31,7 @@ def build_app(
     brain: Optional[Any],
     adapter: Optional[Any],
     pusher: Optional[WSPusher],
-    origins: tuple[str, ...] = CONSOLE_ORIGINS,
+    origins: tuple[str, ...] = DASHBOARD_ORIGINS,
 ) -> FastAPI:
     """origins: the web pages allowed to call the daemon (config: daemon.allowed_origins adds to them)."""
     app = FastAPI(title="braind", version="3.0.0")
@@ -43,7 +45,7 @@ def build_app(
                        allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
 
     @app.middleware("http")
-    async def console_only(request: Request, call_next):
+    async def listed_origins_only(request: Request, call_next):
         origin = request.headers.get("origin")
         if origin is not None and origin not in origins:
             return JSONResponse({"detail": f"Origin {origin} may not call the daemon; add it to "
@@ -85,7 +87,8 @@ def build_app(
     return app
 
 
-async def brain_tick_loop(brain: Any, adapter: Any, hz: float = 100.0, exporter: Any = None, episode_logger: Any = None) -> None:
+async def brain_tick_loop(brain: Any, adapter: Any, hz: float = 100.0, exporter: Any = None, episode_logger: Any = None,
+                          telemetry: Any = None) -> None:
     """Run the brain tick loop in a thread to avoid uvicorn event-loop starvation."""
     import threading
     import time
@@ -114,6 +117,8 @@ async def brain_tick_loop(brain: Any, adapter: Any, hz: float = 100.0, exporter:
                     brain.exit_sleep()
 
             out = brain.tick(vec)
+            if telemetry is not None:
+                telemetry.record(brain, out)  # only while a dashboard is watching
             # Record concept spikes WITH sensor context for auto-correlation
             if exporter is not None and "concept" in out:
                 sensor_snap = adapter.bus.snapshot() if adapter else {}
@@ -224,7 +229,7 @@ async def push_loop(brain: Any, pusher: WSPusher, exporter: Any = None, adapter:
             }
 
             # Felt-state: update the trend detector ~1Hz, recognize the learned state,
-            # ride it on the push so the training console shows it live.
+            # ride it on the /ws push (the dashboard reads it from /api/feel).
             paused = adapter is not None and not adapter.acquiring
             if paused:
                 # Nothing observed: frozen modulators must not enter the trend as

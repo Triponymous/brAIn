@@ -1,0 +1,43 @@
+/* Persistent brain in the Live view. Existing Observatory tokens; the capture-panel pattern for sources. */
+body[data-live-source="daemon"] [data-source="runner"],
+body[data-live-source="runner"] [data-source="daemon"] { display: none !important; }
+
+.live-source-choice { flex-basis: 100%; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.live-source-choice button { display: grid; gap: 4px; text-align: left; padding: 12px 16px; min-height: 44px; background: transparent; border: 0; color: var(--muted); cursor: pointer; }
+.live-source-choice button + button { border-left: 1px solid var(--line); }
+.live-source-choice button strong { font-size: 14px; font-weight: 600; color: var(--ink); }
+.live-source-choice button small { font: 11px/1.5 var(--mono); }
+.live-source-choice button[aria-checked="true"] { background: var(--mint-soft); color: var(--mint); }
+.live-source-choice button:focus-visible { outline: 2px solid var(--mint); outline-offset: -2px; }
+
+.daemon-control { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.daemon-control > div:first-child { flex: 1 1 320px; min-width: 0; }
+#daemon-state, #sources-summary { font: 13px var(--mono); color: var(--mint); }
+#daemon-state[data-state="unknown"], #sources-summary[data-state="unknown"] { color: #e5b994; }
+#daemon-state[data-state="off"], #sources-summary[data-state="off"] { color: var(--muted); }
+#daemon-message { margin: 6px 0 0; min-height: 0; }
+.live-privacy > .capture-panel { margin-top: 20px; }
+
+.felt-panel { margin-top: 20px; padding: 24px; }
+.felt-now { display: grid; gap: 6px; padding: 18px 0; border-top: 1px solid var(--line); }
+.felt-now strong { font-size: 32px; font-weight: 500; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.felt-now strong[data-state="unknown"] { color: var(--muted); font-size: 24px; }
+.felt-now small { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.felt-ask { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; padding: 14px 16px; margin-bottom: 18px; border: 1px solid #355444; border-radius: 10px; background: var(--mint-soft); }
+.felt-ask[hidden] { display: none; }
+.felt-ask p { margin: 0; flex: 1 1 320px; font-size: 13px; line-height: 1.6; color: var(--mint); }
+.felt-teach { display: grid; gap: 8px; padding: 18px 0; border-top: 1px solid var(--line); }
+.felt-teach label { font-size: 12px; color: var(--muted); }
+.felt-teach-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.felt-teach-row .input { flex: 1 1 220px; min-height: 44px; }
+.felt-words-block { display: grid; gap: 10px; padding: 18px 0 4px; border-top: 1px solid var(--line); }
+.felt-words { display: flex; flex-wrap: wrap; gap: 8px; }
+.felt-words:empty { display: none; }
+#felt-words-empty[hidden] { display: none; }
+#live .felt-words .btn { min-height: 44px; }
+@media (max-width: 700px) {
+  .live-source-choice { grid-template-columns: minmax(0,1fr); }
+  .live-source-choice button + button { border-left: 0; border-top: 1px solid var(--line); }
+  .felt-panel { padding: 16px; }
+  .felt-now strong { font-size: 26px; }
+}

@@ -40,7 +40,7 @@ INSTRUCTIONS = (
     "habits in observation instead of guessing. All tools are read-only."
 )
 
-_DOWN = ("brAIn daemon is not running at {url}. Start it from the console at http://127.0.0.1:8900 "
+_DOWN = ("brAIn daemon is not running at {url}. Start it from the dashboard at http://127.0.0.1:8900 "
          "(or `.venv/bin/python -m server.control --autostart`). The daemon holds the brain that "
          "answers these tools; nothing is learned or served while it is down.")
 

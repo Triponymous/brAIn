@@ -9,7 +9,7 @@ import time
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from bridge.experience import state_of
 from bridge.felt_state import signature_from_trend, SIGNATURE_KEYS
@@ -19,7 +19,8 @@ _PENDING_TTL = 3600.0
 
 
 class FeelRequest(BaseModel):
-    label: str
+    # The dashboard lists every known word and refuses a list with a blank or overlong one.
+    label: str = Field(min_length=1, max_length=64, pattern=r"\S")
 
 
 def build_feel_router(brain, detector) -> APIRouter:
@@ -35,13 +36,23 @@ def build_feel_router(brain, detector) -> APIRouter:
         c = getattr(brain, "_last_concept_cluster", -1)
         return int(c) if c is not None else -1
 
+    def _paused() -> bool:
+        adapter = getattr(brain, "_adapter", None)
+        return adapter is not None and not adapter.acquiring
+
     @api.get("/api/feel")
     async def get_feel() -> dict[str, Any]:
+        # A moment the model asked about and that is still open to a label.
+        pending = getattr(brain, "_pending_ask", None)
+        open_ask = ({"at": pending["at"]} if pending and pending.get("signature")
+                    and time.time() - pending["at"] < _PENDING_TTL else None)
+        base = {"known_labels": brain.felt_state.known_labels(), "pending_ask": open_ask, "paused": _paused()}
+        if base["paused"]:  # nothing observed: no current state to recognize
+            return {"recognized": None, "confidence": 0.0, "signature": None, **base}
         sig = _current_sig()
         name, conf = brain.felt_state.recognize(sig, _current_cluster())
         return {"recognized": name, "confidence": conf,
-                "signature": dict(zip(SIGNATURE_KEYS, sig)),
-                "known_labels": brain.felt_state.known_labels()}
+                "signature": dict(zip(SIGNATURE_KEYS, sig)), **base}
 
     @api.post("/api/feel")
     async def post_feel(req: FeelRequest) -> dict[str, Any]:
@@ -56,8 +67,7 @@ def build_feel_router(brain, detector) -> APIRouter:
             brain._pending_ask = None
             answered = pending
         else:
-            adapter = getattr(brain, "_adapter", None)
-            if adapter is not None and not adapter.acquiring:
+            if _paused():
                 # Paused: the trend is from before the pause, not how the user is now.
                 raise HTTPException(409, "Nothing is shared, so there is no current state to label")
             sig = _current_sig()
@@ -77,7 +87,7 @@ def build_feel_router(brain, detector) -> APIRouter:
 
     @api.post("/api/feel/dismiss")
     async def dismiss_feel() -> dict[str, Any]:
-        """"Later" in the console. Releases the frozen moment: a label taught
+        """"Later" in the dashboard. Releases the frozen moment: a label taught
         afterwards applies to the live state, not to an ask that was waved
         away. The dismissal itself is an experience — how often the pet asks
         at the wrong moment is exactly what a learned policy needs to know."""

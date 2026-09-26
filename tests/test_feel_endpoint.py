@@ -40,6 +40,14 @@ def test_post_feel_teaches_then_get_recognizes():
     assert g["confidence"] > 0.0
 
 
+def test_a_word_has_1_to_64_characters_and_is_not_blank():
+    c = _make_app()
+    for bad in ("", "   ", "a" * 65):
+        assert c.post("/api/feel", json={"label": bad}).status_code == 422
+    assert c.get("/api/feel").json()["known_labels"] == []
+    assert c.post("/api/feel", json={"label": "a" * 64}).status_code == 200
+
+
 def test_post_labels_frozen_pending_signature_not_live():
     """A pending ask (state-change) freezes the anomaly signature; POSTing a label
     applies to THAT, not the live state Leon is in when he answers."""

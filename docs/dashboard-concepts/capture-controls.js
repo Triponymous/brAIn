@@ -5,6 +5,8 @@ const CaptureControls = (() => {
   let data, verified = false, pending = false, message = '', timer, reader, writer, epoch = 0, operation = 0, failures = 0;
   const byId = id => document.getElementById(id);
   const text = (id, value) => { if (byId(id).textContent !== value) byId(id).textContent = value; };
+  // Only while the session runner is the chosen source; the persistent brain has its own controls.
+  const runnerChosen = () => (document.body?.dataset?.liveSource ?? 'runner') === 'runner';
 
   function accept(next) {
     CaptureData.validate(next);
@@ -14,7 +16,7 @@ const CaptureControls = (() => {
     if (changed) document.dispatchEvent(new Event('brain-capture-change'));
   }
   async function read(generation) {
-    if (generation !== epoch || document.hidden || state.page !== 'live') return;
+    if (generation !== epoch || document.hidden || state.page !== 'live' || !runnerChosen()) return;
     if (!pending) {
       const controller = new AbortController(); reader = controller;
       const timeout = setTimeout(() => controller.abort(), 4000);
@@ -86,7 +88,7 @@ const CaptureControls = (() => {
   }
   function refresh() {
     clearTimeout(timer); epoch++; reader?.abort();
-    if (state.page === 'live' && !document.hidden) read(epoch);
+    if (state.page === 'live' && !document.hidden && runnerChosen()) read(epoch);
   }
   for (const key of CaptureData.keys) byId('capture-' + key).addEventListener('change', event => {
     if (pending) { render(); return; }

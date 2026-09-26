@@ -7,16 +7,16 @@ const ObservatoryTourData = {
   ],
   steps: [
     {
-      id: 'connection', page: 'live', target: '.live-connection', source: 'Live · lokale Sitzung',
+      id: 'connection', page: 'live', target: '.live-connection', source: 'Live · dein Gehirn',
       title: 'Hier beginnt die echte Beobachtung.',
-      description: '„Connect local model“ verbindet nur die Ansicht mit dem lokalen Dienst. Ob Daten ankommen, steht hier. Links wechselst du zwischen den sechs Bereichen; nur „Live session“ zeigt echte Modellschritte.',
-      caution: 'Die Tour verbindet nichts automatisch. „Disconnect view“ stoppt weder Erfassung noch Lernen.'
+      description: 'Oben wählst du das Modell: das persistente Gehirn (braind), das dich über Tage lernt und seinen Checkpoint speichert, oder den Session-Runner (server.observe) mit frischem Modell. „Connect local model“ verbindet nur die Ansicht; ob Daten ankommen, steht hier. Links wechselst du zwischen den sechs Bereichen; nur „Live session“ zeigt echte Modellschritte.',
+      caution: 'Die Tour verbindet nichts automatisch und startet keinen Daemon. „Disconnect view“ stoppt weder Erfassung noch Lernen.'
     },
     {
-      id: 'privacy', page: 'live', target: '.capture-panel', source: 'Live · deine Entscheidung',
+      id: 'privacy', page: 'live', target: '.live-privacy', source: 'Live · deine Entscheidung',
       title: 'Du entscheidest, was beobachtet wird.',
-      description: 'Vier Schalter: Tastatur- und Mausereignisse zählen, Inaktivität messen und die App grob einordnen. Keine getippten Inhalte. „On“ allein beweist keinen Zugriff; für Eingabezähler und Idle braucht es zusätzlich die macOS-Berechtigung.',
-      caution: '„Stop all capture“ stoppt diesen Erfassungspfad, löscht aber keine alten Daten. Mikrofon und Wearables sind hier nicht angeschlossen. Lass die Schalter für die Tour unverändert.'
+      description: 'Jede Quelle hat einen eigenen Schalter; getippte Inhalte werden nie erfasst. Das persistente Gehirn kennt Tastatur- und Zeigerrhythmus, Inaktivität, Apps und Mikrofon-Merkmale und speichert deine Wahl, ohne sie nach einem Neustart je zu erweitern. Der Session-Runner zählt vier grobe Signale, nur für diese Sitzung. „On“ allein beweist keinen Zugriff; dazu kommen die macOS-Berechtigungen.',
+      caution: 'Abschalten stoppt die Erfassung sofort, löscht aber nichts. Löschen ist ein eigener Schritt mit dem Befehl „server.braind erase“. Lass die Schalter für die Tour unverändert.'
     },
     {
       id: 'live-stats', page: 'live', target: '.live-stats', source: 'Live · Messwerte lesen',
@@ -46,7 +46,7 @@ const ObservatoryTourData = {
       id: 'live-export', page: 'live', target: '.live-methods', source: 'Live · begrenztes Beobachtungsfenster',
       title: 'Ein Fenster sichern, kein ganzes Gehirn.',
       description: '„Export observed window“ lädt die beobachteten Schritte als JSON herunter. Diese Ansicht hält höchstens 200 Schritte, der Dienst bis zu 512 im RAM. Sitzung und Alter der Daten helfen bei der Einordnung.',
-      caution: 'Kein vollständiges Experiment und kein Export aller Gewichte. Es gibt kein automatisches Checkpoint-Archiv. Die Tour startet keinen Download.'
+      caution: 'Kein vollständiges Experiment und kein Export aller Gewichte. Das persistente Gehirn speichert seinen Checkpoint selbst; der Session-Runner speichert nichts. Die Tour startet keinen Download.'
     },
     {
       id: 'overview', page: 'overview', target: '#state-banner', source: 'Demo · ab hier synthetische Daten',

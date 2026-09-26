@@ -266,7 +266,7 @@ def test_recording_is_refused_unless_the_microphone_is_shared(monkeypatch):
     assert recorded == [16000]
 
 
-# ── the HTTP interface the console uses ──────────────────────────────
+# ── the HTTP interface the dashboard uses ──────────────────────────────
 
 def _consent_app(tmp_path):
     store = ConsentStore(tmp_path / "consent.json")

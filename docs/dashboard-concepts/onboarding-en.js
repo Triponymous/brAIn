@@ -1,14 +1,14 @@
 // Copy only: step identities, navigation and optional exercises stay shared.
 const ObservatoryTourEnglish = {
   connection: [
-    'Live · local session', 'Real observation starts here.',
-    '“Connect local model” only connects this view to the local service. Its status tells you whether data is arriving. Use the sidebar to move between six areas; only “Live session” shows real model steps.',
-    'The tour never connects automatically. “Disconnect view” stops neither capture nor learning.'
+    'Live · your brain', 'Real observation starts here.',
+    'Choose the model at the top: the persistent brain (braind), which learns you across days and saves its checkpoint, or the session runner (server.observe) with a fresh model. “Connect local model” only connects this view; its status tells you whether data is arriving. Use the sidebar to move between six areas; only “Live session” shows real model steps.',
+    'The tour never connects automatically and never starts the daemon. “Disconnect view” stops neither capture nor learning.'
   ],
   privacy: [
     'Live · your decision', 'You decide what is observed.',
-    'Four switches count keyboard and mouse events, measure idle time and classify the active app into a broad category. No typed content is collected. “On” alone does not prove access: input counters and idle time also require macOS permission.',
-    '“Stop all capture” stops this capture path, but does not delete past data. Microphone and wearables are not connected here. Leave the switches unchanged during the tour.'
+    'Every source has its own switch; typed content is never collected. The persistent brain knows keyboard and pointer rhythm, idle time, apps and microphone features, and it saves your choice without ever widening it after a restart. The session runner counts four coarse signals, for this session only. “On” alone does not prove access; macOS permissions apply as well.',
+    'Switching off stops capture at once but deletes nothing. Deleting is a separate step with the “server.braind erase” command. Leave the switches unchanged during the tour.'
   ],
   'live-stats': [
     'Live · reading measurements', 'Three numbers, three different things.',
@@ -33,7 +33,7 @@ const ObservatoryTourEnglish = {
   'live-export': [
     'Live · a bounded observation window', 'Save a window, not an entire brain.',
     '“Export observed window” downloads the observed steps as JSON. This view retains at most 200 steps; the service keeps up to 512 in RAM. Session identity and data age help you interpret the result.',
-    'This is neither a complete experiment nor an export of all weights. There is no automatic checkpoint archive. The tour does not start a download.'
+    'This is neither a complete experiment nor an export of all weights. The persistent brain saves its own checkpoint; the session runner saves nothing. The tour does not start a download.'
   ],
   overview: [
     'Demo · synthetic data from here on', 'A word is an interpretation.',

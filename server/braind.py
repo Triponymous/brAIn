@@ -124,7 +124,7 @@ def erase(checkpoint: Path, port: int = 8000, yes: bool = False) -> int:
     if lock is None or (default_dir and _default_daemon_up(port)):
         if lock is not None:
             lock.close()
-        print("A daemon is using these files. Stop it first (training console, or Ctrl-C); "
+        print("A daemon is using these files. Stop it first (dashboard, or Ctrl-C); "
               "a running daemon would keep writing what you are deleting.")
         return 1
     try:
@@ -166,7 +166,7 @@ def _check_permissions(enabled: dict[str, bool]) -> None:
     print("╚══════════════════════════════════════════╝")
     if not any(enabled.values()):
         print("No source is shared yet: nothing is captured and the brain waits.")
-        print("   → Switch sources on in the training console (http://127.0.0.1:8900)\n")
+        print("   → Switch sources on in the dashboard (http://127.0.0.1:8900, Live session)\n")
         return
 
     # 1. Input Monitoring (keyboard, mouse, idle)
@@ -242,7 +242,8 @@ async def _run_daemon(args: argparse.Namespace) -> None:
         raise SystemExit(1)
 
     # Load or create brain
-    if checkpoint.exists():
+    loaded = checkpoint.exists()
+    if loaded:
         print(f"Loading brain from {checkpoint}")
         brain = load_brain(checkpoint)
         print(f"Resumed at tick {brain.tick_count}")
@@ -336,20 +337,24 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     load_config()
     config_router = build_config_router()
 
-    # Build FastAPI app. Web pages other than the training console (say, a new
-    # dashboard on its own port) must be listed explicitly to call the daemon.
-    from server.main import CONSOLE_ORIGINS
+    # Build FastAPI app. Web pages other than the dashboard (served on 8900,
+    # previewed on 4178) must be listed explicitly to call the daemon.
+    from server.main import DASHBOARD_ORIGINS
     extra = get("daemon", "allowed_origins", [])
     extra = tuple(o for o in extra if isinstance(o, str)) if isinstance(extra, list) else ()
     if extra:
         print(f"Also allowed to call the daemon: {', '.join(extra)}")
-    app = build_app(brain=brain, adapter=adapter, pusher=pusher, origins=CONSOLE_ORIGINS + extra)
+    app = build_app(brain=brain, adapter=adapter, pusher=pusher, origins=DASHBOARD_ORIGINS + extra)
     app.include_router(chat_router)
     app.include_router(grants_router)
     app.include_router(config_router)
     app.include_router(feel_router)
     app.include_router(build_experience_router(experience))
     app.include_router(build_consent_router(consent, adapter))
+    # The dashboard's Live view reads the persistent brain in the same contract as the observer.
+    from server.daemon_telemetry import DaemonTelemetry, build_daemon_telemetry_router
+    telemetry = DaemonTelemetry(brain, adapter, checkpoint=checkpoint, loaded=loaded, consent=consent)
+    app.include_router(build_daemon_telemetry_router(telemetry))
     from server.tools import build_tools_router
     app.include_router(build_tools_router(brain, brain_tools))  # read-only, for server/mcp.py and scripts
 
@@ -384,7 +389,8 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     sensor_task = asyncio.create_task(adapter.run())
     await asyncio.sleep(2.0)  # give sensors time to populate the bus
     print(f"Sensor bus keys: {list(adapter.bus.snapshot().keys())}")
-    tick_task = asyncio.create_task(brain_tick_loop(brain, adapter, hz=args.tick_hz, exporter=exporter, episode_logger=episode_logger))
+    tick_task = asyncio.create_task(brain_tick_loop(brain, adapter, hz=args.tick_hz, exporter=exporter,
+                                                    episode_logger=episode_logger, telemetry=telemetry))
     push_task = asyncio.create_task(push_loop(brain, pusher, exporter=exporter, adapter=adapter, detector=state_detector))
     persist_task = asyncio.create_task(persistence_loop(brain, str(checkpoint)))
 
@@ -414,7 +420,7 @@ async def _run_daemon(args: argparse.Namespace) -> None:
     # uvicorn captures SIGTERM for a graceful stop, then restores the ORIGINAL
     # handler and re-raises the signal (Server.capture_signals). The default
     # SIGTERM action terminates the process on the spot, inside serve(), so the
-    # final save in the finally below never ran. launchd, the console Stop
+    # final save in the finally below never ran. launchd, the dashboard's Stop
     # button and system shutdown all send SIGTERM, so everything learned since
     # the last 60 s autosave (a felt-state label taught a moment ago) was lost
     # on every stop. A Python-level handler is what uvicorn restores; the

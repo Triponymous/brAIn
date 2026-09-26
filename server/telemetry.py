@@ -23,7 +23,14 @@ from server.capture import CaptureControl, build_capture_router
 
 SCHEMA = "brain.telemetry.v1"
 REGIONS = {"s": "sensory", "e": "expansion", "c": "concept", "w": "wm"}
-ORIGINS = ["http://127.0.0.1:4178", "http://localhost:4178"]
+# The dashboard, from its static preview (4178) or from the control server (8900).
+ORIGINS = ["http://127.0.0.1:4178", "http://localhost:4178", "http://127.0.0.1:8900", "http://localhost:8900"]
+
+
+def code_sha256(root, files):
+    """Which code produced these frames: names and contents of the files, in order."""
+    return hashlib.sha256(b"".join(
+        str(path.relative_to(root)).encode() + b"\0" + path.read_bytes() for path in files)).hexdigest()
 
 
 class TelemetryBuffer:
@@ -50,11 +57,9 @@ class TelemetryBuffer:
             "runtime": {"torch": torch.__version__, "python": platform.python_version(), "device": "cpu"},
         }
         root = Path(__file__).resolve().parent.parent
-        files = sorted((root / "brain").glob("*.py")) + [root / "adapters/mac_desktop/encoding.py",
-                    root / "adapters/mac_desktop/metadata.py", root / "server/observe.py",
-                    root / "server/capture.py", Path(__file__)]
-        self.source["code_sha256"] = hashlib.sha256(b"".join(
-            str(path.relative_to(root)).encode() + b"\0" + path.read_bytes() for path in files)).hexdigest()
+        self.source["code_sha256"] = code_sha256(root, sorted((root / "brain").glob("*.py")) + [
+            root / "adapters/mac_desktop/encoding.py", root / "adapters/mac_desktop/metadata.py",
+            root / "server/observe.py", root / "server/capture.py", Path(__file__)])
 
     def record(self, brain, outputs, sensors, *, monotonic=None, captured_at=None, capture_revision=None):
         stamp = time.monotonic() if monotonic is None else monotonic

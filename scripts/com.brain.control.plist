@@ -5,7 +5,7 @@
   <!-- Template: install_launchd.sh fills in __PROJ_DIR__ and __PYTHON__.
        launchd keeps the CONTROL SERVER alive; the control server starts and
        supervises the brain daemon. Never point launchd at the daemon itself,
-       or KeepAlive fights the console's Stop button. -->
+       or KeepAlive fights the dashboard's Stop button. -->
   <key>Label</key>
   <string>com.brain.control</string>
 

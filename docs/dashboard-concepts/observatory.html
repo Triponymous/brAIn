@@ -11,9 +11,10 @@
 <link rel="stylesheet" href="brain-view.css?v=atlas-4">
 <link rel="stylesheet" href="live-workspace.css">
 <link rel="stylesheet" href="capture-controls.css">
+<link rel="stylesheet" href="daemon-controls.css">
 <link rel="stylesheet" href="onboarding.css">
 </head>
-<body data-page="overview">
+<body data-page="overview" data-live-source="daemon">
 <a class="skip-link" href="#main-content">Skip to workspace</a>
 <div class="app-shell">
 <aside class="sidebar">
@@ -163,11 +164,42 @@
 </div>
 <section class="screen" id="live" aria-label="Local model observation">
 <div class="panel live-connection">
-  <div><span class="eyebrow" id="live-source">NO DATA SOURCE</span><h2 id="live-status" role="status">Not connected</h2><p id="live-input-note">Connect to the opt-in local observation service. No synthetic fallback.</p></div>
+  <div class="live-source-choice" role="radiogroup" aria-label="Model to observe">
+    <button type="button" role="radio" aria-checked="true" data-live-source="daemon"><strong>Persistent brain</strong><small>braind · learns across days · saved checkpoint</small></button>
+    <button type="button" role="radio" aria-checked="false" data-live-source="runner"><strong>Session runner</strong><small>server.observe · fresh model · nothing saved</small></button>
+  </div>
+  <div><span class="eyebrow" id="live-source">NO DATA SOURCE</span><h2 id="live-status" role="status">Not connected</h2><p id="live-input-note">Connect to a local model. No synthetic fallback.</p></div>
   <div class="live-actions"><button class="btn primary" id="live-connect">Connect local model</button><button class="btn" id="live-disconnect" disabled>Disconnect view</button></div>
-  <p class="live-note">Model data from <code>127.0.0.1:8001</code>. Disconnecting this view or closing the browser does not stop capture. Use <strong>Stop all capture</strong> below; Ctrl-C stops the runner completely.</p>
+  <div class="daemon-control" data-source="daemon">
+    <div><strong id="daemon-state" role="status" data-state="unknown">Daemon status not loaded</strong><p class="live-note" id="daemon-message"></p></div>
+    <div class="live-actions"><button class="btn small" id="daemon-start" disabled>Start daemon</button><button class="btn small" id="daemon-stop" disabled>Stop daemon</button></div>
+  </div>
+  <p class="live-note" data-source="daemon">Model data from <code>127.0.0.1:8000</code>. Disconnecting this view or closing the browser changes nothing in the daemon. Switch sources off below; <strong>Stop daemon</strong> saves the checkpoint and ends the process.</p>
+  <p class="live-note" data-source="runner">Model data from <code>127.0.0.1:8001</code>. Disconnecting this view or closing the browser does not stop capture. Use <strong>Stop all capture</strong> below; Ctrl-C stops the runner completely.</p>
 </div>
-<section class="panel capture-panel" aria-labelledby="capture-heading">
+<div class="live-privacy">
+<section class="panel capture-panel sources-panel" data-source="daemon" aria-labelledby="sources-heading">
+  <div class="live-panel-heading"><div><span class="eyebrow">DATA &amp; PRIVACY / PERSISTENT BRAIN</span><h2 id="sources-heading">You control the inputs.</h2></div><button class="btn capture-stop" id="sources-stop" disabled>Stop all sources</button></div>
+  <div class="capture-overview"><strong id="sources-summary" role="status" data-state="unknown">Daemon not verified</strong><button class="btn small" id="sources-refresh">Refresh status</button></div>
+  <p class="live-note" id="sources-connection">Checking the daemon. Nothing is shared by opening this page.</p>
+  <div class="capture-inputs">
+    <div class="capture-input"><div><label for="source-keystroke_rate">Keyboard rhythm</label><p id="source-desc-keystroke_rate">Key-down events per second and typing rhythm. Never which keys, never typed text.</p><small id="source-state-keystroke_rate">Status not loaded</small></div><input type="checkbox" role="switch" id="source-keystroke_rate" aria-describedby="source-desc-keystroke_rate source-state-keystroke_rate" disabled></div>
+    <div class="capture-input"><div><label for="source-mouse_rate">Pointer activity</label><p id="source-desc-mouse_rate">Movement, click and scroll events per second. No cursor coordinates or click targets.</p><small id="source-state-mouse_rate">Status not loaded</small></div><input type="checkbox" role="switch" id="source-mouse_rate" aria-describedby="source-desc-mouse_rate source-state-mouse_rate" disabled></div>
+    <div class="capture-input"><div><label for="source-idle">Idle time</label><p id="source-desc-idle">Seconds since the last keyboard or pointer input. After five minutes away the brain sleeps and consolidates.</p><small id="source-state-idle">Status not loaded</small></div><input type="checkbox" role="switch" id="source-idle" aria-describedby="source-desc-idle source-state-idle" disabled></div>
+    <div class="capture-input"><div><label for="source-active_app">Apps</label><p id="source-desc-active_app">The frontmost app's name and the names of other open apps, used inside the model. This page shows only a broad category.</p><small id="source-state-active_app">Status not loaded</small></div><input type="checkbox" role="switch" id="source-active_app" aria-describedby="source-desc-active_app source-state-active_app" disabled></div>
+    <div class="capture-input"><div><label for="source-mic">Microphone features</label><p id="source-desc-mic">Loudness and 32 frequency bands, computed live and never stored. No recording, no words. Also required for explicit voice recording.</p><small id="source-state-mic">Status not loaded</small></div><input type="checkbox" role="switch" id="source-mic" aria-describedby="source-desc-mic source-state-mic" disabled></div>
+  </div>
+  <p class="capture-feedback" id="sources-message" role="status" aria-live="polite"></p>
+  <p class="live-note">“On” is your selection, not proof of access: keyboard, pointer and idle time need macOS Input Monitoring, the microphone needs Microphone access. Off stops that source at once and forgets its last value; it does not revoke the macOS permission.</p>
+  <div class="capture-excluded"><div><strong>Wearables</strong><span>Not connected · no health data collected</span></div><div><strong>Screen</strong><span>Never captured · no screenshots, window titles or clipboard</span></div></div>
+  <details class="capture-boundaries"><summary>Storage, deletion and the limits of these controls</summary><div class="capture-boundary-grid">
+    <div><h3>Saved, never widened</h3><p>Your choice is kept in <code>checkpoints/consent.json</code>. A missing or unreadable file means nothing is shared, and a source added in a later version starts off.</p></div>
+    <div><h3>Off is not deletion</h3><p>Off stops capture and learning from that source. The checkpoint, activity summaries and experience log remain. To delete everything, stop the daemon and run <code>python -m server.braind erase</code>.</p></div>
+    <div><h3>What is stored</h3><p>The model checkpoint every 60 s and a daily backup, activity summaries and the experience log for 90 days, and this choice. Nothing leaves the machine unless you connect a cloud model or an MCP host.</p></div>
+    <div><h3>This daemon, not the whole Mac</h3><p>These switches govern braind on port 8000. The session runner has its own switches; macOS permissions stay as they are. Model activity is not a measurement of your feelings.</p></div>
+  </div></details>
+</section>
+<section class="panel capture-panel" data-source="runner" aria-labelledby="capture-heading">
   <div class="live-panel-heading"><div><span class="eyebrow">DATA &amp; PRIVACY / THIS LOCAL SESSION</span><h2 id="capture-heading">You control the inputs.</h2></div><button class="btn capture-stop" id="capture-stop" disabled>Stop all capture</button></div>
   <div class="capture-overview"><strong id="capture-summary" role="status">Capture status unverified</strong><button class="btn small" id="capture-refresh">Refresh status</button></div>
   <p class="live-note" id="capture-connection">Checking the local runner. No input is enabled by opening this page.</p>
@@ -184,8 +216,18 @@
     <div><h3>Local processing only</h3><p>No cloud or LLM calls. No typed contents, screenshots, clipboard, audio or location. Observation times and model outputs are generated locally.</p></div>
     <div><h3>Off is not deletion</h3><p>All off stops sensor reads and model steps. Earlier snapshots and learned weights remain in this process’s memory until the runner ends. An exported JSON file remains wherever you saved it.</p></div>
     <div><h3>No automatic storage</h3><p>The runner keeps up to 512 model steps in memory; this view keeps up to 200. No checkpoint or recording is saved automatically. Every server restart begins with all inputs off.</p></div>
-    <div><h3>This runner, not the whole Mac</h3><p>Controls apply only to server.observe on port 8001. They do not change macOS permissions, other apps or a separately started legacy brAIn daemon. Model activity is not a measurement of your feelings.</p></div>
+    <div><h3>This runner, not the whole Mac</h3><p>Controls apply only to server.observe on port 8001. They do not change macOS permissions, other apps or the persistent brain. Model activity is not a measurement of your feelings.</p></div>
   </div></details>
+</section>
+</div>
+<section class="panel felt-panel" data-source="daemon" aria-labelledby="felt-heading">
+  <div class="live-panel-heading"><div><span class="eyebrow">YOUR WORDS / TAUGHT TO THE PERSISTENT BRAIN</span><h2 id="felt-heading">Name a moment.</h2></div><span class="pill">Saved with the checkpoint</span></div>
+  <div class="felt-now"><span class="eyebrow">Recognized now</span><strong id="felt-current" data-state="unknown">—</strong><small id="felt-similarity">Cannot reach the daemon.</small></div>
+  <div class="felt-ask" id="felt-ask" role="status" hidden><p>The brain asked about a moment at <strong id="felt-ask-time">—</strong>. The next word you teach names that moment, not how you feel when you answer.</p><button class="btn small" id="felt-ask-later">Later</button></div>
+  <div class="felt-teach"><label for="felt-label">Your word</label><div class="felt-teach-row"><input class="input" id="felt-label" maxlength="32" placeholder="e.g. focused" autocomplete="off" disabled><button class="btn primary" id="felt-teach" disabled>Name this moment</button></div></div>
+  <div class="felt-words-block"><span class="eyebrow">Words taught so far · select one to confirm it</span><div class="felt-words" id="felt-words"></div><p class="live-note" id="felt-words-empty">No words yet. The first one you teach starts the vocabulary.</p></div>
+  <p class="capture-feedback" id="felt-message" role="status" aria-live="polite"></p>
+  <p class="live-note">A word is yours, not a built-in emotion. The brain compares its current signature with the moments you named; a match is a similarity, not a reading of your feelings.</p>
 </section>
 <div class="live-stats">
   <div class="panel"><span class="eyebrow">Captured model tick</span><strong id="live-tick">—</strong><small id="live-sample-time">Waiting for a captured sample</small></div>
@@ -214,12 +256,13 @@
     <p class="live-note" id="live-model-time">No model steps observed</p>
   </section>
 </div>
-<section class="panel live-sensors-panel"><div class="live-panel-heading"><div><span class="eyebrow">Input provenance / selected tick</span><h2>Only what was observed.</h2></div><span class="pill">Microphone off · cloud off</span></div><p class="live-note" id="live-capture-history">No captured input values yet.</p><div id="live-sensors"></div></section>
+<section class="panel live-sensors-panel"><div class="live-panel-heading"><div><span class="eyebrow">Input provenance / selected tick</span><h2>Only what was observed.</h2></div><span class="pill" data-source="runner">Microphone off · cloud off</span><span class="pill" data-source="daemon">Only shared sources · app as category</span></div><p class="live-note" id="live-capture-history">No captured input values yet.</p><div id="live-sensors"></div></section>
 <section class="panel live-methods">
-  <div><span class="eyebrow">Research boundaries</span><h2>Real output. Open questions.</h2><p>A fresh <code>brain.core.Brain</code> learns from opt-in, coarse desktop metadata. No existing personal checkpoint is touched. The view has no emotion classifier, wearable connection or desktop actions.</p><p>Only the last 200 observed steps are retained here. Freeze affects inspection, not learning. Export keeps this window, not the complete experiment or model weights.</p></div>
+  <div><span class="eyebrow">Research boundaries</span><h2>Real output. Open questions.</h2><p data-source="runner">A fresh <code>brain.core.Brain</code> learns from opt-in, coarse desktop metadata. No existing personal checkpoint is touched. The view has no emotion classifier, wearable connection or desktop actions.</p><p data-source="daemon">Your persistent <code>brain.core.Brain</code> learns only from the sources you share and keeps what it learns in its checkpoint. Frames are sampled at 20 Hz and only while this view polls. No emotion classifier, wearable connection or desktop actions.</p><p>Only the last 200 observed steps are retained here. Freeze affects inspection, not learning. Export keeps this window, not the complete experiment or model weights.</p></div>
   <dl class="provenance-list"><div><dt>Session</dt><dd class="mono" id="live-session">No session</dd></div><div><dt>Latest server sample age</dt><dd id="live-age">—</dd></div></dl>
   <button class="btn" id="live-export" disabled>Export observed window</button>
-  <details><summary>Start and stop the local collector</summary><p>From the repository directory, to make the local input switches available:</p><code class="live-command">.venv/bin/python -m server.observe --desktop-metadata</code><p>All inputs still start off. Enable only the channels you want in Data &amp; privacy above. Without <code>--desktop-metadata</code>, controls cannot enable collection. macOS permissions are checked, never requested automatically. Stop all capture in this page, or stop the runner completely with Ctrl-C; no checkpoint is saved.</p></details>
+  <details data-source="daemon"><summary>Run the persistent brain</summary><p>The daemon runs under <code>server.control</code>, which also serves this dashboard on port 8900:</p><code class="live-command">.venv/bin/python -m server.control</code><p>Use <strong>Start daemon</strong> above. It loads its checkpoint and its saved sources; with none saved, everything is off. <strong>Stop daemon</strong> saves before it exits. To delete all stored data, stop it and run <code>python -m server.braind erase</code>.</p></details>
+  <details data-source="runner"><summary>Start and stop the local collector</summary><p>From the repository directory, to make the local input switches available:</p><code class="live-command">.venv/bin/python -m server.observe --desktop-metadata</code><p>All inputs still start off. Enable only the channels you want in Data &amp; privacy above. Without <code>--desktop-metadata</code>, controls cannot enable collection. macOS permissions are checked, never requested automatically. Stop all capture in this page, or stop the runner completely with Ctrl-C; no checkpoint is saved.</p></details>
 </section>
 </section>
 <section class="screen active" id="overview" aria-label="Observatory overview">
@@ -879,6 +922,9 @@
 </script>
 <script src="capture-data.js"></script>
 <script src="capture-controls.js"></script>
+<script src="daemon-data.js"></script>
+<script src="daemon-controls.js"></script>
+<script src="felt-panel.js"></script>
 <script src="live-data.js"></script>
 <script src="live-workspace.js"></script>
 <script src="onboarding-data.js"></script>

@@ -67,7 +67,7 @@ def test_uvicorn_config_ws_backend_is_importable():
 
 
 def test_sigterm_ends_with_a_saved_checkpoint(tmp_path):
-    """SIGTERM (launchd, console Stop, system shutdown) must end with a saved brain.
+    """SIGTERM (launchd, dashboard Stop, system shutdown) must end with a saved brain.
 
     Regression guard: uvicorn re-raises a captured SIGTERM after restoring the
     default handler, which terminated the process inside serve() before the
@@ -125,7 +125,7 @@ def test_sigterm_ends_with_a_saved_checkpoint(tmp_path):
             urllib.request.urlopen(record, timeout=5)
         assert refused.value.code == 403
 
-        proc.terminate()  # SIGTERM, exactly what the console Stop button sends
+        proc.terminate()  # SIGTERM, exactly what the dashboard's Stop sends
         rc = proc.wait(timeout=60)
     finally:
         if proc.poll() is None:

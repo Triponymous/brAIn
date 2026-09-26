@@ -6,7 +6,7 @@ const LiveData = (() => {
     if (!data || data.schema !== 'brain.telemetry.v1' || typeof data.session_id !== 'string' ||
         data.session_id.length > 64 || !data.session_id.length) throw Error('Unsupported telemetry contract');
     if (!['waiting', 'streaming', 'stale', 'error', 'paused'].includes(data.status) ||
-        !['desktop_metadata', 'disabled', 'test_fixture'].includes(data.source?.input_kind)) throw Error('Unknown data provenance');
+        !['desktop_metadata', 'desktop_sensors', 'disabled', 'test_fixture'].includes(data.source?.input_kind)) throw Error('Unknown data provenance');
     if (data.age_s !== null && (!finite(data.age_s) || data.age_s < 0)) throw Error('Invalid sample age');
     if (data.capture) {
       CaptureData.validate(data.capture);

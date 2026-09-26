@@ -42,11 +42,11 @@ launchctl load "$DEST"
 
 REAL_PYTHON=$("$PYTHON" -c 'import os, sys; print(os.path.realpath(sys.executable))')
 cat <<MSG
-Loaded $LABEL. Console: http://127.0.0.1:8900   Logs: tail -f $PROJ_DIR/logs/brain.out.log
+Loaded $LABEL. Dashboard: http://127.0.0.1:8900   Logs: tail -f $PROJ_DIR/logs/brain.out.log
 
 The daemon now runs under launchd, so macOS needs the permissions granted to the
 Python binary itself, not to Terminal. In System Settings -> Privacy & Security add
   $REAL_PYTHON
-to both  Input Monitoring  and  Microphone , then click Stop / Start in the console
+to both  Input Monitoring  and  Microphone , then click Stop / Start in the dashboard
 (or wait: the daemon checks and reports on every start in the log above).
 MSG
