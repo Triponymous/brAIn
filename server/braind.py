@@ -152,6 +152,69 @@ def erase(checkpoint: Path, port: int = 8000, yes: bool = False) -> int:
         lock.close()
 
 
+def _check_permissions(enabled: dict[str, bool]) -> None:
+    """Check macOS privacy permissions of the shared sources and print clear warnings.
+
+    Unshared sources are not probed: the microphone check records 0.1 s of audio.
+    """
+    import sys
+    if sys.platform != "darwin":
+        return
+
+    print("\n╔══════════════════════════════════════════╗")
+    print("║       brAIn Permission Diagnostics       ║")
+    print("╚══════════════════════════════════════════╝")
+    if not any(enabled.values()):
+        print("No source is shared yet: nothing is captured and the brain waits.")
+        print("   → Switch sources on in the training console (http://127.0.0.1:8900)\n")
+        return
+
+    # 1. Input Monitoring (keyboard, mouse, idle)
+    if any(enabled[s] for s in ("keystroke_rate", "mouse_rate", "idle")):
+        try:
+            import Quartz
+            idle = Quartz.CGEventSourceSecondsSinceLastEventType(
+                Quartz.kCGEventSourceStateHIDSystemState, int(0xFFFFFFFF))
+            # A long idle right after the user started this daemon means the
+            # HID counters are hidden from this process.
+            if idle > 120:
+                print("[WARN] INPUT MONITORING: NOT GRANTED")
+                print("   → Keyboard, mouse, and idle sensors will NOT work!")
+                print("   → Fix: System Settings → Privacy & Security → Input Monitoring")
+                print("   → Add Terminal.app (or your terminal) and RESTART this daemon")
+                print()
+            else:
+                print("[OK] Input Monitoring: OK")
+        except ImportError:
+            print("[WARN] Quartz framework not available")
+
+    # 2. Microphone
+    if enabled["mic"]:
+        try:
+            import sounddevice as sd
+            rec = sd.rec(int(0.1 * 16000), samplerate=16000, channels=1, dtype='float32')
+            sd.wait()
+            rms = float((rec ** 2).mean() ** 0.5)
+            if rms < 0.0001:
+                print("[WARN] MICROPHONE: May not be granted (RMS=0)")
+                print("   → Fix: System Settings → Privacy & Security → Microphone")
+            else:
+                print(f"[OK] Microphone: OK (RMS={rms:.6f})")
+        except Exception as e:
+            print(f"[WARN] Microphone: Error ({e})")
+
+    # 3. Active app (no permission needed)
+    if enabled["active_app"]:
+        try:
+            from AppKit import NSWorkspace
+            app = NSWorkspace.sharedWorkspace().frontmostApplication()
+            print(f"[OK] Active App: OK (currently: {app.localizedName()})")
+        except Exception:
+            print("[WARN] Active App: NSWorkspace unavailable")
+
+    print()
+
+
 def build_uvicorn_config(app, port: int) -> uvicorn.Config:
     """Build the daemon's uvicorn config.
 

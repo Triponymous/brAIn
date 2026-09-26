@@ -135,3 +135,72 @@ def test_sigterm_ends_with_a_saved_checkpoint(tmp_path):
     assert ckpt.exists(), log.read_text()
     assert "Final save" in log.read_text()
     assert load_brain(ckpt).tick_count > 0
+
+
+def test_permission_check_probes_only_shared_sources(monkeypatch, capsys):
+    """Regression guard: this check was once deleted and every real start crashed.
+
+    The microphone probe records 0.1 s of audio, so an unshared source is never touched.
+    """
+    from server.braind import _check_permissions
+
+    monkeypatch.setattr(sys, "platform", "darwin")
+    for name in ("Quartz", "sounddevice", "AppKit"):
+        monkeypatch.setitem(sys.modules, name, None)  # a probe cannot import it and says so
+    off = dict.fromkeys(("keystroke_rate", "mouse_rate", "idle", "active_app", "mic"), False)
+
+    _check_permissions(off)
+    out = capsys.readouterr().out
+    assert "No source is shared yet" in out
+    assert "[OK]" not in out and "[WARN]" not in out
+
+    _check_permissions({**off, "active_app": True})
+    out = capsys.readouterr().out
+    assert "Active App" in out
+    assert "Microphone" not in out and "Input Monitoring" not in out and "Quartz" not in out
+
+
+def test_real_sensors_start_and_wait_while_nothing_is_shared(tmp_path):
+    """The start without --mock-sensors; the tests above only use mock sensors.
+
+    A deleted helper once crashed every real start before the server came up.
+    With nothing shared no sensor runs and the brain does not step.
+    """
+    ckpt = tmp_path / "braind.sqlite"
+    log = tmp_path / "daemon.log"
+    port = 8793
+    with log.open("w") as out:
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "server.braind", "start",
+             "--port", str(port), "--checkpoint", str(ckpt)],
+            cwd=Path(__file__).resolve().parents[1],
+            stdout=out, stderr=subprocess.STDOUT,
+        )
+    try:
+        deadline = time.monotonic() + 90
+        while True:
+            if proc.poll() is not None:
+                pytest.fail(f"daemon exited before becoming healthy:\n{log.read_text()}")
+            try:
+                with urllib.request.urlopen(f"http://127.0.0.1:{port}/healthz", timeout=1):
+                    break
+            except (urllib.error.URLError, OSError):
+                pass
+            if time.monotonic() > deadline:
+                pytest.fail(f"daemon never became healthy:\n{log.read_text()}")
+            time.sleep(0.5)
+
+        consent = json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}/api/consent", timeout=5))
+        assert consent["paused"] is True
+        assert all(not s["enabled"] and s["status"] == "disabled" for s in consent["sources"].values())
+        time.sleep(1.0)
+        assert json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}/healthz", timeout=5))["brain_tick_count"] == 0
+
+        proc.terminate()
+        rc = proc.wait(timeout=60)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+
+    assert rc == 0, log.read_text()
+    assert not (tmp_path / "consent-mock.json").exists()
