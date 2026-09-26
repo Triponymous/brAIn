@@ -125,3 +125,53 @@ async def test_chat_lets_the_model_ask_its_brain_and_records_it(tmp_path):
     assert {d["name"] for d in seen["tools"]} >= {"brain_state", "brain_recall", "label_concept"}
     events = [(r["actor"], r["kind"], r["payload"].get("tool")) for r in brain._experience.recent()]
     assert ("llm", "tool_call", "brain_state") in events and ("human", "chat", None) in events
+
+
+@pytest.mark.asyncio
+async def test_the_prompt_is_the_brain_protocol_plus_time_and_nothing_read_beside_it(tmp_path, monkeypatch):
+    """The system prompt comes from SCP (brain state, personality, conversation), then
+    the time. The endpoint reads nothing else for it: an episodes.db in the working
+    directory, which may belong to another daemon's checkpoint, stays unread."""
+    from fastapi import FastAPI
+    from bridge.episode_log import EpisodeLogger
+
+    class _Protocol:
+        def __init__(self):
+            self.prompts, self.feedback = [], []
+
+        def build_prompt(self, user_message="", history=None):
+            self.prompts.append((user_message, history))
+            return "SCP-PROMPT"
+
+        def send_feedback(self, kind):
+            self.feedback.append(kind)
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "checkpoints").mkdir()
+    episodes = EpisodeLogger(tmp_path / "checkpoints" / "episodes.db")
+    episodes.log(tick=1000, modulators={"DA": 0.1}, active_concepts=[1],
+                 sensor_summary={"app": "Safari", "cluster_id": 1, "cluster_label": "flow"}, sleep_mode=False)
+    episodes.close()
+
+    brain = Brain(num_sensory=8, num_concept=4)
+    brain._scp_client = _Protocol()
+    exporter = BrainStateExporter(brain)
+    router = HybridLLMRouter()
+    app = FastAPI()
+    app.include_router(build_chat_router(brain, exporter, MemoryTools(brain, exporter), router))
+    seen = {}
+
+    async def fake_chat(**kw):
+        seen.update(kw)
+        return {"text": "ok", "backend": "local", "tool_calls": []}
+
+    history = [{"role": "user", "content": "vorhin"}]
+    with patch.object(router, "chat", new_callable=AsyncMock, side_effect=fake_chat):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            await client.post("/api/chat", json={"message": "hallo", "history": history})
+
+    assert brain._scp_client.prompts == [("hallo", history)]
+    assert brain._scp_client.feedback == ["engage"]
+    assert seen["system_prompt"].startswith("SCP-PROMPT\n(Zeitpunkt: ")
+    assert "Safari" not in seen["system_prompt"] and "flow" not in seen["system_prompt"]
+    assert seen["history"] == history
