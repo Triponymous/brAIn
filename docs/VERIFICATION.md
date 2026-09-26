@@ -1,5 +1,25 @@
 # Verification and known gaps
 
+Verification update: **2026-09-26**. Runtime code changed: Observatory is now
+the one UI for both runtimes. **Live session** shows either the persistent
+daemon (new `GET /api/telemetry` on port 8000) or the session runner, and
+controls the daemon's five sources, its start and stop and its learned words.
+The control server serves the dashboard on 8900; the old training console is
+removed. Stop answers once the daemon has exited, a start keeps the sensor
+mode, and `POST /api/feel` refuses blank words and words over 64 characters,
+which the dashboard could not list. Also fixed: since f870ac4 every start
+without `--mock-sensors` crashed on a deleted permission check; a real-mode
+start is now tested. This run used a Linux container: real macOS sensors,
+permissions and a real microphone were not exercised.
+
+| Check (Linux, Python 3.11.15, PyTorch 2.14.0, snnTorch 1.0.0, MCP 2.2.0, pytest 9.1.1, Chromium 141) | Result |
+| --- | --- |
+| Full Python suite, unfiltered | 765 passed, 1 skipped |
+| Observatory, live/capture/daemon UI contracts and bilingual tour | 48 passed |
+| 3D structural checks | PASS |
+| Dashboard from the control server in headless Chromium, mock-sensor daemon | First load: persistent brain chosen, daemon running, paused with nothing shared, no current named state, naming locked, runner controls hidden. Idle time, apps and microphone shared one at a time, each confirmed by the daemon; frames arrived as test inputs with one 3D canvas; keyboard and pointer showed as disabled, the app as a category, never a name. A taught word named the moment and was recognized. Session runner hid the daemon's controls and reported the runner as unavailable. Arrow keys moved the source choice only on its two buttons, with focus; the timeline slider kept its keys. Stop answered after about 1 s (0.92–1.01 s in three runs), once the daemon had exited; an immediate start came back in mock mode with the saved three sources and the word, without a lock conflict. The preview on 4178 showed the same state; a page on another local origin got no answer to reading or changing consent, stopping the daemon or reading telemetry, and afterwards the daemon ran on with the same pid and choice. No page errors; no traceback, lock refusal or respawn in the control log |
+| Tour steps 1–7 without a daemon: English and German, 1360, 390 and 320 px wide | Every target present and on screen, no horizontal overflow, no page errors, no request other than GET |
+
 Verification update: **2026-09-22**. Runtime code changed: the daemon and
 control server refuse other web origins, the daemon has per-source consent,
 `experience.db` is pruned after 90 days and `server.braind erase` exists.
@@ -76,12 +96,14 @@ From the repository root, in a prepared environment:
 .venv/bin/python -m pytest -q --override-ini addopts= \
   tests/test_capture_controls.py tests/test_observation_telemetry.py \
   tests/test_audio_vad.py tests/test_brain_tools.py tests/test_tools_endpoint.py \
-  tests/test_mcp_server.py tests/test_experience.py tests/test_episode_log.py
+  tests/test_mcp_server.py tests/test_experience.py tests/test_episode_log.py \
+  tests/test_daemon_telemetry.py tests/test_control.py tests/test_daemon_origin.py
 
 node --test docs/dashboard-concepts/verify-onboarding.mjs \
   docs/dashboard-concepts/verify-observatory.mjs \
   docs/dashboard-concepts/verify-live.mjs \
-  docs/dashboard-concepts/verify-capture.mjs
+  docs/dashboard-concepts/verify-capture.mjs \
+  docs/dashboard-concepts/verify-daemon.mjs
 
 node 3d/verify-brain.mjs
 node scripts/check-docs.mjs

@@ -17,9 +17,9 @@ validated emotion detector, autonomous desktop manager or production security bo
 | Component | Implemented | Important boundary |
 | --- | --- | --- |
 | SNN core | PyTorch LIF steps, fixed expansion, STDP/BCM, competitive concepts, working memory and model modulators | Online learning is implemented; real-world usefulness still needs controlled evaluation |
-| Observatory | Interactive 3D atlas, Circuit view, inspectors, timelines and an 18-step English/German introduction | Five pages use synthetic demonstration data; only **Live session** reads observed model steps |
+| Observatory | Interactive 3D atlas, Circuit view, inspectors, timelines and an 18-step English/German introduction | Five pages use synthetic demonstration data; only **Live session** reads observed model steps, from the persistent daemon or a session runner |
 | Opt-in observation | Four individually switchable desktop-metadata sources, stop control, captured frames and JSON export | Separate fresh model; no persisted checkpoint, microphone, LLM or wearable access |
-| Research daemon | Persistent model, learned labels, episode/experience logs, training console and optional LLM/voice paths | Broader data access than Observatory: five sources, each off until shared in the training console; not controlled by Observatory switches |
+| Research daemon | Persistent model, learned labels, episode/experience logs and optional LLM/voice paths; started, shared and watched in Observatory's **Live session** | Broader data access than the session runner: five sources, each off until shared under **Live session → Persistent brain**; the runner's four switches do not control it |
 | MCP context interface | Nine query tools over stdio, backed by the daemon | Reads can expose personal metadata to the client and are logged locally |
 | Audio experiment | Offline Mel/RMS versus Mel/RMS + VAD evaluation pipeline | No established improvement on real recordings; not integrated into live capture |
 
@@ -44,9 +44,9 @@ Open [Observatory](http://127.0.0.1:4178/observatory.html).
 Choose **Introduction** for the guided tour. English is the default; Deutsch
 remains available, including during a tour. The chosen language is stored locally.
 
-Loading the page does not enable capture. If an observation runner is already
-running, the dashboard can display its existing capture status; closing a tab
-does not stop that runner.
+Loading the page does not enable capture. If the daemon or an observation runner
+is already running, **Live session** shows its existing capture status; closing
+a tab stops neither.
 
 ### 2. Install the research environment
 
@@ -72,8 +72,8 @@ In a second terminal, from the repository root:
 .venv/bin/python -m server.observe --desktop-metadata
 ```
 
-Open **Live session → Data & privacy**. All four sources begin **off** in a new
-runner session. Enable only sources you want, then use **Connect local model**.
+Open **Live session**, choose **Session runner**, then **Data & privacy**. All
+four sources begin **off** in a new runner session. Enable only sources you want, then use **Connect local model**.
 
 - **Stop all capture** stops source queries and subsequent model steps.
 - **Disconnect view** or freezing the timeline does not stop capture.
@@ -86,8 +86,10 @@ and [capture details](docs/dashboard-concepts/LIVE-DATA.md).
 
 ## Persistent research and AI context
 
-For persistent learning, use the separate training console and daemon described
-in [Running brAIn](docs/RUNNING.md). Review [privacy boundaries](docs/PRIVACY.md)
+For persistent learning, run `.venv/bin/python -m server.control` and open the
+dashboard it serves at http://127.0.0.1:8900. **Live session → Persistent brain**
+starts and stops the daemon, shares its sources one by one, shows its actual
+model steps and lets you name moments; see [Running brAIn](docs/RUNNING.md). Review [privacy boundaries](docs/PRIVACY.md)
 before sharing sources: once switched on, this path can include microphone
 features and app metadata, plus disk persistence, chat and optional voice/cloud
 functionality. The daemon captures nothing until a source is shared.
@@ -113,12 +115,13 @@ exported architecture is authoritative, not unused configuration fields.
 Desktop inputs → encoding → SNN + concept tracking
                               ├─ observe → Observatory Live session (ephemeral)
                               └─ braind → checkpoint + logs + learned labels
-                                            ├─ training console
+                                            ├─ Observatory Live session (sources, steps, words)
                                             ├─ optional LLM/voice/capabilities
                                             └─ query API → stdio MCP → chosen client
 ```
 
-These are separate runtime paths, not two views of one shared model.
+These are separate runtime paths, not two views of one shared model; Live
+session shows one of them at a time.
 The anatomical 3D asset is a visual reference: computational role placement is
 illustrative and live synaptic connections are not exported.
 [Architecture and limits](docs/living-desktop-manager.md).

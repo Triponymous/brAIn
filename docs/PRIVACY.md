@@ -9,7 +9,7 @@ not a legal certification or a promise that derived data is anonymous.
 | --- | --- | --- |
 | Static Observatory demo | Synthetic fixtures; user-entered demo annotations | Demo annotations stay in the tab and explicit exports; tour-seen flag and language are stored in the browser |
 | Observer (`server.observe`) | Four opt-in coarse desktop metadata channels; model output | 512-frame server ring, up to 200 per response/UI window; no checkpoint; export is explicit |
-| Persistent daemon (`server.braind`) | Five sources, each off until shared: key and pointer event rates, idle time, app names (front and open apps), microphone features; taught labels | Per-source consent in the training console, saved in `consent.json`; checkpoint and companion SQLite databases; not governed by Observatory switches |
+| Persistent daemon (`server.braind`) | Five sources, each off until shared: key and pointer event rates, idle time, app names (front and open apps), microphone features; taught labels | Per-source consent under **Live session → Persistent brain**, saved in `consent.json`; checkpoint and companion SQLite databases; the session runner's switches do not govern it. Live frames for the dashboard stay in a 512-frame RAM window and are sampled only while a view reads them |
 | Daemon chat | Submitted text, supplied history and model/app context | Sent to the selected LLM backend; the experience event records a character count, not the submitted chat body |
 | Voice endpoints | Explicitly requested microphone recording/transcription and synthesized output | Refused unless the microphone source is shared, and always in mock mode; at most 30 s per request; discarded if the microphone is switched off while recording. Processes actual speech; therefore a repository-wide “no transcripts/content” claim would be false |
 | External MCP | State, labels, app information, patterns and query results | Host can store/disclose returned data; daemon logs query name, arguments and source |
@@ -18,7 +18,10 @@ not a legal certification or a promise that derived data is anonymous.
 No observer source captures key text, pointer coordinates, window titles,
 background-app lists, raw audio or screenshots. The observer briefly reads the
 foreground app name to categorize it; it does not retain/export that name.
-Those restrictions must not be generalized to the broader daemon.
+Those restrictions must not be generalized to the broader daemon. The live
+frames the dashboard reads from the daemon carry the app source as a broad
+category and the microphone as loudness only; that view does not narrow what
+the daemon itself uses or stores.
 
 ## Persistent files
 
@@ -41,23 +44,24 @@ backups, the consent choice and, for the default directory, the pidfile and the
 login service's logs; `--yes` deletes them. It refuses while a daemon uses
 those files: every daemon holds a lock on its checkpoint, whatever its port.
 Explicit exports, copies an MCP host or LLM provider received, and OS-level
-backups are outside its reach. The training console sets per-source consent;
-there is no deletion button in a UI yet.
+backups are outside its reach. The dashboard sets per-source consent; there is
+no deletion button in a UI yet.
 
 ## Stop is not erase
 
 - Observer **Stop all capture** stops its source acquisition and further steps.
-- Daemon **Data sources**: switching a source off stops its listener, audio
-  stream or polling and drops its last value; with nothing shared the model
-  does not step. A stop holds for the running daemon even if saving the choice
-  fails, and the console reports that failure.
+- Daemon sources (**Live session → Persistent brain**): switching a source off
+  stops its listener, audio stream or polling and drops its last value; with
+  nothing shared the model does not step. A stop holds for the running daemon
+  even if saving the choice fails, and the dashboard reports that failure.
 - Erasing is a separate, explicit step: `python -m server.braind erase --yes`
   with the daemon stopped.
 - **Disconnect view**, freezing and closing the tab do not stop collection.
 - Stopping a source does not erase historical frames, learned weights or exports.
 - Observer process termination releases its model/ring buffer; this is not a
   secure-memory-erasure guarantee.
-- Stop the persistent daemon separately via its console or process lifecycle.
+- Stop the persistent daemon separately with **Stop daemon** in the dashboard
+  or via its process lifecycle.
   Its checkpoint and logs intentionally survive shutdown.
 - OS permissions are distinct from application capture switches.
 
@@ -65,8 +69,11 @@ there is no deletion button in a UI yet.
 
 Origin/Host checks in the observer, the daemon and the control server protect
 a limited browser boundary: other websites and DNS-rebinding pages are refused,
-and the daemon accepts browser requests only from the training console on
-port 8900 and origins listed under `daemon.allowed_origins` in `config.json`. Other authorized local processes are outside that protection.
+and the daemon accepts browser requests only from the dashboard (127.0.0.1 or
+localhost on port 8900, where the control server serves it, or 4178, the static
+preview) and origins listed under `daemon.allowed_origins` in `config.json`; the
+control server accepts the dashboard only. Other authorized local processes are
+outside that protection.
 The broader daemon/control APIs are trusted-local research interfaces, not
 authenticated multi-user services.
 

@@ -103,7 +103,7 @@ Grundlage ist der lokale Checkout `f8ba635`, nicht ein gestarteter Brain-Prozess
 | Konzeptaktivität | `concept_membrane` enthält `brain.concept_spike_accum` | Der Name darf im UI nicht als echte Konzept-Membranspannung interpretiert werden. |
 | Membran / Expansion | `wm_membrane` wird geliefert; Expansion ist eine feste Schwellenprojektion, kein LIF-Layer mit eigener Membran | Einzelneuron-Inspector braucht nach Region unterschiedliche Metriken. |
 | Detail-Abonnements | `server/ws.py`: macro, meso, micro; `server/main.py` ergänzt `region_spikes` für verfügbare Regionen | Das ist noch keine vollständige Topologie-/Synapsen-API. Expansion und echte individuelle Gewichte fehlen in diesem Datenpfad. |
-| Gelerntes Vokabular | `bridge/felt_state.py`, `server/feel.py`, `train-ui/index.html` | Bestehender Ansatzpunkt für „That fits“ und „Teach a word“. |
+| Gelerntes Vokabular | `bridge/felt_state.py`, `server/feel.py`, `felt-panel.js` | Im Live-View als „Name a moment“ umgesetzt; „That fits“ und „Teach a word“ der Demo bleiben lokale Annotationen. |
 | Konzeptprofile | `bridge/exporter.py`: Sensor-Kookkurrenzen und vorgeschlagene Labels | Eine Assoziation ist keine kausale Erklärung und kein Beweis für einen psychologischen Zustand. |
 | Episoden / Benchmarks | `bridge/episode_log.py`, `benchmark/` | Ansatzpunkte für weitere Forschung; kein Beleg, dass neuronengenauer Session-Replay bereits vorhanden ist. |
 

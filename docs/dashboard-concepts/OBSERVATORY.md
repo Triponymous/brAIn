@@ -41,7 +41,7 @@ Annotationen bleiben im Speicher des Tabs. Die UI warnt vor unexportierten Ände
 
 ## Lokal betreiben
 
-Der vorhandene Preview-Server unter Port 4178 bedient nur diesen Entwurfsordner. Zum Weitergeben den gesamten Ordner einschließlich `vendor/`, `brain-3d/` und `assets/` kopieren und über HTTP bereitstellen. Keine Installation und keine CDN- oder Schriftabfragen zur Laufzeit.
+Der vorhandene Preview-Server unter Port 4178 bedient nur diesen Entwurfsordner. Der Control-Server (`server.control`, Port 8900) liefert denselben Ordner aus; dort startet und stoppt Live session auch das persistente Gehirn. Zum Weitergeben den gesamten Ordner einschließlich `vendor/`, `brain-3d/` und `assets/` kopieren und über HTTP bereitstellen. Keine Installation und keine CDN- oder Schriftabfragen zur Laufzeit.
 
 Die Produktoberfläche bleibt für das internationale Open-Source-Projekt auf Englisch. Konzept und technische Übergabe sind auf Deutsch.
 

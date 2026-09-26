@@ -8,12 +8,14 @@ product. No supported public or multi-user deployment is offered.
 - Keep observer, daemon and control endpoints on loopback.
 - The daemon and control server refuse requests from other web origins and
   from non-loopback `Host` names; the daemon's browser clients are the
-  training console on port 8900 and any origin listed under
+  dashboard on 127.0.0.1 or localhost, port 8900 (served by the control server)
+  or 4178 (static preview), and any origin listed under
   `daemon.allowed_origins` in `config.json`. Before this check they allowed every origin,
   so any website open in the same browser could grant tools or stop the daemon.
   Local processes are still not authenticated.
 - Do not expose them via a public tunnel, wildcard bind or reverse proxy.
-- Observatory capture controls govern only the observer, not the broader daemon.
+- The session runner's capture controls govern only the observer; the daemon
+  has its own five switches under **Live session → Persistent brain**.
 - Model weights, activity metadata and user labels may be sensitive.
 - MCP query results may leave the machine through the chosen host.
 - The experimental capability system is **not a hardened sandbox**. Do not grant

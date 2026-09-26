@@ -1,6 +1,6 @@
 # brAIn: echte Modelldaten und Wearables
 
-Stand: 14. September 2026. Lokale Implementierung und kritische Produktentscheidung; kein Deployment.
+Stand: 14. September 2026, am 26. September 2026 um das persistente Gehirn im selben Live-View ergänzt. Lokale Implementierung und kritische Produktentscheidung; kein Deployment.
 
 ## Entscheidung
 
@@ -43,13 +43,26 @@ rtk proxy .venv/bin/python -m server.observe --desktop-metadata --duration 120
 
 Danach in **Data & privacy** nur die gewünschten Quellen einschalten und auf **Connect local model** klicken. Öffnen und Verbinden allein aktivieren keine Sensoren. Ohne `--desktop-metadata` kann das Dashboard keine Quelle einschalten. **Follow incoming samples** aktualisiert den untersuchten Tick; **Freeze view** stoppt nur die Darstellung. **Disconnect view** trennt den Modelldatenstrom, nicht die Erfassung. Die Erfassungsschalter bleiben separat bedienbar, auch nach dem Trennen der Ansicht. **Stop all capture** stoppt Abfragen und weitere Modellschritte. **Ctrl-C** beendet den gesamten Runner.
 
-Ein Aus-Schalter ist keine Löschfunktion: bereits gelernte Gewichte, historische Frames und ein eventuell eingefrorener Snapshot bleiben im Arbeitsspeicher bis zum Ende des jeweiligen Prozesses beziehungsweise der Ansicht. Bereits exportierte Dateien bleiben beim Nutzer. Es wird kein Checkpoint gespeichert. Die OS-Eingabeüberwachungsberechtigung bleibt unverändert; diese Schalter kontrollieren weder andere Anwendungen noch den alten `server.braind`-Daemon.
+Ein Aus-Schalter ist keine Löschfunktion: bereits gelernte Gewichte, historische Frames und ein eventuell eingefrorener Snapshot bleiben im Arbeitsspeicher bis zum Ende des jeweiligen Prozesses beziehungsweise der Ansicht. Bereits exportierte Dateien bleiben beim Nutzer. Es wird kein Checkpoint gespeichert. Die OS-Eingabeüberwachungsberechtigung bleibt unverändert; diese Schalter kontrollieren weder andere Anwendungen noch den `server.braind`-Daemon; der hat eigene Schalter (siehe unten).
 
-Der minimale Runner ist absichtlich nicht `server.braind`: dessen normaler Start aktiviert zusätzliche Sensoren und Dienste. Der Beobachtungs-Runner ist kein Ersatz für diese gesamte Companion-Anwendung.
+Der minimale Runner ist absichtlich nicht `server.braind`: Der Daemon lädt und speichert einen Checkpoint, kennt fünf Quellen einschließlich Mikrofon-Merkmalen und bietet zusätzliche Dienste. Der Beobachtungs-Runner ist kein Ersatz für diese gesamte Companion-Anwendung. Oben in **Live session** wählst du dafür **Session runner**.
+
+## Persistentes Gehirn im selben Live-View
+
+Ergänzt am 26. September 2026. Oben in **Live session** wählst du, welches Modell die Ansicht zeigt: **Persistent brain** (`server.braind`, `127.0.0.1:8000`) oder **Session runner** (`server.observe`, `127.0.0.1:8001`). Standard ist das persistente Gehirn; der Browser merkt sich die Wahl. Die Schalter des jeweils anderen Modells sind ausgeblendet, weil sie dieses Modell nicht steuern. Der Daemon und seine Dateien bleiben dieselben wie ohne Dashboard; dieser Abschnitt beschreibt nur, was die Ansicht liest und ändert.
+
+- **Start und Stop:** über `server.control` auf Port 8900, der das Dashboard auch ausliefert. Stop antwortet erst, wenn der Daemon gespeichert hat und beendet ist; ein Start behält den Sensor-Modus, mit dem der Control-Server lief (`--mock` für synthetische Sensoren). Antwortet 8900 nicht, zeigt die Ansicht das und bietet Start und Stop nicht an.
+- **Fünf Quellen:** Tastatur- und Zeigerrhythmus, Inaktivität, Apps, Mikrofon-Merkmale; jede mit eigenem Schalter über `GET/POST /api/consent` (`brain.consent.v1`). Die Anzeige wechselt erst mit der Bestätigung des Daemons. Einschalten braucht die aktuelle Revision; Ausschalten gilt immer und sofort. Die Wahl liegt in `checkpoints/consent.json` (Mock: `consent-mock.json`) und wird nach einem Neustart nie erweitert. Nicht bestätigbar heißt „Daemon not verified“: Eine geteilte Quelle lässt sich dann noch ausschalten, keine einschalten.
+- **Modellschritte:** `GET /api/telemetry` am Daemon im selben Vertrag `brain.telemetry.v1`, mit `input_kind` `desktop_sensors` (echt) oder `test_fixture` (Mock). Frames entstehen nur, solange eine Ansicht liest (5 s nach der letzten Abfrage ist Schluss), aus jedem fünften Schritt (20 Hz bei 100 Hz Takt), höchstens 512 im Arbeitsspeicher, nie auf Disk. Eine neue Ansicht beginnt ohne alte Frames. Ohne geteilte Quelle rechnet das Gehirn nicht, und die Ansicht zeigt „Paused“.
+- **Eingänge im Frame:** Tastatur und Zeiger als Ereignisse pro Sekunde, Inaktivität in Sekunden, die App nur als grobe Kategorie (nie der Name), das Mikrofon nur als Lautstärke (RMS). Nicht geteilt heißt `disabled`, geteilt ohne Wert `unavailable`; keines von beiden wird als 0 dargestellt. Das Wearable ist nicht angeschlossen.
+- **Name a moment:** `GET /api/feel` liefert die gelernten Wörter, den erkannten Zustand mit Ähnlichkeit (keine kalibrierte Wahrscheinlichkeit) und eine offene Frage des Gehirns; `POST /api/feel` lehrt ein Wort, `POST /api/feel/dismiss` ist „Later“. Pausiert gibt es keinen aktuellen Zustand; ein Wort lässt sich dann nur für eine offene Frage vergeben. Wörter liegen im Checkpoint und überstehen einen Neustart.
+- **Freigabe:** Der Daemon nimmt Browser-Anfragen nur von `127.0.0.1` oder `localhost` auf den Ports 8900 und 4178 an, dazu Origins aus `daemon.allowed_origins` in `config.json`; der Control-Server nur das Dashboard. Andere Websites werden abgewiesen, Skripte ohne Origin nicht.
+
+Löschen ist auch hier ein eigener Schritt: `.venv/bin/python -m server.braind erase` bei gestopptem Daemon ([RUNNING.md](../RUNNING.md)).
 
 ## Sicherheit und Reproduzierbarkeit
 
-Der Dienst bindet nur an `127.0.0.1:8001`. Modelldaten bleiben GET-only. Die neue API `GET/POST /api/capture` liest/ändert ausschließlich die vier Erfassungsschalter. Änderungen verlangen eine zugelassene Observatory-Origin an Port 4178, JSON und den nicht geheimen Header `X-Brain-Control: capture-v1`. Keine Form-POSTs, keine fehlende/fremde Origin, keine unbekannten Felder; 2-KB-Bodylimit und strikte boolesche Werte. Zugriff aus nicht lokalen Verbindungen und unbekannte Hostnamen wird abgewiesen. Keine Wildcard-CORS, kein Cache, keine Access-Logs mit Nutzdaten.
+Der Dienst bindet nur an `127.0.0.1:8001`. Modelldaten bleiben GET-only. Die neue API `GET/POST /api/capture` liest/ändert ausschließlich die vier Erfassungsschalter. Änderungen verlangen eine zugelassene Observatory-Origin (Port 4178 oder 8900), JSON und den nicht geheimen Header `X-Brain-Control: capture-v1`. Keine Form-POSTs, keine fehlende/fremde Origin, keine unbekannten Felder; 2-KB-Bodylimit und strikte boolesche Werte. Zugriff aus nicht lokalen Verbindungen und unbekannte Hostnamen wird abgewiesen. Keine Wildcard-CORS, kein Cache, keine Access-Logs mit Nutzdaten.
 
 Session-ID und Auswahlrevision verhindern, dass ein alter Browser eine neue Sitzung oder einen neueren Stop durch nachträgliches Einschalten überschreibt. Ausschalten ist auch mit einer älteren Revision derselben Sitzung möglich und entwertet ausstehende Einschaltbefehle. Sensorabfrage, Modellschritt und Änderung sind synchronisiert: die Stop-Antwort wird erst nach Abschluss eines bereits laufenden Schritts bestätigt, gecachte Eingangsvektoren werden verworfen. Beim Wiedereinschalten wird die Zählerbasis neu aufgenommen, damit Ereignisse aus der ausgeschalteten Zeit nicht nachträglich einfließen. Ein neuer Frame trägt die zugehörige `capture_revision`; alte Frames werden nicht umgeschrieben.
 
@@ -116,10 +129,13 @@ Messen: falsche „guter Zeitpunkt“-Vorschläge, Trefferquote bei gleicher Vor
 - `live-workspace.js`: Verbindung, Freeze, echte Kurve, Inspector und 3D-Datenzufuhr.
 - `tests/test_observation_telemetry.py`: Wertegleichheit, Isolation, Ringpuffer, Missingness, Berechtigungsgrenze und HTTP-Grenzen.
 - `verify-live.mjs`: externen JSON-Vertrag, Reihenfolge, Quellwechsel, Verlauf und Export prüfen.
+- `server/daemon_telemetry.py`: Frames des persistenten Gehirns im selben Vertrag, nur solange gelesen wird; nur beobachtete Eingänge, die App als Kategorie.
+- `daemon-data.js`, `daemon-controls.js`, `felt-panel.js`, `daemon-controls.css`: Quellwahl, fünf bestätigte Schalter, Start und Stop, benannte Zustände.
+- `tests/test_daemon_telemetry.py`, `tests/test_control.py`, `verify-daemon.mjs`: Vertrag, Beobachtungsfenster, Freigaben, Stop erst nach Prozessende, keine optimistischen Zustände.
 
 ```sh
-rtk proxy .venv/bin/python -m pytest tests/test_capture_controls.py tests/test_observation_telemetry.py tests/test_core.py tests/test_server.py -q
-rtk proxy node --test docs/dashboard-concepts/verify-capture.mjs docs/dashboard-concepts/verify-live.mjs docs/dashboard-concepts/verify-observatory.mjs
+rtk proxy .venv/bin/python -m pytest tests/test_capture_controls.py tests/test_observation_telemetry.py tests/test_daemon_telemetry.py tests/test_control.py tests/test_core.py tests/test_server.py -q
+rtk proxy node --test docs/dashboard-concepts/verify-capture.mjs docs/dashboard-concepts/verify-live.mjs docs/dashboard-concepts/verify-daemon.mjs docs/dashboard-concepts/verify-observatory.mjs
 rtk proxy node 3d/verify-brain.mjs
 ```
 

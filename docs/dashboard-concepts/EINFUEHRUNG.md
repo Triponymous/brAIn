@@ -27,15 +27,29 @@ Es wird kein neuer Repository-Graph als Nebenprodukt erzeugt.
 
 ### Live session: die tatsächliche lokale Sitzung
 
-- **Connect local model** verbindet die Ansicht mit `127.0.0.1:8001`. Es schaltet
-  keine Erfassungsquelle ein. **Disconnect view** trennt nur diese Ansicht.
+- Oben wählst du das Modell: **Persistent brain** (`server.braind`,
+  `127.0.0.1:8000`) lernt über Tage und speichert seinen Checkpoint; **Session
+  runner** (`server.observe`, `127.0.0.1:8001`) beginnt jedes Mal frisch.
+  **Connect local model** verbindet die Ansicht mit dem gewählten Dienst und
+  schaltet keine Erfassungsquelle ein. **Disconnect view** trennt nur diese Ansicht.
+  **Start daemon** und **Stop daemon** laufen über `server.control` auf Port 8900;
+  die Tour startet und stoppt nichts.
 - **Data & privacy:** Tastatur- und Mausaktivität sind Ereigniszähler, keine
   Inhalte oder Koordinaten. Idle time ist Zeit seit einer Eingabe; die aktive App
-  wird auf eine grobe Kategorie reduziert. Jeder Eingang ist getrennt schaltbar.
-  Für Tastatur, Maus und Idle ist zusätzlich eine macOS-Berechtigung nötig.
-- **Stop all capture** stoppt die Erfassung und neue Modellschritte dieses
-  Beobachtungsdienstes. Es löscht keine vorhandenen Werte, beendet keine anderen
-  Anwendungen und widerruft keine macOS-Berechtigung. Browser schließen genügt nicht.
+  zeigt die Ansicht nur als grobe Kategorie. Jeder Eingang ist getrennt schaltbar.
+  Das persistente Gehirn kennt zusätzlich Mikrofon-Merkmale und speichert die
+  Wahl, ohne sie nach einem Neustart je zu erweitern; der Runner hat vier Quellen
+  nur für diese Sitzung. Für Tastatur, Maus und Idle ist zusätzlich eine
+  macOS-Berechtigung nötig, für das Mikrofon die Mikrofon-Berechtigung.
+- **Stop all capture** (Runner) und **Stop all sources** (persistentes Gehirn)
+  stoppen die Erfassung und neue Modellschritte des jeweiligen Dienstes. Sie
+  löschen keine vorhandenen Werte, beenden keine anderen Anwendungen und
+  widerrufen keine macOS-Berechtigung. Browser schließen genügt nicht. Löschen ist
+  ein eigener Schritt: `server.braind erase`.
+- **Name a moment** (nur persistentes Gehirn) lehrt ein eigenes Wort für den
+  aktuellen Zustand oder beantwortet eine offene Frage des Gehirns. **Recognized
+  now** nennt das nächste gelernte Wort mit einer Ähnlichkeit, keiner kalibrierten
+  Wahrscheinlichkeit; pausiert gibt es keinen aktuellen Zustand.
 - **Captured model tick** ist der Modellschritt. **Active outputs** zählt aktive
   Ausgänge am ausgewählten Schritt, nicht Hertz. **Retained samples** ist ein
   begrenztes Fenster, keine vollständige Aufzeichnung.
@@ -56,8 +70,9 @@ Es wird kein neuer Repository-Graph als Nebenprodukt erzeugt.
   nicht automatisch den aktuellen Erfassungszustand. Fehlend ist nicht null.
 - **Export observed window** speichert das begrenzte beobachtete Fenster als JSON,
   nicht das ganze Experiment oder alle Modellgewichte. Der Dienst hält bis zu
-  512 Schritte im RAM, die Ansicht bis zu 200. Kein automatisches Checkpoint-Archiv.
-  Mikrofon und Wearables sind in diesem Dienst nicht angeschlossen.
+  512 Schritte im RAM, die Ansicht bis zu 200. Das persistente Gehirn speichert
+  seinen Checkpoint selbst; der Runner speichert nichts, und bei ihm sind Mikrofon
+  und Wearables nicht angeschlossen.
 
 ### Observatory: die synthetische Übersicht
 
@@ -134,6 +149,14 @@ Referenzen für das Interaktionsmodell:
 
 ## Abnahme
 
+Quellwahl geprüft am 26. September 2026: Die Texte für Verbindung, Datenschutz
+und Export beschreiben beide Modelle; der Datenschutz-Schritt markiert beide
+Schalterbereiche (`.live-privacy`). 48 automatisierte Tests bestanden. Im Browser
+ohne laufenden Daemon die Schritte 1–7 auf Englisch und Deutsch bei 1360, 390 und
+320 px Breite: Ziel jeweils vorhanden und sichtbar, kein horizontaler Überlauf,
+keine Seitenfehler und keine Anfrage außer GET. Die Tour startet also weder den
+Daemon noch eine Erfassung.
+
 Spracherweiterung geprüft am 15. September 2026, Branch `codex/english-onboarding`:
 
 - **37 automatisierte Tests bestanden:** 15 Tour-Tests und 22 bestehende Dashboard-
@@ -182,7 +205,7 @@ Geprüft am 14. September 2026:
 Reproduzierbarer Testaufruf vom Repository-Stamm:
 
 ```sh
-rtk proxy node --test docs/dashboard-concepts/verify-onboarding.mjs docs/dashboard-concepts/verify-observatory.mjs docs/dashboard-concepts/verify-live.mjs docs/dashboard-concepts/verify-capture.mjs
+rtk proxy node --test docs/dashboard-concepts/verify-onboarding.mjs docs/dashboard-concepts/verify-observatory.mjs docs/dashboard-concepts/verify-live.mjs docs/dashboard-concepts/verify-capture.mjs docs/dashboard-concepts/verify-daemon.mjs
 ```
 
 Die Controller-Tests nutzen eine schlanke DOM-Testumgebung; sie ersetzen die

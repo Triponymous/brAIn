@@ -28,10 +28,9 @@ limitations; a skipped or failed test is never a passing result.
 | `bridge/` | Learned labels, episode/experience logs, query tools, LLM and SCP |
 | `server/observe.py` | Fresh opt-in observation runner, port 8001 |
 | `server/braind.py` | Persistent experimental daemon, port 8000 |
-| `server/control.py` | Daemon supervisor and training console, port 8900 |
+| `server/control.py` | Daemon supervisor; serves the dashboard, port 8900 |
 | `server/mcp.py` | Stdio MCP proxy to the daemon query API |
-| `docs/dashboard-concepts/` | Observatory application, fixtures, tour and browser tests |
-| `train-ui/` | Separate persistent-daemon training console |
+| `docs/dashboard-concepts/` | Observatory, the one UI for both runtimes: fixtures, tour and browser tests |
 | `benchmark/` | Offline research experiments and synthetic diagnostics |
 | `capabilities/` | Experimental grants and action tools; not a security sandbox |
 | `3d/` | Anatomy placement, asset provenance and visual verification |

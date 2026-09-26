@@ -13,20 +13,23 @@ available context. This separation does not make the system biologically alive,
 prove emotional understanding or update the LLM's weights. “Living Desktop
 Manager” is the intended direction, not an existing autonomous product.
 
-## Two independent runtimes
+## Two independent runtimes, one interface
 
 | | Opt-in observer | Persistent daemon |
 | --- | --- | --- |
 | Entry point | `server.observe` | `server.braind start` |
 | HTTP | 127.0.0.1:8001 | 127.0.0.1:8000 |
-| Interface | Observatory Live session | Training console via control server on 8900 |
+| Interface | Observatory Live session → Session runner | Observatory Live session → Persistent brain; the control server on 8900 serves it and starts/stops the daemon |
 | Model | Fresh seeded instance | Loaded checkpoint or fresh model |
 | Capture | Four sources, off by default | Five sources including microphone features, each off until shared; the choice persists across restarts |
 | Storage | Bounded RAM window, explicit export | Checkpoints, episodes, experience and grants |
 | External model | None | Optional internal LLM; external stdio MCP proxy |
-| Shared controls | None | Observatory stop switches do not govern this daemon |
+| Shared controls | None: its four switches govern only this runner | None: its five switches govern only this daemon |
 
-The five other Observatory pages use deterministic synthetic demonstration data.
+Both answer `GET /api/telemetry` in the same contract (`brain.telemetry.v1`), so
+Live session shows either one; the daemon samples every fifth step, and only
+while a view reads. The five other Observatory pages use deterministic
+synthetic demonstration data.
 A live tick is not a demo frame, a recording session or an entire saved brain.
 
 ## Model and representations

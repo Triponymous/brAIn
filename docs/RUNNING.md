@@ -12,6 +12,10 @@ python3 -m http.server 4178 --bind 127.0.0.1 --directory docs/dashboard-concepts
 Open http://127.0.0.1:4178/observatory.html. It includes five synthetic exploration
 pages plus the separate **Live session** page. **Introduction** opens an 18-step
 English/German tour. No Node package installation is needed to serve this UI.
+The control server serves the same files on port 8900 (see below). At the top
+of **Live session** you choose the model it shows: **Persistent brain** (the
+daemon on 8000) or **Session runner** (the observer on 8001). The browser
+remembers that choice; the other model's controls are hidden.
 
 ## Python environment
 
@@ -42,7 +46,8 @@ Do not downgrade requirements or alter a running research environment silently.
 ```
 
 Run one variant at a time. The observer binds to **127.0.0.1:8001**.
-In Observatory, select sources under **Data & privacy**, then connect the view.
+In Observatory's **Live session**, choose **Session runner**, select sources
+under **Data & privacy**, then connect the view.
 Available sources: keyboard event rate, pointer event rate, idle time and coarse
 foreground-app category. Input Monitoring availability is reported separately
 from whether a source was selected. No microphone, screenshots or wearables.
@@ -54,21 +59,33 @@ the observer does not save a checkpoint.
 ## Persistent daemon: separate experimental runtime
 
 Read the [data inventory](PRIVACY.md) first. The daemon captures nothing until
-you share a source under **Data sources** in the training console: keyboard
+you share a source in the dashboard (**Live session → Persistent brain**): keyboard
 rhythm, pointer activity, idle time, apps and microphone features, each on its
 own. The choice is saved in `checkpoints/consent.json` and restored on restart;
 a missing or unreadable file means nothing is shared, and a source added in a
 later version starts off. While nothing is shared the model does not step.
 Switching a source off stops its listener, stream or polling at once and
-removes its last value. Observatory capture switches do not control this process.
+removes its last value. The session runner's switches do not control this process.
 
 ```sh
 .venv/bin/python -m server.control
 ```
 
-Open http://127.0.0.1:8900. The control server serves `train-ui/index.html`
+Open http://127.0.0.1:8900. The control server serves the Observatory dashboard
 and starts/stops a daemon on **127.0.0.1:8000**. It does not automatically start a
 new daemon unless requested, but supervises an existing desired-running pidfile.
+A start from the dashboard keeps the sensor mode the control server was started
+with (`--mock` for synthetic sensors). **Stop daemon** answers once the daemon
+has saved its checkpoint and exited, so a start right after it finds the
+checkpoint free.
+
+In **Live session → Persistent brain** the dashboard shows the daemon's process,
+its five source switches, **Name a moment** for teaching words, and the
+actual model steps. It reads those steps from `GET /api/telemetry` only while
+the view polls: every fifth step (20 Hz), at most 512 in the daemon's memory,
+never written to disk. There the app source appears as a category and the
+microphone as loudness only. The page from the static server on 4178 may call
+the daemon and the control server as well; other web origins are refused.
 
 The daemon loads or creates `checkpoints/braind.sqlite`, saves periodically
 and on normal shutdown, and maintains companion databases in the same directory.
@@ -99,8 +116,8 @@ curl -s -X POST http://127.0.0.1:8010/api/consent \
 Voice recording is refused unless the microphone source is shared, and always
 in mock mode. Mock mode does not disable network-capable tools or the optional
 LLM path; do not invoke them in a sensor-free test. Stop with Ctrl-C.
-Do not connect the standard training console to this custom port without
-checking its configuration; this command is intended for isolated API testing.
+The dashboard always talks to port 8000, so it does not show this daemon; this
+command is intended for isolated API testing.
 
 ### Erase the daemon's data
 
@@ -109,7 +126,7 @@ checking its configuration; this command is intended for isolated API testing.
 .venv/bin/python -m server.braind erase --yes    # deletes it
 ```
 
-Stop the daemon in the console first; the command refuses while a daemon uses
+Stop the daemon first (**Stop daemon** in the dashboard, or Ctrl-C); the command refuses while a daemon uses
 the checkpoint, on any port. A second daemon on the same checkpoint does not start.
 It covers the stores in the [data inventory](PRIVACY.md#persistent-files),
 their SQLite side files, the daily backups and the consent choice. Add
